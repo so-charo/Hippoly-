@@ -1,7 +1,7 @@
 {
-  "name": "My PWA",
-  "short_name": "MyPWA",
-  "start_url": "./index.html",
+  "name": "図形ボード",
+  "short_name": "図形ボード",
+  "start_url": "./hippoly.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
