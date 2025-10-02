@@ -2,20 +2,18 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
+  <title>Redirecting…</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>My PWA</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#000000">
-  <link rel="icon" href="icon-192.png">
+  <!-- JSで即リダイレクト。履歴に残さないよう replace を使う -->
+  <script>
+    location.replace("./hippoly.html");
+  </script>
+  <!-- JS無効時の保険 -->
+  <noscript>
+    <meta http-equiv="refresh" content="0; url=./hippoly.html">
+  </noscript>
 </head>
 <body>
-  <h1>Hello, iPad PWA</h1>
-  <p>ホーム画面に追加するとフルスクリーンで動きます。</p>
-
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js");
-    }
-  </script>
+  <p>Redirecting to <a href="./hippoly.html">hippoly.html</a>…</p>
 </body>
 </html>
