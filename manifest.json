@@ -1,6 +1,6 @@
 {
-  "name": "図形ボード",
-  "short_name": "図形ボード",
+  "name": "Hippoly!",
+  "short_name": "Hippoly!",
   "start_url": "./hippoly.html",
   "display": "standalone",
   "background_color": "#ffffff",
