@@ -2,8 +2,8 @@ const CACHE_NAME = "hippoly-cache-v1";
 const urlsToCache = [
   "./hippoly.html",
   "./manifest.json",
-  "./icon-192.png",
-  "./icon-512.png"
+  "./icon192.png",
+  "./icon512.png"
 ];
 
 // インストール時にキャッシュ
