@@ -1,39 +1,34 @@
-// 単純明快キャッシュ。更新時は VERSION を上げるだけ。
-const VERSION = "v1.0.0";
-const CACHE_NAME = `hippoly-cache-${VERSION}`;
-const URLS_TO_CACHE = [
+const CACHE_NAME = "hippoly-cache-v1";
+const urlsToCache = [
   "./hippoly.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png"
 ];
 
-// インストール時に必要ファイルをキャッシュ
+// インストール時にキャッシュ
 self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(URLS_TO_CACHE))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
 });
 
-// 有効化時に古いキャッシュを掃除
+// オフライン時はキャッシュから取得
+self.addEventListener("fetch", event => {
+  event.respondWith(
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request);
+    })
+  );
+});
+
+// 古いキャッシュを削除
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
-});
-
-// キャッシュ優先。ナビゲーションはオフライン時に hippoly.html へフォールバック
-self.addEventListener("fetch", event => {
-  const req = event.request;
-  if (req.mode === "navigate") {
-    event.respondWith(
-      fetch(req).catch(() => caches.match("./hippoly.html"))
-    );
-    return;
-  }
-  event.respondWith(
-    caches.match(req).then(res => res || fetch(req))
+    caches.keys().then(keys => {
+      return Promise.all(
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+      );
+    })
   );
 });
