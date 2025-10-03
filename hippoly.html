@@ -2,254 +2,1662 @@
 <html lang="ja" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <!-- iPadでのダブルタップ拡大や長押し選択を防止 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>図形ボード（iPad最適・方眼吸着強化）</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Hippoly!</title>
+  <link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js");
+  }
+</script>
   <style>
-    :root{
+    /* ========== テーマ（ライト/ダーク） ========== */
+		/* ★ iPad 長押しの選択・コールアウトを全要素で抑止。付箋は例外で解除 */
+	* {
+		-webkit-user-select: none;
+		user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+		/* 付箋内は選択・コピーを許可 */
+		.note, .note * {
+      -webkit-user-select: text !important;
+      user-select: text !important;
+      -webkit-touch-callout: default !important;
+    }
+    
+    /* ★ UI要素は manipulation でダブルタップズームを抑制 */
+		button, label, select, input {
+      touch-action: manipulation;
+    }
+
+		/* ★ 付箋内は従来どおり選択可・コピー可 */
+		.note, .note * {
+  		-webkit-user-select: text;
+  		user-select: text;
+  		-webkit-touch-callout: default;
+		}
+    
+    :root {
+      /* 基本 */
       --page-bg:#f7fafc;
       --text:#111827;
       --panel-bg:#ffffff;
       --panel-shadow:0 10px 30px rgba(0,0,0,.06);
       --accent:#2563eb;
       --soft:#e5e7eb;
+
+      /* ボタン */
       --btn-bg:#ffffff;
       --btn-border:#e5e7eb;
       --btn-active:#dbeafe;
       --btn-hover-shadow:0 1px 3px rgba(0,0,0,.06);
       --btn-focus:#93c5fd;
-      --grid-cm:37.7952755906;
-      --grid-stroke:#bfdbfe;
+
+      /* 方眼 */
+      --grid-cm:37.7952755906; /* 96dpi前提 1cm ≒ 37.795px */
+      --grid-stroke:#bfdbfe;   /* 薄水色 */
+      --grid-pt:1.0;           /* 1px */
+
+      /* 付箋色 */
       --note-yellow:#fffbe6;
       --note-blue:#e6f3ff;
       --note-pink:#ffeaf1;
+
+      /* バッジ/ヘルプ */
       --badge-bg:#eef2ff;
-      --badge-border:#c7d2fe;
       --badge-text:#1e3a8a;
       --hint:#6b7280;
-      --aside-width:320px;
+
+      /* サイドバー */
+      --aside-width:360px;       /* iPad縦でも全ツール表示できる幅に調整 */
+      --aside-collapsed:24px;    /* 突起だけ残す幅 */
     }
-    [data-theme="dark"]{
+
+    /* ダークテーマ */
+    [data-theme="dark"] {
       --page-bg:#0f172a;
       --text:#e5e7eb;
       --panel-bg:#111827;
       --panel-shadow:0 10px 30px rgba(0,0,0,.35);
+
       --btn-bg:#1f2937;
       --btn-border:#334155;
       --btn-active:#1d4ed8;
       --btn-hover-shadow:0 1px 3px rgba(255,255,255,.06);
       --btn-focus:#60a5fa;
+
       --grid-stroke:#334155;
+      --grid-pt:1.0;
+
       --note-yellow:#5b5b3a;
       --note-blue:#334e68;
       --note-pink:#6e3948;
+
       --badge-bg:#1f2937;
       --badge-border:#374151;
       --badge-text:#dbeafe;
       --hint:#94a3b8;
     }
-    html,body{height:100%;overflow:hidden;margin:0;font-family:sans-serif;background:var(--page-bg);color:var(--text);}
-    header{
-      background:var(--panel-bg);color:var(--text);
-      padding:10px 12px;box-shadow:0 2px 10px rgba(0,0,0,.06);z-index:10;
+
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+      background:var(--page-bg); color:var(--text);
+      display:grid; grid-template-rows:auto 1fr;
+      overflow:hidden; /* ページ全体のスクロール無効化 */
     }
-    header .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
-    main{display:grid;grid-template-columns:1fr var(--aside-width);gap:12px;padding:12px;align-items:stretch;}
-    aside{background:var(--panel-bg);color:var(--text);border-radius:14px;padding:12px;box-shadow:var(--panel-shadow);position:relative;}
-    #asideTab{position:absolute;left:-18px;top:12px;width:18px;height:40px;border-radius:8px 0 0 8px;background:var(--btn-bg);border:1px solid var(--btn-border);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;}
-    body.aside-collapsed main{grid-template-columns:1fr 0;}
-    body.aside-collapsed aside{width:0;padding:0;opacity:0;pointer-events:none;}
-    #boardWrap{position:relative;overflow:hidden;border-radius:14px;background:var(--panel-bg);box-shadow:var(--panel-shadow);}
-    #board{width:100%;height:100%;position:relative;touch-action:none;}
-    svg,canvas{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;}
-    #notesLayer{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;}
-    .note{position:absolute;resize:both;min-width:100px;min-height:100px;background:var(--note-yellow);color:var(--text);padding:4px;border:1px solid var(--btn-border);border-radius:6px;box-sizing:border-box;overflow:auto;pointer-events:auto;font-size:13pt;}
+    header{
+      background:var(--panel-bg); color:var(--text);
+      padding:10px 12px; box-shadow:0 2px 10px rgba(0,0,0,.06);
+      position:sticky; top:0; z-index:10;
+    }
+    header .row{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+    header .title{font-weight:700;}
+    select, input[type="color"], button, label.toggle{
+      border:1px solid var(--btn-border); background:var(--btn-bg); color:var(--text);
+      border-radius:10px; padding:10px 12px; font-size:14px;
+      transition: box-shadow .12s ease, background .12s ease, transform .04s ease;
+    }
+    button{cursor:pointer;}
+    button:hover{ box-shadow: var(--btn-hover-shadow); }
+    button:active{ transform: translateY(0.5px); }
+    button:focus-visible{ outline: 2px solid var(--btn-focus); outline-offset: 2px; }
+    button:disabled{opacity:.5; cursor:not-allowed;}
+    .active{background:var(--btn-active)!important; color:#fff; }
+
+    main{
+      position:relative;
+      display:grid; grid-template-columns:1fr var(--aside-width); gap:12px; padding:12px;
+      transition: grid-template-columns .15s ease;
+      height:100%; /* ヘッダ以外は常に画面内に収める */
+      box-sizing:border-box;
+    }
+
+    /* 右パネル折りたたみ（突起だけ残す） */
+    body.aside-collapsed main{
+      grid-template-columns: 1fr var(--aside-collapsed);
+    }
+    aside{
+      order:2; background:var(--panel-bg); color:var(--text); border-radius:14px;
+      padding:12px; box-shadow: var(--panel-shadow); overflow:hidden;
+      position:relative;
+      height:100%;
+      display:flex; flex-direction:column;
+    }
+    .aside-inner{
+      height:100%;
+      overflow:hidden; /* サイドバー内スクロール禁止 */
+    }
+    body.aside-collapsed aside{
+      padding:0;
+    }
+    body.aside-collapsed .aside-inner{
+      display:none;
+    }
+
+    /* サイドバー突起タブ */
+    #asideTab{
+      position:absolute; top:8px; left:-10px;  /* 左にちょい突き出す */
+      width:20px; height:28px;
+      background:var(--btn-bg); color:var(--text);
+      border:1px solid var(--btn-border);
+      border-top-left-radius:8px; border-bottom-left-radius:8px; border-right:none;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow: var(--btn-hover-shadow);
+      z-index:5;
+      cursor:pointer;
+      font-size:12px;
+      line-height:1;
+    }
+    body.aside-collapsed #asideTab{
+      left:-1px;
+      border-radius:8px;
+      width:22px; height:32px;
+    }
+
+    .board-wrap{
+      order:1; background:var(--panel-bg); color:var(--text);
+      border-radius:14px; padding:8px; box-shadow: var(--panel-shadow);
+      position:relative; min-height:420px; overflow:hidden;
+      height:100%;
+    }
+
+    .panel-title{font-size:12px; color:var(--hint); margin:0 0 6px;}
+    .toolbar{ display:grid; gap:6px; }
+    .group{ border-top:1px dashed var(--soft); padding-top:6px; margin-top:6px; }
+    .tool-row{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+    select.compact{ padding:6px 8px; font-size:12px; }
+
+    .board{width:100%; height:100%; border-radius:12px; display:block; background:#0b0b0b08; touch-action:none;}
+
+    /* 描画キャンバス & カーソルオーバーレイ */
+    canvas.draw, canvas.cursor-layer{
+      position:absolute; inset:8px;
+      width:calc(100% - 16px); height:calc(100% - 16px);
+      pointer-events:none; touch-action:none;
+      border-radius:12px;
+    }
+    canvas.cursor-layer{ z-index:6; }
+
+    /* 方眼線（SVG line） */
+    #gridLayer line { pointer-events:none; }
+
+    .shape{fill-opacity:.35; stroke-width:2;}
+    .selected{filter:drop-shadow(0 0 0.6px rgba(0,0,0,.25));}
+    .handle{fill:#fff; stroke:var(--accent); stroke-width:2; cursor:pointer;}
+    .bbox-handle{fill:#fff; stroke:#64748b; stroke-width:2; cursor:nwse-resize;}
+
+    /* 付箋の見た目（復元） */
+    .note-wrap{ position:relative; width:100%; height:100%; overflow:visible; }
+    .note{
+      width:100%; height:100%;
+      padding:6px 8px 10px 8px;
+      border-radius:8px; border:1px solid var(--btn-border);
+      background:var(--note-yellow);
+      box-shadow:0 2px 6px rgba(0,0,0,.08);
+      outline:none; line-height:1.4; overflow:auto; color:var(--text);
+    }
+    .note-yellow{ background:var(--note-yellow); }
+    .note-blue  { background:var(--note-blue); }
+    .note-pink  { background:var(--note-pink); }
+    .note-close{
+      position:absolute; right:4px; top:4px;
+      border:none; background:rgba(255,255,255,0.85);
+      border:1px solid var(--btn-border); border-radius:6px;
+      padding:2px 6px; cursor:pointer; font-size:12px; color:#111;
+    }
+    [data-theme="dark"] .note-close{ background:rgba(17,24,39,0.9); color:#e5e7eb; }
+    .note-resize{
+      position:absolute; right:-6px; bottom:-6px; width:18px; height:18px; background:#fff;
+      border:1px solid #94a3b8; border-radius:3px; cursor:nwse-resize; box-shadow:0 1px 2px rgba(0,0,0,.1);
+    }
+    [data-theme="dark"] .note-resize{ background:#1f2937; border-color:#475569; }
+
+    /* バッジをオーバーレイ化して高さを圧縮 */
+    .badgebar{
+      position:absolute; left:12px; bottom:12px; z-index:5;
+      display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+      pointer-events:none;
+    }
+    .badge{
+      background:var(--badge-bg); color:var(--badge-text);
+      border:1px solid var(--badge-border); border-radius:10px; padding:4px 8px; font-size:12px;
+    }
+
+    /* モードバッジ（左・上） */
+    #modeBadge{
+      position:absolute; left:12px; top:12px;
+      background:rgba(255,255,255,0.9); border:1px solid var(--btn-border); border-radius:10px;
+      font-size:12px; padding:4px 8px; z-index:5; pointer-events:none; color:#111;
+    }
+    [data-theme="dark"] #modeBadge{ background:rgba(17,24,39,0.9); color:#e5e7eb; }
+
+    /* ステータスバー（右・下） */
+    #statusBar{
+      position:absolute; right:12px; bottom:12px;
+      background:rgba(255,255,255,0.9); border:1px solid var(--btn-border); border-radius:10px;
+      font-size:12px; padding:4px 8px; z-index:5; pointer-events:none; min-width: 180px; text-align:right; color:#111;
+    }
+    [data-theme="dark"] #statusBar{ background:rgba(17,24,39,0.9); color:#e5e7eb; }
+
+    /* タッチ端末：ハンドル大きめ、操作余白も控えめに */
+    @media (pointer:coarse) {
+      .handle { r: 14 !important; }
+      .bbox-handle { width: 24px !important; height: 24px !important; }
+      button, select, input[type="color"] { padding:10px 12px; }
+    }
+
+    /* 768px（iPad縦）でも横スクロールなしで収まる調整 */
+    @media (max-width: 820px) {
+      :root { --aside-width: 360px; }
+      header .row { gap:8px; }
+      select, input[type="color"], button { padding:8px 10px; font-size:13px; }
+      .panel-title { font-size:12px; }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div class="row">
-      <span class="title">図形ボード</span>
-      <button id="themeToggle">🌙</button>
-      <select id="gridSize">
-        <option value="3">3cm</option>
+<header>
+  <div class="row">
+    <div class="title">Hippoly!</div>
+
+    <label title="方眼のサイズを切り替え（1/3cm）">方眼：
+      <select id="gridSize" title="1/3cm 方眼">
+        <option value="1">1cm</option>
+        <!-- 2cm は削除 -->
+        <option value="3" selected>3cm</option>
       </select>
-      <select id="penColor"></select>
-      <button id="undo">Undo</button>
-      <button id="redo">Redo</button>
-      <button id="save">保存</button>
-      <button id="load">読込</button>
-      <button id="reset">リセット</button>
+    </label>
+
+    <button id="undo" title="戻る（Undo）">↶ 戻る</button>
+    <button id="redo" title="進む（Redo）">↷ 進む</button>
+    <button id="reset" title="リセット（画面を再読み込み）">⟲ リセット</button>
+    <button id="export" title="保存（JSONとして保存）">💾 保存</button>
+    <label id="importLabel" class="toggle" title="読み込み（保存したJSONを選択）">📂 読み込み
+      <input id="import" type="file" accept="application/json" style="display:none">
+    </label>
+
+    <!-- テーマトグル -->
+    <button id="themeToggle" title="テーマ">🌙</button>
+
+    <!-- 付箋選択時のみ表示するヘッダパネル -->
+    <div id="notePanel" title="付箋の見た目を変更" style="display:none; gap:8px; align-items:center; padding:4px 6px; border:1px solid var(--btn-border); border-radius:10px;">
+      <label>色
+        <select id="noteHdrColor" title="付箋の色を変更">
+          <option value="yellow">黄色</option>
+          <option value="blue">水色</option>
+          <option value="pink">ピンク</option>
+        </select>
+      </label>
+      <label>文字サイズ
+        <select id="noteHdrSize" title="付箋の文字サイズを変更">
+          <option value="s">小</option>
+          <option value="m" selected>中</option>
+          <option value="l">大</option>
+        </select>
+      </label>
     </div>
-  </header>
-  <main>
-    <div id="boardWrap">
-      <div id="board">
-        <svg id="gridLayer"></svg>
-        <svg id="shapesLayer"></svg>
-        <svg id="handlesLayer"></svg>
-        <canvas id="drawCanvas"></canvas>
-        <canvas id="cursorCanvas"></canvas>
-        <div id="notesLayer"></div>
+  </div>
+</header>
+
+<main>
+  <div class="board-wrap">
+    <!-- モードバッジ -->
+    <div id="modeBadge">編集/移動</div>
+    <!-- ステータスバー -->
+    <div id="statusBar">(x: — cm, y: — cm) | Snap: —</div>
+
+    <svg id="board" class="board" aria-label="draw-board"></svg>
+    <canvas id="drawCanvas" class="draw"></canvas>
+    <canvas id="cursorCanvas" class="cursor-layer"></canvas>
+
+    <div class="badgebar">
+      <span class="badge">選択: <strong id="selType">—</strong></span>
+      <span class="badge"><span id="wLabel">幅</span>: <strong id="w">—</strong> <span id="u1">cm</span></span>
+      <span class="badge"><span id="hLabel">高さ</span>: <strong id="h">—</strong> <span id="u2">cm</span></span>
+      <span class="badge">頂点: <strong id="vh">—</strong></span>
+    </div>
+  </div>
+
+  <aside>
+    <button id="asideTab" title="サイドバーをたたむ/ひらく">▶</button>
+    <div class="aside-inner">
+      <div class="panel-title">ツール</div>
+      <div class="toolbar" id="toolbar">
+        <div>
+          <button data-tool="edit" class="active" title="編集/移動（選択・移動・リサイズなど）"><span class="icon">✋</span>移動</button>
+          <button data-tool="text" title="付箋を1枚配置（配置後は自動で編集モードに戻ります）"><span class="icon">📝</span>コメント</button>
+          <div class="group">
+            <div class="panel-title">手書き</div>
+            <div class="tool-row">
+              <button data-tool="draw" title="ペン（キャンバスに自由線を描画）"><span class="icon">🖊️</span>ペン</button>
+              <select id="penColor" class="compact" title="ペン色">
+                <option value="#1f2937" selected>黒</option>
+                <option value="#ef4444">赤</option>
+                <option value="#2563eb">青</option>
+                <option value="#16a34a">緑</option>
+　　　　　　　　　<option value="#f2f6fa">白</option>
+
+              </select>
+              <button data-tool="erase" title="消しゴム（ピクセル/オブジェクト/全消し）"><span class="icon">🗑</span>消しゴム</button>
+              <select id="eraserMode" class="compact" title="消しゴムモード">
+                <option value="pixel">ピクセル</option>
+                <option value="object">オブジェクト</option>
+                <option value="clear">全消し</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="panel-title">図形</div>
+          <div class="tool-row">
+            <button data-add="rect" title="長方形を追加">▭ 長方形</button>
+            <button data-add="tri" title="三角形（ランダム）を追加">△ 三角形</button>
+            <button data-add="trap" title="台形（3パターンからランダム）を追加">□ 台形</button>
+            <button data-add="para" title="平行四辺形を追加">▱ 平行四辺形</button>
+            <button data-add="rh" title="ひし形を追加">◇ ひし形</button>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="panel-title">図形編集</div>
+          <div class="tool-row">
+            <label class="toggle"><input type="checkbox" id="vertexEdit"/> 頂点編集</label>
+            <label class="toggle"><input type="checkbox" id="lockSize"/> サイズ固定</label>
+            <label>色 <input type="color" id="color" value="#2563eb"/></label>
+          </div>
+          <div class="tool-row" style="margin-top:6px;">
+            <button id="dup" title="選択図形をコピー">⧉ コピー</button>
+            <button id="front" title="前面へ">⤴ 手前へ</button>
+            <button id="back" title="背面へ">⤵ 奥へ</button>
+            <button id="rotL" title="反時計回りに回転">↺ 回転</button>
+            <button id="rotR" title="時計回りに回転">↻ 回転</button>
+            <button id="flipH" title="左右反転">⇔ 反転</button>
+            <button id="flipV" title="上下反転">⇕ 反転</button>
+            <button id="deleteShape" title="選択図形を削除">✖ 削除</button>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="panel-title">分割</div>
+          <div class="tool-row">
+            <button data-tool="splitLine" title="直線で分割（複数図形にも対応）"><span class="icon">✂️</span>直線で分割</button>
+            <label class="toggle" title="分割線を方眼に吸着させる">
+              <input type="checkbox" id="splitGridSnap"/> 線にそって切りとる
+            </label>
+          </div>
+        </div>
       </div>
     </div>
-    <aside id="aside">
-      <div id="asideTab">▶</div>
-      <div id="toolbar">
-        <button id="modeSelect">選択</button>
-        <button id="modeDraw">ペン</button>
-        <button id="modeErase">消し</button>
-        <button id="modeNote">付箋</button>
-        <button id="modeCut">カット</button>
-        <button id="modeRect">長方形</button>
-        <button id="modeTri">三角形</button>
-        <button id="modePara">平行四辺形</button>
-        <button id="modeTrap">台形</button>
-        <button id="modeRhomb">ひし形</button>
-      </div>
-    </aside>
-  </main>
-  <script>
-'use strict';
-const state={
-  gridCm:3,
-  gridPx:Math.round(37.795*3),
-  dpr:1,
-  shapes:[],
-  notes:[],
-  timeline:[],
-  penColor:'#000000',
-  undoStack:[],
-  redoStack:[],
-  snapTol:12,
-  mode:'select'
-};
-const ui={
-  gridLayer:document.getElementById('gridLayer'),
-  shapesLayer:document.getElementById('shapesLayer'),
-  handlesLayer:document.getElementById('handlesLayer'),
-  drawCanvas:document.getElementById('drawCanvas'),
-  cursorCanvas:document.getElementById('cursorCanvas'),
-  notesLayer:document.getElementById('notesLayer'),
-  aside:document.getElementById('aside'),
-  asideTab:document.getElementById('asideTab'),
-  penColor:document.getElementById('penColor'),
-  themeToggle:document.getElementById('themeToggle')
-};
+  </aside>
+</main>
 
-// ===== ペンパレット =====
-function applyPenPalette(theme){
-  while(ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
-  const palette = (theme==='dark')
-    ? [
-      {label:'白', value:'#ffffff'},
-      {label:'薄橙', value:'#ffb347'},
-      {label:'水色', value:'#87cefa'},
-      {label:'黄緑', value:'#90ee90'}
-    ]
-    : [
-      {label:'黒', value:'#1f2937'},
-      {label:'赤', value:'#ef4444'},
-      {label:'青', value:'#2563eb'},
-      {label:'緑', value:'#16a34a'}
-    ];
-  for(const c of palette){
-    const opt=document.createElement('option');
-    opt.value=c.value; opt.textContent=c.label;
-    ui.penColor.appendChild(opt);
+<script>
+  // ========= 基本 =========
+  const svgNS='http://www.w3.org/2000/svg';
+  const board=document.getElementById('board');
+  const drawCanvas=document.getElementById('drawCanvas');
+  const cursorCanvas=document.getElementById('cursorCanvas');
+  const ctx=drawCanvas.getContext('2d');
+  const cctx=cursorCanvas.getContext('2d');
+  const pxPerCm=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--grid-cm'))||37.7952755906;
+  const GRID_PAD = 8; // 方眼の内側パディング（描画・当たり判定・生成に統一使用）
+
+  function el(name, attrs={}){ const n=document.createElementNS(svgNS,name); for(const k in attrs) n.setAttribute(k, attrs[k]); return n; }
+  function uid(){ return 's'+Math.random().toString(36).slice(2,9); }
+
+  // ========= 状態 =========
+  const state={
+    tool:'edit',
+    gridPx:pxPerCm*3,
+    gridOffset:0,
+    snapTol:16,
+    shapes:[],
+    notes:[],
+    drawings:[],
+    eraseStrokes:[], // マスク
+    sel:null,
+    selNoteId:null,
+    dragging:null,
+    lockSize:false,
+    vertexEdit:false,
+    history:[],
+    future:[],
+    penColor:'#1f2937',
+    eraserMode:'pixel',
+    splitPreview:null,
+    splitGridSnap:false,
+    pointerCaptured:false,
+    dpr: Math.max(1, window.devicePixelRatio || 1),
+    pointerPos:{x:0,y:0},
+    splitStart:null,
+    splitPinEl:null
+  };
+
+  const ui={
+    selType:document.getElementById('selType'), w:document.getElementById('w'), h:document.getElementById('h'), vh:document.getElementById('vh'),
+    wLabel:document.getElementById('wLabel'), hLabel:document.getElementById('hLabel'),
+    color:document.getElementById('color'), lockSize:document.getElementById('lockSize'),
+    dup:document.getElementById('dup'), front:document.getElementById('front'), back:document.getElementById('back'),
+    rotL:document.getElementById('rotL'), rotR:document.getElementById('rotR'), flipH:document.getElementById('flipH'), flipV:document.getElementById('flipV'),
+    deleteShape:document.getElementById('deleteShape'),
+    toolbar:document.getElementById('toolbar'), undo:document.getElementById('undo'), redo:document.getElementById('redo'),
+    exportBtn:document.getElementById('export'), importInput:document.getElementById('import'),
+    penColor:document.getElementById('penColor'), eraserMode:document.getElementById('eraserMode'),
+    gridSize:document.getElementById('gridSize'), splitGridSnap:document.getElementById('splitGridSnap'),
+    vertexEdit:document.getElementById('vertexEdit'),
+    resetBtn:document.getElementById('reset'),
+    notePanel:document.getElementById('notePanel'),
+    noteHdrColor:document.getElementById('noteHdrColor'),
+    noteHdrSize:document.getElementById('noteHdrSize'),
+    modeBadge:document.getElementById('modeBadge'),
+    statusBar:document.getElementById('statusBar'),
+    themeToggle:document.getElementById('themeToggle'),
+    asideTab:document.getElementById('asideTab')
+  };
+
+  // ========= レイアウト安定化（方眼とサイドバーの高さ一致） =========
+  function ensureLayout(){
+    const header=document.querySelector('header');
+    const wrap=document.querySelector('.board-wrap');
+    const aside=document.querySelector('aside');
+    const hHeader=header?header.getBoundingClientRect().height:0;
+
+    const avail=Math.max(420, window.innerHeight - hHeader - 24);
+    if(wrap) wrap.style.height=avail+'px';
+    if(aside) aside.style.height=avail+'px';
+
+    setSvgSizeByClient();
   }
-}
-ui.penColor.addEventListener('change', ()=>{ state.penColor = ui.penColor.value; });
-
-// ===== テーマ適用 =====
-function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme', theme);
-  ui.themeToggle.textContent = (theme==='dark') ? '☀️' : '🌙';
-  localStorage.setItem('board-theme', theme);
-
-  applyPenPalette(theme);
-
-  const opts = Array.from(ui.penColor.options).map(o=>o.value);
-  if(!opts.includes(state.penColor)){
-    state.penColor = opts[0] || (theme==='dark' ? '#ffffff' : '#1f2937');
+  function setSvgSizeByClient(){
+    const r=board.getBoundingClientRect();
+    const w=Math.max(1, Math.floor(r.width));
+    const h=Math.max(1, Math.floor(r.height));
+    board.setAttribute('width', w);
+    board.setAttribute('height', h);
+    setupCanvasDPR(drawCanvas, ctx, w, h);
+    setupCanvasDPR(cursorCanvas, cctx, w, h);
+    return {w,h};
   }
-  ui.penColor.value = state.penColor;
+  function setupCanvasDPR(canvas, context, cssW, cssH){
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    state.dpr = dpr;
+    canvas.style.width = cssW + 'px';
+    canvas.style.height = cssH + 'px';
+    canvas.width  = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  // ★ visualViewport/resize でズームやDPR変化を検知 → 再初期化
+	let __vpTick = null;
+	function onViewportChange() {
+ 		if (__vpTick) cancelAnimationFrame(__vpTick);
+  	__vpTick = requestAnimationFrame(()=>{
+    	ensureLayout();
+    	drawGrid();        // setSvgSizeByClient() 内で Canvas/SVG をサイズ更新
+    	render();
+    	redrawCursorOverlay();
+  	});
+	}
 
-  drawGrid();
-  render();
-  redrawCanvas();
-  redrawCursorOverlay();
-}
+  // ========= 方眼描画（SVG lineで安定描画） =========
+  function drawGrid(){
+    while(board.firstChild) board.removeChild(board.firstChild);
+    const {w,h}=setSvgSizeByClient();
+    if(!w||!h) return;
 
-// ===== レイアウト調整 =====
-function ensureLayout(){
-  const W = document.getElementById('board').clientWidth;
-  const H = document.getElementById('board').clientHeight;
-  [ui.gridLayer,ui.shapesLayer,ui.handlesLayer].forEach(el=>{
-    el.setAttribute('width',W);
-    el.setAttribute('height',H);
-  });
-  [ui.drawCanvas, ui.cursorCanvas].forEach(cv=>{
-    cv.width = W*state.dpr;
-    cv.height = H*state.dpr;
-    cv.style.width = W+'px';
-    cv.style.height = H+'px';
-    const ctx=cv.getContext('2d');
-    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
-  });
-}
+    const grid = el('g', { id:'gridLayer' });
+    const color = (getComputedStyle(document.documentElement).getPropertyValue('--grid-stroke')||'#bfdbfe').trim();
+    const lw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--grid-pt')) || 1.0;
+    const g = state.gridPx;
 
-// ===== グリッド描画 =====
-function drawGrid(){
-  const W=ui.gridLayer.clientWidth, H=ui.gridLayer.clientHeight;
-  ui.gridLayer.innerHTML='';
+    const pixelW = lw * state.dpr;
+		const pxOffset = (Math.round(pixelW) % 2 === 1) ? 0.5 : 0;
+    state.gridOffset = pxOffset;
+
+		for(let x=0; x<=w+1; x+=g){
+  		const xx = x + pxOffset;
+  		grid.appendChild(el('line', { x1: xx, y1: 0, x2: xx, y2: h, stroke: color, 'stroke-width': lw, 'shape-rendering':'crispEdges' }));
+		}
+    for(let y=0; y<=h+1; y+=g){
+  		const yy = y + pxOffset;
+  		grid.appendChild(el('line', { x1: 0, y1: yy, x2: w, y2: yy, stroke: color, 'stroke-width': lw, 'shape-rendering':'crispEdges' }));
+		}
+    board.appendChild(grid);
+    board.appendChild(el('g',{id:'shapesLayer'}));
+    board.appendChild(el('g',{id:'handlesLayer'}));
+    board.appendChild(el('g',{id:'textLayer'}));
+  }
+  function ensureLayers(){
+    const ids=['gridLayer','shapesLayer','handlesLayer','textLayer'];
+    for(const id of ids){
+      if(!document.getElementById(id)) board.appendChild(el('g',{id}));
+    }
+  }
+
+  // ========= 図形生成（常に方眼交点上に頂点） =========
+  function gridPoint(n, m){
+  const off = state.gridOffset || 0;
   const g = state.gridPx;
-  for(let x=0;x<=W;x+=g){
-    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',x); line.setAttribute('y1',0);
-    line.setAttribute('x2',x); line.setAttribute('y2',H);
-    line.setAttribute('stroke','var(--grid-stroke)');
-    line.setAttribute('stroke-width','1');
-    ui.gridLayer.appendChild(line);
+  return [n*g + off, m*g + off];
+	}
+  function addShape(type){
+    const g=state.gridPx;
+    // 画面左上から2マス右・2マス下を基準に、すべて方眼交点で構成
+    const baseN=2, baseM=2;
+    const A = gridPoint(baseN, baseM);
+    const B = gridPoint(baseN+3, baseM);
+    const C = gridPoint(baseN+3, baseM+2);
+    const D = gridPoint(baseN,   baseM+2);
+
+    let pts=[];
+    if(type==='rect') pts=[A,B,C,D];
+    if(type==='tri')  pts=[A, gridPoint(baseN+2, baseM+1), gridPoint(baseN+1, baseM+2)];
+    if(type==='trap'){
+      const v=Math.floor(Math.random()*3);
+      if(v===0) pts=[A, B, gridPoint(baseN+2, baseM+2), gridPoint(baseN+1, baseM+2)];
+      else if(v===1) pts=[gridPoint(baseN+1, baseM), gridPoint(baseN+2, baseM), C, D];
+      else           pts=[A, gridPoint(baseN+2, baseM), C, D];
+    }
+    if(type==='para') pts=[A, B, gridPoint(baseN+4, baseM+2), gridPoint(baseN+1, baseM+2)];
+    if(type==='rh')   pts=[gridPoint(baseN+1, baseM), gridPoint(baseN+2, baseM+1), gridPoint(baseN+1, baseM+2), gridPoint(baseN, baseM+1)];
+
+    const sh={id:uid(), type, points:pts, fill:ui.color.value, stroke:ui.color.value};
+    state.shapes.push(sh);
+    selectShape(sh);
+    pushHistory(); render();
   }
-  for(let y=0;y<=H;y+=g){
-    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',0); line.setAttribute('y1',y);
-    line.setAttribute('x2',W); line.setAttribute('y2',y);
-    line.setAttribute('stroke','var(--grid-stroke)');
-    line.setAttribute('stroke-width','1');
-    ui.gridLayer.appendChild(line);
+
+  // ========= 付箋 =========
+  function addNote(x,y){
+		const dpx = Math.round(pxPerCm * 0.5); // 5mm ≒ 0.5cm
+		const n={id:uid(), x, y, w:160 + dpx, h:80 + dpx, html:'メモ', color:'yellow', font:'m'};
+    state.notes.push(n);
+    state.selNoteId=n.id;
+    pushHistory(); render();
+    setTool('edit');
   }
-}
+  function noteBgClass(color){
+    return color==='pink' ? 'note-pink' : color==='blue' ? 'note-blue' : 'note-yellow';
+  }
+  function fontPt(font){ return font==='s' ? '10pt' : font==='l' ? '18pt' : '13pt'; }
 
-// ===== Boot =====
-function boot(){
-  state.dpr = window.devicePixelRatio||1;
-  ensureLayout();
+  function renderNotes(){
+    const textLayer=document.getElementById('textLayer');
+    [...textLayer.querySelectorAll('foreignObject')].forEach(n=>n.remove());
 
-  state.gridPx = Math.round(37.795*3);
-  document.getElementById('gridSize').value='3';
+    for(const n of state.notes){
+      const fo=el('foreignObject',{x:n.x, y:n.y, width:n.w, height:n.h, 'data-nid':n.id});
+      const wrap=document.createElement('div'); wrap.className='note-wrap';
 
-  const saved = localStorage.getItem('board-theme');
-  const theme = saved ? saved : ((window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
-  applyTheme(theme);
+      const div=document.createElement('div');
+      div.className=`note ${noteBgClass(n.color)}`;
+      div.contentEditable='true';
+      div.style.fontSize = fontPt(n.font);
+      div.innerHTML=n.html;
 
-  // 初期描画
-  drawGrid(); render(); redrawCanvas(); redrawCursorOverlay();
+      const close=document.createElement('button');
+      close.className='note-close';
+      close.textContent='✕';
+      close.title='付箋を削除';
 
-  window.addEventListener('resize', ()=>{
-    ensureLayout();
-    drawGrid(); render(); redrawCanvas(); redrawCursorOverlay();
+      const grip=document.createElement('div'); grip.className='note-resize'; grip.title='サイズ変更';
+
+      wrap.appendChild(div);
+      wrap.appendChild(close);
+      wrap.appendChild(grip);
+      fo.appendChild(wrap);
+      textLayer.appendChild(fo);
+
+      div.addEventListener('pointerdown',(e)=>{
+  			e.stopPropagation();
+  			state.selNoteId=n.id;
+			  updateNoteHeaderPanel();
+  			const startPt = pt(e);
+  			state.dragging={mode:'notePending', note:n, start:startPt, ox:n.x, oy:n.y};
+			  try{board.setPointerCapture(e.pointerId);}catch(_){}
+			});
+      div.addEventListener('input', ()=>{ n.html=div.innerHTML; });
+      div.addEventListener('blur', ()=>{ n.html=div.innerHTML; pushHistory(); });
+
+      close.addEventListener('pointerdown', (e)=>{ e.stopPropagation(); });
+      close.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        state.notes = state.notes.filter(x=>x.id!==n.id);
+        if(state.selNoteId===n.id) state.selNoteId=null;
+        pushHistory(); render();
+      });
+
+      grip.addEventListener('pointerdown',(e)=>{
+        e.stopPropagation();
+        state.selNoteId=n.id;
+        updateNoteHeaderPanel();
+        state.dragging={mode:'noteResize', note:n, start:pt(e), ow:n.w, oh:n.h};
+        try{board.setPointerCapture(e.pointerId);}catch(_){}
+      });
+    }
+  }
+
+  // ========= レンダリング =========
+  function ptsToAttr(pts){ return pts.map(p=>p.join(',')).join(' '); }
+  function bbox(pts){ const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]); const x=Math.min(...xs), y=Math.min(...ys), w=Math.max(...xs)-x, h=Math.max(...ys)-y; return {x,y,w,h}; }
+  function centroid(pts){ const s=pts.reduce((a,p)=>({x:a.x+p[0],y:a.y+p[1]}),{x:0,y:0}); return {x:s.x/pts.length,y:s.y/pts.length}; }
+
+  function render(){
+    ensureLayers();
+    const layer=document.getElementById('shapesLayer');
+    const handles=document.getElementById('handlesLayer');
+    layer.innerHTML=''; handles.innerHTML='';
+
+    for(const sh of state.shapes){
+      const p=el('polygon',{points:ptsToAttr(sh.points), fill:sh.fill, stroke:sh.stroke, 'stroke-linejoin':'round', class:'shape'+(state.sel&&state.sel.id===sh.id?' selected':'')});
+      p.dataset.id=sh.id; layer.appendChild(p);
+      if(state.sel && state.sel.id===sh.id){
+        if(state.vertexEdit){
+          sh.points.forEach((pt,i)=> handles.appendChild(el('circle',{cx:pt[0],cy:pt[1],r:12,class:'handle','data-vidx':i,'data-id':sh.id})));
+        }else{
+          const bb=bbox(sh.points);
+          const hs=[
+            {x:bb.x,y:bb.y,c:'nw'},{x:bb.x+bb.w/2,y:bb.y,c:'n'},{x:bb.x+bb.w,y:bb.y,c:'ne'},
+            {x:bb.x,y:bb.y+bb.h/2,c:'w'},{x:bb.x+bb.w,y:bb.y+bb.h/2,c:'e'},
+            {x:bb.x,y:bb.y+bb.h,c:'sw'},{x:bb.x+bb.w/2,y:bb.y+bb.h,c:'s'},{x:bb.x+bb.w,y:bb.y+bb.h,c:'se'}
+          ];
+          hs.forEach(h=>{const r=el('rect',{x:h.x-10,y:h.y-10,width:20,height:20,rx:4,class:'bbox-handle'}); r.dataset.id=sh.id; r.dataset.corner=h.c; handles.appendChild(r);});
+          handles.appendChild(el('rect',{x:bb.x,y:bb.y,width:bb.w,height:bb.h,fill:'none',stroke:'#94a3b8','stroke-dasharray':'6 4'}));
+        }
+      }
+    }
+    renderNotes();
+    updateBadges();
+    updateNoteHeaderPanel();
+    updateModeBadge();
+    setCanvasInteractivity();
+    redrawCanvas();
+    redrawCursorOverlay();
+  }
+
+  // ========= スナップ等 =========
+  function pt(e){
+  	// イベントターゲットの実 DOM に合わせて座標を取る（canvas は board 内で 8px inset）
+  	const tgt = (e.currentTarget && (e.currentTarget.getBoundingClientRect?.() ? e.currentTarget : null)) || board;
+  	const bb = tgt.getBoundingClientRect();
+  	return { x: e.clientX - bb.left, y: e.clientY - bb.top };
+	}
+  function dist(x1,y1,x2,y2){ const dx=x1-x2, dy=y1-y2; return Math.hypot(dx,dy); }
+  function segI(A,B,C,D){
+    const den=(B[0]-A[0])*(D[1]-C[1])-(B[1]-A[1])*(D[0]-C[0]);
+    if(Math.abs(den)<1e-6) return null;
+    const t=((C[0]-A[0])*(D[1]-C[1])-(C[1]-A[1])*(D[0]-C[0]))/den;
+    const u=((C[0]-A[0])*(B[1]-A[1])-(C[1]-A[1])*(B[0]-A[0]))/den;
+    if(t<0||t>1||u<0||u>1) return null;
+    return {x:A[0]+t*(B[0]-A[0]), y:A[1]+t*(B[1]-A[1])};
+  }
+  function candidates(){
+    const pts=[]; const segs=[];
+    for(const sh of state.shapes){
+      const n=sh.points.length;
+      for(let i=0;i<n;i++){
+        const a=sh.points[i], b=sh.points[(i+1)%n];
+        pts.push(a);
+        pts.push([(a[0]+b[0])/2,(a[1]+b[1])/2]);
+        segs.push([a,b]);
+      }
+    }
+    for(let i=0;i<segs.length;i++) for(let j=i+1;j<segs.length;j++){ const I=segI(segs[i][0],segs[i][1],segs[j][0],segs[j][1]); if(I) pts.push([I.x,I.y]); }
+    candidates._segs=segs; return pts;
+  }
+  function snapPoint(x,y){
+    const pts=candidates();
+		const off = state.gridOffset || GRID_PAD;
+		const gx = Math.round((x - off)/state.gridPx)*state.gridPx + off;
+		const gy = Math.round((y - off)/state.gridPx)*state.gridPx + off;
+    pts.push([gx,gy]);
+    let best=null, bestd=state.snapTol+1;
+    for(const c of pts){ const d=dist(x,y,c[0],c[1]); if(d<bestd){ bestd=d; best={x:c[0],y:c[1]}; } }
+    return bestd<=state.snapTol?best:null;
+  }
+  function projectPointToSeg(p,a,b){
+    const ax=a[0], ay=a[1], bx=b[0], by=b[1];
+    const abx=bx-ax, aby=by-ay; const apx=p.x-ax, apy=p.y-ay; const ab2=abx*abx+aby*aby; if(ab2===0) return null;
+    let t=(apx*abx+apy*aby)/ab2; if(t<0||t>1) return null; const x=ax+t*abx, y=ay+t*aby; const d=dist(p.x,p.y,x,y); return {x,y,d};
+  }
+  function projectToSegments(x,y){
+    const segs=candidates._segs||[]; let best=null, bestd=state.snapTol+1;
+    for(const s of segs){ const pr=projectPointToSeg({x,y}, s[0], s[1]); if(pr && pr.d<bestd){ best=pr; bestd=pr.d; } }
+    return best && best.d<=state.snapTol?{x:best.x,y:best.y}:null;
+  }
+  function snapPointWithProjection(x,y){ return snapPoint(x,y) || projectToSegments(x,y); }
+
+  function clampToBoard(pts, W, H){
+    const bb=bbox(pts); let dx=0, dy=0;
+    if(bb.x<GRID_PAD) dx=GRID_PAD-bb.x; if(bb.y<GRID_PAD) dy=GRID_PAD-bb.y;
+    if(bb.x+bb.w>W-GRID_PAD) dx = (W-GRID_PAD)-(bb.x+bb.w);
+    if(bb.y+bb.h>H-GRID_PAD) dy = (H-GRID_PAD)-(bb.y+bb.h);
+    return pts.map(p=>[p[0]+dx, p[1]+dy]);
+  }
+  function nearestFrame(x,y){
+    const W=board.clientWidth, H=board.clientHeight;
+    const dTop=Math.abs(y-GRID_PAD), dBottom=Math.abs((H-GRID_PAD)-y), dLeft=Math.abs(x-GRID_PAD), dRight=Math.abs((W-GRID_PAD)-x);
+    const m=Math.min(dTop,dBottom,dLeft,dRight);
+    if(m===dTop) return {x:x,y:GRID_PAD,d:m,axis:'h',value:GRID_PAD};
+    if(m===dBottom) return {x:x,y:H-GRID_PAD,d:m,axis:'h',value:H-GRID_PAD};
+    if(m===dLeft) return {x:GRID_PAD,y:y,d:m,axis:'v',value:GRID_PAD};
+    return {x:W-GRID_PAD,y:y,d:m,axis:'v',value:W-GRID_PAD};
+  }
+
+  // ========= 直線分割 =========
+  function splitSnapOnce(p){
+    const tol=state.snapTol;
+    for(const sh of state.shapes){
+      for(const v of sh.points){
+        if(dist(p.x,p.y,v[0],v[1])<=tol) return {pt:{x:v[0],y:v[1]}, lock:null, anchor:'vertex'};
+      }
+    }
+    if(state.splitGridSnap){
+      const off = state.gridOffset || 0;
+			const g = state.gridPx;
+			const gx = Math.round((p.x - off)/g)*g + off;
+			const gy = Math.round((p.y - off)/g)*g + off;
+      const dx=Math.abs(p.x-gx), dy=Math.abs(p.y-gy);
+      if(Math.hypot(dx,dy)<=tol) return {pt:{x:gx,y:gy}, lock:null, anchor:'gridPoint'};
+      if(dx<=tol && dx<=dy) return {pt:{x:gx,y:p.y}, lock:{axis:'v',value:gx}, anchor:'gridLine'};
+      if(dy<=tol) return {pt:{x:p.x,y:gy}, lock:{axis:'h',value:gy}, anchor:'gridLine'};
+    }
+    const frame=nearestFrame(p.x,p.y);
+    if(frame && frame.d<=tol) return {pt:{x:frame.x,y:frame.y}, lock:{axis:frame.axis,value:frame.value}, anchor:'frame'};
+    return {pt:{x:p.x,y:p.y}, lock:null, anchor:'free'};
+  }
+  function splitSnapMove(p, existingLock, anchor, isShift){
+    const tol=state.snapTol;
+    if(existingLock){
+      if(existingLock.axis==='h') return {pt:{x:p.x,y:existingLock.value}, lock:existingLock};
+      if(existingLock.axis==='v') return {pt:{x:existingLock.value,y:p.y}, lock:existingLock};
+    }
+    for(const sh of state.shapes){
+      for(const v of sh.points){
+        if(dist(p.x,p.y,v[0],v[1])<=tol) return {pt:{x:v[0],y:v[1]}, lock:null};
+      }
+    }
+    if(state.splitGridSnap){
+      const off = state.gridOffset || 0;
+			const g = state.gridPx;
+			const gx = Math.round((p.x - off)/g)*g + off;
+			const gy = Math.round((p.y - off)/g)*g + off;
+      const dx=Math.abs(p.x-gx), dy=Math.abs(p.y-gy);
+      if(Math.hypot(dx,dy)<=tol) return {pt:{x:gx,y:gy}, lock:null};
+      if(anchor!=='vertex' || isShift){
+        if(dx<=tol && dx<=dy) return {pt:{x:gx,y:p.y}, lock:{axis:'v',value:gx}};
+        if(dy<=tol)           return {pt:{x:p.x,y:gy}, lock:{axis:'h',value:gy}};
+      }
+    }
+    if(anchor!=='vertex' || isShift){
+      const frame=nearestFrame(p.x,p.y);
+      if(frame && frame.d<=tol) return {pt:{x:frame.x,y:frame.y}, lock:{axis:frame.axis,value:frame.value}};
+    }
+    return {pt:{x:p.x,y:p.y}, lock:null};
+  }
+
+  // 始点ピン
+  function updateSplitPin(a){
+    const hl=document.getElementById('handlesLayer');
+    if(!hl) return;
+    if(!a){
+      if(state.splitPinEl){ state.splitPinEl.remove(); state.splitPinEl=null; }
+      return;
+    }
+    if(!state.splitPinEl){
+      state.splitPinEl = el('circle', { r:4, fill:'#ef4444', opacity:'1.0' });
+      hl.appendChild(state.splitPinEl);
+    }
+    state.splitPinEl.setAttribute('cx', a.x);
+    state.splitPinEl.setAttribute('cy', a.y);
+  }
+  function drawSplitPreview(a,b){
+    ensureLayers();
+    const hl=document.getElementById('handlesLayer');
+    if(state.splitPreview) state.splitPreview.remove();
+    const line=el('path',{d:`M ${a.x} ${a.y} L ${b.x} ${b.y}`, stroke:'#ef4444','stroke-dasharray':'6 4', fill:'none'});
+    hl.appendChild(line); state.splitPreview=line;
+    updateSplitPin(a);
+  }
+
+  // ========= UI =========
+  function setTool(name){
+    state.tool = name;
+    [...ui.toolbar.querySelectorAll('button')].forEach(x=>x.classList.remove('active'));
+    const btn = ui.toolbar.querySelector(`button[data-tool="${name}"]`);
+    if (btn) btn.classList.add('active');
+    setCanvasInteractivity();
+    updateModeBadge();
+    redrawCursorOverlay();
+  }
+  function selectShape(sh){ state.sel=sh; state.selNoteId=null; if(sh) ui.color.value=sh.fill; render(); }
+
+  // board pointerdown
+  board.addEventListener('pointerdown', (e)=>{
+    if(state.tool==='draw' || state.tool==='erase') return;
+    const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
+
+    const target=e.target;
+    const id=target && target.dataset ? target.dataset.id : null;
+    const isVHandle=target.classList && target.classList.contains('handle');
+    const isBBoxHandle=target.classList && target.classList.contains('bbox-handle');
+
+    if(state.tool==='text'){
+      addNote(p.x, p.y);
+      return;
+    }
+    if(state.tool==='splitLine'){
+      const s=splitSnapOnce(p);
+      state.dragging={mode:'split', a:s.pt, b:s.pt, lock:s.lock, anchor:s.anchor};
+      drawSplitPreview(state.dragging.a, state.dragging.b);
+      return;
+    }
+
+    if(state.sel && !state.vertexEdit && isBBoxHandle){
+		  if(state.lockSize) return;
+		  const bb0 = bbox(state.sel.points);
+		  state.dragging={
+		    mode:'bbox',
+        sh: state.sel,
+        corner: target.dataset.corner,
+        start: p,
+        initBB: bb0,                       // ★ ドラッグ開始時のBBoxを固定保存
+				initPts: state.sel.points.map(q=>q.slice()) // ★ 元頂点群を保存
+			};
+			return;
+    }
+    if(isVHandle){
+  		if(state.lockSize) return;
+  		// ★ 頂点ドラッグ開始時に「元の頂点配列」を保持しておく
+  		state.dragging={
+    		mode:'vertex',
+    		sh: state.sel,
+    		vidx: +target.getAttribute('data-vidx'),
+    		initPts: state.sel.points.map(q=>q.slice())
+  		};
+  		try{ board.setPointerCapture(e.pointerId); }catch(_){}
+  		return;
+		}
+
+    state.sel=null; state.selNoteId=null; updateNoteHeaderPanel(); render();
+
+    if(id){
+  		const sh=state.shapes.find(s=>s.id===id);
+  		selectShape(sh);
+
+  		// 一番近い頂点をアンカーに
+  		let anchorIdx = 0, best = 1e9;
+  		sh.points.forEach((q,i)=>{
+    		const d = Math.hypot(q[0]-p.x, q[1]-p.y);
+    		if(d < best){ best = d; anchorIdx = i; }
+  		});
+  		const anchorStart = sh.points[anchorIdx];
+
+  		// ポインタ位置のスナップ起点（辺・中点・頂点・グリッドを許容）
+  		const sStart = snapPointWithProjection(p.x, p.y) || {x:p.x, y:p.y};
+
+  		// ★ 重要：指と基準頂点の差分を保存（これが無いと開始時に図形が“寄って”しまう）
+  		const anchorOffset = {
+    		ox: anchorStart[0] - sStart.x,
+    		oy: anchorStart[1] - sStart.y
+  		};
+
+  		state.dragging = {
+    		mode:'move',
+    		sh,
+    		startPt: p,
+    		initPts: sh.points.map(q=>q.slice()),
+    		anchorIdx,
+    		anchorStart,
+    		anchorOffset
+  		};
+		}
   });
+
+  // drawCanvas pointer
+  drawCanvas.addEventListener('pointerdown', (e)=>{
+    const p = pt(e);
+    state.pointerPos = p; redrawCursorOverlay();
+    if (state.tool==='draw'){
+      e.preventDefault();
+      state.dragging={mode:'draw', stroke:{id:uid(), color: state.penColor, pts:[[p.x,p.y]]}};
+      try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
+      redrawCanvas();
+      return;
+    }
+    if (state.tool==='erase'){
+      e.preventDefault();
+      handleEraserDown(e, p);
+      return;
+    }
+  }, {passive:false});
+
+  drawCanvas.addEventListener('pointermove', (e)=>{
+    const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
+    if(!state.dragging) { updateStatusFromEvent(e); return; }
+    if(state.dragging.mode==='draw'){
+      e.preventDefault();
+      addStrokePoint(p);
+      redrawCanvas();
+    }else if(state.dragging.mode==='erasePixel'){
+      e.preventDefault();
+      addErasePoint(p);
+      redrawCanvas();
+    }
+    updateStatusFromEvent(e);
+  }, {passive:false});
+
+  drawCanvas.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
+  drawCanvas.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
+
+  // board pointermove
+  board.addEventListener('pointermove', (e)=>{
+    const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
+    if(!state.dragging) { updateStatusFromEvent(e); return; }
+    const W=board.clientWidth, H=board.clientHeight;
+
+    if(state.dragging.mode==='move'){
+  		const {sh, initPts, anchorStart, anchorOffset} = state.dragging;
+
+  		// 現在のポインタをスナップ
+  		const sNow = snapPointWithProjection(p.x, p.y) || {x:p.x, y:p.y};
+
+  		// ★ “開始時の指と基準頂点の差分”を維持したまま移動
+  		const dx = (sNow.x + anchorOffset.ox) - anchorStart[0];
+  		const dy = (sNow.y + anchorOffset.oy) - anchorStart[1];
+
+  		// 初期頂点群から絶対平行移動（累積誤差なし）
+  		const moved = initPts.map(q=>[q[0]+dx, q[1]+dy]);
+
+  		// 見た目グリッドのオフセットで丸め（0.5px を考慮）
+  		const g = state.gridPx, off = state.gridOffset || 0, eps = 0.25; // px
+  		sh.points = moved.map(([x,y])=>{
+    		const rx = Math.round((x-off)/g)*g + off;
+    		const ry = Math.round((y-off)/g)*g + off;
+    		return [
+      		Math.abs(x-rx) <= eps ? rx : x,
+      		Math.abs(y-ry) <= eps ? ry : y
+    		];
+  		});
+
+  		sh.points = clampToBoard(sh.points, W, H);
+  		render();
+		}else if(state.dragging.mode==='bbox'){
+  		const {sh,corner,initBB,initPts}=state.dragging;
+  		// ポインタ位置から絶対スケール。辺は内部でグリッド丸めされる
+  		resizeByBBoxSnap(sh, corner, initBB, initPts, {x:p.x, y:p.y});
+  		sh.points = clampToBoard(sh.points, W, H);
+  		render();
+		
+    }else if(state.dragging.mode==='vertex'){
+  		const { sh, vidx, initPts } = state.dragging;
+
+  		// スナップ候補（頂点/中点/辺/グリッド）
+  		const s = snapPointWithProjection(p.x, p.y) || { x:p.x, y:p.y };
+
+  		// 見た目のグリッドに“完全吸着”（0.5px補正あり）
+  		const g   = state.gridPx;
+  		const off = state.gridOffset || 0;  // drawGrid() で算出している補正
+  		const gx  = Math.round((s.x - off) / g) * g + off;
+  		const gy  = Math.round((s.y - off) / g) * g + off;
+
+  		// ★ ドラッグ開始時の配列をベースに、当該頂点だけを更新
+  		const pts = initPts.slice();
+  		pts[vidx] = [gx, gy];
+
+  		sh.points = clampToBoard(pts, W, H);
+  		render();
+      
+    }else if(state.dragging.mode==='notePending'){
+			const {note,start,ox,oy}=state.dragging;
+ 			// 3px 以上動いたら「移動」扱いに昇格（長押し選択と衝突しにくくする）
+ 			if (Math.hypot(p.x - start.x, p.y - start.y) > 3) {
+    			state.dragging.mode = 'noteMove';
+  		}
+    }else if(state.dragging.mode==='noteMove'){
+      const {note,start,ox,oy}=state.dragging;
+      note.x = ox + (p.x-start.x);
+      note.y = oy + (p.y-start.y);
+      renderNotes();
+    }else if(state.dragging.mode==='noteResize'){
+      const {note,start,ow,oh}=state.dragging;
+      note.w = Math.max(80, ow + (p.x-start.x));
+      note.h = Math.max(40, oh + (p.y-start.y));
+      renderNotes();
+    }else if(state.dragging.mode==='split'){
+      const isShift=!!e.shiftKey;
+      const snap=splitSnapMove(p, state.dragging.lock, state.dragging.anchor, isShift);
+      state.dragging.b=snap.pt;
+      if(state.dragging.lock==null && snap.lock) state.dragging.lock=snap.lock;
+      drawSplitPreview(state.dragging.a, state.dragging.b);
+    }
+    updateStatusFromEvent(e);
+  }, {passive:false});
+
+  // 終了処理
+  board.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
+  board.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
+  window.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
+  window.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
+  window.addEventListener('blur', onPointerUpOrCancel);
+
+  function onPointerUpOrCancel(e){
+    if(!state.dragging) return;
+    const m=state.dragging.mode;
+    if(m==='move' || m==='vertex' || m==='bbox' || m==='noteMove' || m==='noteResize'){ pushHistory(); }
+    if(m==='draw'){ finishStroke(); pushHistory(); redrawCanvas(); }
+    if(m==='erasePixel'){ finishEraseStroke(); pushHistory(); redrawCanvas(); }
+    if(m==='split'){ finishSplit(); pushHistory(); }
+    if(state.pointerCaptured){ try{ drawCanvas.releasePointerCapture(e.pointerId); }catch(_){ } state.pointerCaptured=false; }
+    state.dragging=null;
+    redrawCursorOverlay();
+  }
+
+  // bbox リサイズ
+  // ★ グリッドに“絶対吸着”するBBoxリサイズ（ズレ累積なし・見た目と一致）
+function resizeByBBoxSnap(sh, corner, initBB, initPts, curPt){
+  const g   = state.gridPx;
+  const off = (state.gridOffset ?? (typeof GRID_PAD !== 'undefined' ? GRID_PAD : 0)); // ← 見た目のオフセット
+
+  // 初期BBoxの左右上下（固定基準）
+  let L = initBB.x;
+  let T = initBB.y;
+  let R = initBB.x + initBB.w;
+  let B = initBB.y + initBB.h;
+
+  // 現在ポインタを「offset付きグリッド」に丸める
+  const gx = Math.round((curPt.x - off) / g) * g + off;
+  const gy = Math.round((curPt.y - off) / g) * g + off;
+
+  // 動く辺だけ更新
+  if (corner.includes('e')) R = gx;
+  if (corner.includes('w')) L = gx;
+  if (corner.includes('s')) B = gy;
+  if (corner.includes('n')) T = gy;
+
+  // 最小サイズ（見た目5px）
+  const MIN = 5;
+  if (R - L < MIN) R = L + MIN;
+  if (B - T < MIN) B = T + MIN;
+
+  // 初期BBox基準の“絶対スケール”（増分なし）
+  const sx = (R - L) / initBB.w;
+  const sy = (B - T) / initBB.h;
+  const ox = initBB.x;
+  const oy = initBB.y;
+
+  sh.points = initPts.map(([x,y]) => [
+    L + (x - ox) * sx,
+    T + (y - oy) * sy
+  ]);
 }
 
-// ===== ダミー関数 =====
-function render(){}
-function redrawCanvas(){}
-function redrawCursorOverlay(){}
+  function snapMove(dx,dy,startPts){
+  const cand=startPts.map(q=>[q[0]+dx,q[1]+dy]);
+  // 代表点だけでなく、全頂点のうち最も近いスナップ候補に合わせる
+  let best=null, bestShift={dx:0,dy:0}, bestd=state.snapTol+1;
+  for(const p of cand){
+    const s = snapPointWithProjection(p[0], p[1]); // 頂点/中点/辺/グリッド
+    if(s){
+      const d = Math.hypot(s.x - p[0], s.y - p[1]);
+      if (d < bestd){
+        bestd = d;
+        best = s;
+        bestShift = { dx: dx + (s.x - p[0]), dy: dy + (s.y - p[1]) };
+      }
+    }
+  }
+  return best ? bestShift : {dx,dy};
+}
 
-// ===== 起動 =====
-window.addEventListener('load', boot);
-  </script>
+  // ========= 手書き & カーソルオーバーレイ =========
+  function setCanvasInteractivity(){
+    const active = (state.tool==='draw' || state.tool==='erase');
+    drawCanvas.style.pointerEvents = active ? 'auto' : 'none';
+    if (state.tool==='draw'){
+      drawCanvas.style.cursor = pencilCursor();
+    } else {
+      drawCanvas.style.cursor = 'crosshair';
+    }
+  }
+  function pencilCursor(){
+    const svg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none">
+      <path d="M2 22l5.5-1.5L20 8 16 4 4.5 16.5 2 22z" fill="#444"/>
+      <path d="M16 4l4 4" stroke="#222" stroke-width="2"/>
+    </svg>`);
+    return `url("data:image/svg+xml,${svg}") 0 16, crosshair`;
+  }
+
+  function redrawCanvas(){
+    const W=drawCanvas.width/state.dpr, H=drawCanvas.height/state.dpr;
+    ctx.clearRect(0,0,W,H);
+
+    // 1) 描画
+    for(const s of state.drawings){
+      ctx.beginPath(); ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
+      const pts=s.pts; if(!pts.length) continue;
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.stroke();
+    }
+
+    // 2) 消去マスク
+    for(const e of state.eraseStrokes){
+      ctx.save();
+      ctx.globalCompositeOperation='destination-out';
+      ctx.lineWidth=e.radius; ctx.lineCap='round'; ctx.lineJoin='round';
+      const pts=e.pts; if(pts.length){
+        ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 3) ドラッグ中プレビュー
+    if(state.dragging && state.dragging.mode==='draw' && state.dragging.stroke){
+      const s=state.dragging.stroke;
+      ctx.beginPath(); ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
+      const pts=s.pts; if(pts.length){ ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
+    }
+    if(state.dragging && state.dragging.mode==='erasePixel' && state.dragging.eraser){
+      const e=state.dragging.eraser;
+      ctx.save(); ctx.globalCompositeOperation='destination-out';
+      ctx.lineWidth=e.radius; ctx.lineCap='round'; ctx.lineJoin='round';
+      const pts=e.pts; if(pts.length){ ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
+      ctx.restore();
+    }
+  }
+
+  function addStrokePoint(p){ state.dragging.stroke.pts.push([p.x,p.y]); }
+  function finishStroke(){ state.drawings.push(state.dragging.stroke); }
+
+  // 消しゴム
+  function handleEraserDown(e, p){
+    const m=state.eraserMode;
+    if(m==='clear'){ state.drawings=[]; state.eraseStrokes=[]; redrawCanvas(); pushHistory(); return; }
+    if(m==='object'){ eraseNearestObject(p); redrawCanvas(); pushHistory(); return; }
+    if(m==='pixel'){
+      state.dragging={mode:'erasePixel', eraser:{pts:[[p.x,p.y]], radius:14}};
+      try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
+      redrawCanvas();
+      return;
+    }
+  }
+  function addErasePoint(p){
+    if(state.dragging?.mode!=='erasePixel') return;
+    state.dragging.eraser.pts.push([p.x,p.y]);
+  }
+  function finishEraseStroke(){
+    if(state.dragging?.mode!=='erasePixel') return;
+    state.eraseStrokes.push(state.dragging.eraser);
+  }
+  function eraseNearestObject(p){
+    let bestd=1e9, idx=-1;
+    state.drawings.forEach((s,i)=>{ const d=polylineDist(s.pts,p); if(d<bestd){ bestd=d; idx=i; } });
+    if(idx>=0) state.drawings.splice(idx,1);
+  }
+  function polylineDist(pts, p){
+    let bd=1e9; for(let i=1;i<pts.length;i++){ bd=Math.min(bd, pointSegDist(p,{x:pts[i-1][0],y:pts[i-1][1]},{x:pts[i][0],y:pts[i][1]})); }
+    return bd;
+  }
+  function pointSegDist(p,a,b){
+    const pr=projectPointToSeg(p,[a.x,a.y],[b.x,b.y]); return pr?pr.d:1e9;
+  }
+
+  // ========= 形状判定・ラベル =========
+  function almostEq(a,b,eps=1e-2){ return Math.abs(a-b)<=eps; }
+  function vsub(a,b){ return [a[0]-b[0], a[1]-b[1]]; }
+  function vdot(a,b){ return a[0]*b[0] + a[1]*b[1]; }
+  function vcross(a,b){ return a[0]*b[1] - a[1]*b[0]; }
+  function vlen(a){ return Math.hypot(a[0],a[1]); }
+  function isParallel(u,v,eps=1e-2){ return Math.abs(vcross(u,v))<=eps; }
+  function isPerp(u,v,eps=1e-2){ return Math.abs(vdot(u,v))<=eps; }
+
+  function autoType(points){
+    const n=points.length;
+    if(n===3) return 'tri';
+    if(n===4){
+      const p=points;
+      const v0=vsub(p[1],p[0]);
+      const v1=vsub(p[2],p[1]);
+      const v2=vsub(p[3],p[2]);
+      const v3=vsub(p[0],p[3]);
+      const L=[vlen(v0), vlen(v1), vlen(v2), vlen(v3)];
+      const allEqual = almostEq(L[0],L[1]) && almostEq(L[1],L[2]) && almostEq(L[2],L[3]);
+      const para = isParallel(v0,v2) && isParallel(v1,v3);
+      const rect = para && isPerp(v0,v1);
+      const square = rect && allEqual;
+      const rhombus = para && allEqual && !rect;
+      const trapezoid = !para && (isParallel(v0,v2) || isParallel(v1,v3));
+      if(square) return 'square';
+      if(rect) return 'rect';
+      if(rhombus) return 'rh';
+      if(para) return 'para';
+      if(trapezoid) return 'trap';
+      return 'quad';
+    }
+    return `poly${n}`;
+  }
+  function labelByType(t){
+    if(t==='tri') return '三角形';
+    if(t==='square') return '正方形';
+    if(t==='rect') return '長方形';
+    if(t==='rh') return 'ひし形';
+    if(t==='para') return '平行四辺形';
+    if(t==='trap') return '台形';
+    if(t==='quad') return '四角形';
+    if(t.startsWith('poly')){ const n=+t.slice(4); return `多角形（${n}角形）`; }
+    return '図形';
+  }
+
+  // ========= 分割処理 =========
+  function lineIntersectsPolygon(a,b, poly){
+    let cnt=0; for(let i=0;i<poly.length;i++){ const P=poly[i], Q=poly[(i+1)%poly.length]; const I=segI([a.x,a.y],[b.x,b.y],P,Q); if(I) cnt++; if(cnt>=2) return true; }
+    return false;
+  }
+  function vertexIndexOnPolygon(poly, p, tolPx){ for(let i=0;i<poly.length;i++){ if(dist(poly[i][0],poly[i][1],p.x,p.y)<=tolPx) return i; } return -1; }
+  function cleanupCycle(arr){ if(arr.length>2 && dist(arr[0][0],arr[0][1],arr[arr.length-1][0],arr[arr.length-1][1])<0.5) arr.pop(); }
+  function splitByVertexIndices(poly, ia, ib){
+    const n=poly.length; if(n<3) return null; const path1=[], path2=[];
+    for(let k=0;k<=(ib-ia+n)%n;k++) path1.push( poly[(ia+k)%n] );
+    for(let k=0;k<=(ia-ib+n)%n;k++) path2.push( poly[(ib+k)%n] );
+    if(dist(poly[ia][0],poly[ia][1],poly[ib][0],poly[ib][1])>0.5){ path1.push(poly[ia]); path2.push(poly[ib]); }
+    cleanupCycle(path1); cleanupCycle(path2);
+    if(path1.length>=3 && path2.length>=3) return [path1,path2];
+    return null;
+  }
+  function splitPolygonByLine(pts, a, b){
+    const left=[], right=[]; const n=pts.length; if(n<3) return null; const EPS=1e-6;
+    function isLeft(a,b,p){ return (b.x-a.x)*(p[1]-a.y) - (b.y-a.y)*(p[0]-a.x); }
+    function pushUniq(arr, p){ const m=arr.length; if(!m || dist(arr[m-1][0],arr[m-1][1],p[0],p[1])>0.5) arr.push([p[0],p[1]]); }
+    function lineIntersectSeg(a,b,P,Q){ return segI([a.x,a.y],[b.x,b.y],P,Q); }
+    for(let i=0;i<n;i++){
+      const P=pts[i], Q=pts[(i+1)%n];
+      const sP=isLeft(a,b,P), sQ=isLeft(a,b,Q);
+      if(sP>=-EPS) pushUniq(left, P); if(sP<=EPS) pushUniq(right, P);
+      if((sP>EPS && sQ<-EPS) || (sP<-EPS && sQ>EPS)){
+        const I=lineIntersectSeg(a,b,P,Q); if(I){ const Ipt=[I.x,I.y]; pushUniq(left,Ipt); pushUniq(right,Ipt); }
+      }else if(Math.abs(sQ)<=EPS && i<n-1){ pushUniq(left,Q); pushUniq(right,Q); }
+    }
+    cleanupCycle(left); cleanupCycle(right);
+    if(left.length>=3 && right.length>=3) return [left,right];
+    return null;
+  }
+  function finishSplit(){
+    const {a,b}=state.dragging;
+    if(!a || !b){ if(state.splitPreview) state.splitPreview.remove(); updateSplitPin(null); setTool('edit'); render(); return; }
+    for(let t=state.shapes.length-1; t>=0; t--){
+      const sh=state.shapes[t];
+      if(!lineIntersectsPolygon(a,b, sh.points)) continue;
+
+      const viA=vertexIndexOnPolygon(sh.points, a, 1.0);
+      const viB=vertexIndexOnPolygon(sh.points, b, 1.0);
+      let res=null;
+      if(viA!==-1 && viB!==-1 && viA!==viB) res=splitByVertexIndices(sh.points, viA, viB);
+      if(!res) res=splitPolygonByLine(sh.points, a, b);
+      if(res && res.length===2){
+        const base={...sh};
+        state.shapes.splice(t,1);
+        const s1Pts=res[0], s2Pts=res[1];
+        const s1Type=autoType(s1Pts);
+        const s2Type=autoType(s2Pts);
+        state.shapes.splice(t,0,
+          {...base,id:uid(),type:s1Type,points:s1Pts},
+          {...base,id:uid(),type:s2Type,points:s2Pts}
+        );
+      }
+    }
+    if(state.splitPreview) state.splitPreview.remove();
+    updateSplitPin(null);
+    setTool('edit');
+    render();
+  }
+
+  // ========= ラベル/単位 & UI =========
+  function pxToCm(px){ return px/pxPerCm; }
+  function fmtLen(px){ return pxToCm(px).toFixed(2); }
+  function updateBadges(){
+    const sh=state.sel;
+    if(!sh){
+      ui.selType.textContent='—';
+      ui.w.textContent='—'; ui.h.textContent='—'; ui.vh.textContent='—';
+      ui.wLabel.textContent='幅'; ui.hLabel.textContent='高さ';
+      return;
+    }
+    const t = autoType(sh.points);
+    ui.selType.textContent = labelByType(t);
+    const bb=bbox(sh.points);
+    ui.w.textContent=fmtLen(bb.w); ui.h.textContent=fmtLen(bb.h);
+    document.getElementById('u1').textContent='cm'; document.getElementById('u2').textContent='cm';
+    ui.vh.textContent=`${sh.points.length}`;
+
+    if(t==='tri' || t==='para'){ ui.wLabel.textContent='底辺'; ui.hLabel.textContent='高さ'; }
+    else if(t==='rect' || t==='square'){ ui.wLabel.textContent='横'; ui.hLabel.textContent='たて'; }
+    else { ui.wLabel.textContent='幅'; ui.hLabel.textContent='高さ'; }
+  }
+
+  function updateNoteHeaderPanel(){
+    const nid = state.selNoteId;
+    if(!nid){ ui.notePanel.style.display='none'; return; }
+    const note = state.notes.find(n=>n.id===nid);
+    if(!note){ ui.notePanel.style.display='none'; return; }
+    ui.notePanel.style.display='flex';
+    ui.noteHdrColor.value = note.color || 'yellow';
+    ui.noteHdrSize.value  = note.font  || 'm';
+  }
+  ui.noteHdrColor.addEventListener('change', ()=>{
+    const nid=state.selNoteId; if(!nid) return;
+    const n=state.notes.find(x=>x.id===nid); if(!n) return;
+    n.color=ui.noteHdrColor.value; pushHistory(); render();
+  });
+  ui.noteHdrSize.addEventListener('change', ()=>{
+    const nid=state.selNoteId; if(!nid) return;
+    const n=state.notes.find(x=>x.id===nid); if(!n) return;
+    n.font=ui.noteHdrSize.value; pushHistory(); render();
+  });
+
+  function updateModeBadge(){
+    const m = state.tool;
+    let txt = '編集/移動';
+    if(m==='draw'){ txt = `ペン（${penColorLabel(state.penColor)}）`; }
+    else if(m==='erase'){
+      const label = (state.eraserMode==='pixel'?'ピクセル': state.eraserMode==='object'?'オブジェクト':'全消し');
+      txt = `消しゴム（${label}）`;
+    }
+    else if(m==='splitLine'){ txt = `分割（吸着${state.splitGridSnap?'ON':'OFF'}）`; }
+    else if(m==='text'){ txt = 'ふせん配置'; }
+    ui.modeBadge.textContent = txt;
+  }
+  function penColorLabel(hex){
+    if(hex==='#1f2937') return '黒';
+    if(hex==='#ef4444') return '赤';
+    if(hex==='#2563eb') return '青';
+    if(hex==='#16a34a') return '緑';
+    return hex;
+  }
+
+  function updateStatus(x,y, snapLabel){
+    ui.statusBar.textContent = `(x: ${fmtLen(x)} cm, y: ${fmtLen(y)} cm) | Snap: ${snapLabel||'—'}`;
+  }
+  function classifySnap(x,y){
+    const tol=state.snapTol;
+    const segs=[]; const mids=[];
+    for(const sh of state.shapes){
+      const n=sh.points.length;
+      for(let i=0;i<n;i++){
+        const a=sh.points[i], b=sh.points[(i+1)%n];
+        if(dist(x,y,a[0],a[1])<=tol) return 'Vertex';
+        mids.push([(a[0]+b[0])/2,(a[1]+b[1])/2]);
+        segs.push([a,b]);
+      }
+    }
+    for(const m of mids){ if(dist(x,y,m[0],m[1])<=tol) return 'Midpoint'; }
+    for(const s of segs){ const pr=projectPointToSeg({x,y}, s[0], s[1]); if(pr && pr.d<=tol) return 'Edge'; }
+		const off = state.gridOffset || GRID_PAD;
+		const gx = Math.round((x - off)/state.gridPx)*state.gridPx + off;
+		const gy = Math.round((y - off)/state.gridPx)*state.gridPx + off;
+    const dx=Math.abs(x-gx), dy=Math.abs(y-gy);
+    if(Math.hypot(dx,dy)<=tol) return 'GridPt';
+    if(dx<=tol || dy<=tol) return 'GridLine';
+    const frame=nearestFrame(x,y); if(frame && frame.d<=tol) return 'Frame';
+    return 'Free';
+  }
+  function updateStatusFromEvent(e){
+    const p = (e.target===drawCanvas || e.target===board) ? pt(e) : null;
+    if(!p){ return; }
+    updateStatus(p.x, p.y, classifySnap(p.x,p.y));
+  }
+
+  // ========= 履歴 =========
+  function snapshot(){ return JSON.stringify({shapes:state.shapes, notes:state.notes, drawings:state.drawings, eraseStrokes: state.eraseStrokes}); }
+  function restore(json){
+    const s=JSON.parse(json);
+    state.shapes=s.shapes||[];
+    state.notes=s.notes||[];
+    state.drawings=s.drawings||[];
+    state.eraseStrokes=s.eraseStrokes||[];
+    drawGrid(); render();
+  }
+  function pushHistory(){ state.history.push(snapshot()); state.future=[]; }
+  ui.undo.addEventListener('click', ()=>{ if(!state.history.length) return; const cur=snapshot(); const prev=state.history.pop(); state.future.push(cur); restore(prev); });
+  ui.redo.addEventListener('click', ()=>{ if(!state.future.length) return; const cur=snapshot(); const next=state.future.pop(); state.history.push(cur); restore(next); });
+
+  // ========= 保存・読み込み・リセット =========
+  ui.exportBtn.addEventListener('click', ()=>{
+    const data=snapshot();
+    const blob=new Blob([data],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='board.json'; a.click(); URL.revokeObjectURL(a.href);
+  });
+  document.getElementById('importLabel').addEventListener('click', ()=> ui.importInput.click());
+  ui.importInput.addEventListener('change', async (e)=>{
+    const f=e.target.files[0]; if(!f) return; const tx=await f.text(); restore(tx); pushHistory();
+  });
+  ui.resetBtn.addEventListener('click', ()=>{ location.reload(); });
+
+  // ========= その他UI =========
+  ui.toolbar.addEventListener('click', (e)=>{
+    const b=e.target.closest('button'); if(!b) return;
+    const add=b.getAttribute('data-add'); const tool=b.getAttribute('data-tool');
+    [...ui.toolbar.querySelectorAll('button')].forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    if(add){ addShape(add); return; }
+    if(tool){ setTool(tool); render(); return; }
+  });
+  ui.gridSize.addEventListener('change', ()=>{
+    const cm=parseInt(ui.gridSize.value,10)||3; state.gridPx=pxPerCm*cm; drawGrid(); render(); redrawCursorOverlay();
+  });
+  ui.splitGridSnap.addEventListener('change', ()=> { state.splitGridSnap=ui.splitGridSnap.checked; updateModeBadge(); });
+  ui.vertexEdit.addEventListener('change', ()=>{ state.vertexEdit=ui.vertexEdit.checked; render(); });
+
+  ui.color.addEventListener('input', ()=>{ if(state.sel){ state.sel.fill=ui.color.value; state.sel.stroke=ui.color.value; pushHistory(); render(); } });
+  ui.lockSize.addEventListener('change', ()=> state.lockSize=ui.lockSize.checked );
+  ui.dup.addEventListener('click', ()=>{ if(!state.sel) return; const c=JSON.parse(JSON.stringify(state.sel)); c.id=uid(); c.points=c.points.map(p=>[p[0]+state.gridPx*0.5,p[1]+state.gridPx*0.5]); state.shapes.push(c); selectShape(c); pushHistory(); });
+  ui.front.addEventListener('click', ()=>{ if(!state.sel) return; const i=state.shapes.findIndex(s=>s.id===state.sel.id); state.shapes.push(...state.shapes.splice(i,1)); pushHistory(); render(); });
+  ui.back.addEventListener('click', ()=>{ if(!state.sel) return; const i=state.shapes.findIndex(s=>s.id===state.sel.id); state.shapes.unshift(...state.shapes.splice(i,1)); pushHistory(); render(); });
+  ui.rotL.addEventListener('click', ()=> rotateSel(-15));
+  ui.rotR.addEventListener('click', ()=> rotateSel(15));
+  ui.flipH.addEventListener('click', ()=> flipSel(true,false));
+  ui.flipV.addEventListener('click', ()=> flipSel(false,true));
+  ui.deleteShape.addEventListener('click', ()=>{
+    if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
+  });
+  ui.penColor.addEventListener('change', ()=> { state.penColor=ui.penColor.value; updateModeBadge(); setCanvasInteractivity(); render(); });
+  ui.eraserMode.addEventListener('change', ()=> { state.eraserMode=ui.eraserMode.value; updateModeBadge(); redrawCursorOverlay(); });
+
+  function rotateSel(deg){ if(!state.sel) return; const c=centroid(state.sel.points); const r=deg*Math.PI/180;
+    state.sel.points=state.sel.points.map(([x,y])=>{const dx=x-c.x, dy=y-c.y; return [c.x+dx*Math.cos(r)-dy*Math.sin(r), c.y+dx*Math.sin(r)+dy*Math.cos(r)];});
+    pushHistory(); render();
+  }
+  function flipSel(h,v){ if(!state.sel) return; const c=centroid(state.sel.points);
+    state.sel.points=state.sel.points.map(([x,y])=>[ h?(2*c.x-x):x, v?(2*c.y-y):y ]);
+    pushHistory(); render();
+  }
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.key==='Delete' && !document.activeElement.isContentEditable){
+      if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
+    }
+  });
+
+  // ========== テーマ切替 ==========
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    ui.themeToggle.textContent = (theme==='dark') ? '☀️' : '🌙';
+    localStorage.setItem('board-theme', theme);
+    drawGrid(); render(); redrawCursorOverlay();
+  }
+  ui.themeToggle.addEventListener('click', ()=>{
+    const cur = document.documentElement.getAttribute('data-theme') || 'light';
+    applyTheme(cur==='light' ? 'dark' : 'light');
+  });
+  (function initTheme(){
+    const saved = localStorage.getItem('board-theme');
+    if(saved){ applyTheme(saved); }
+    else {
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(prefersDark ? 'dark' : 'light');
+    }
+  })();
+
+  // ========== サイドバー折りたたみ（突起タブ制御） ==========
+  function updateAsideTab(){
+    const collapsed = document.body.classList.contains('aside-collapsed');
+    ui.asideTab.textContent = collapsed ? '◀' : '▶';
+    ui.asideTab.title = collapsed ? 'サイドバーをひらく' : 'サイドバーをたたむ';
+    localStorage.setItem('aside-collapsed', collapsed ? '1' : '0');
+  }
+  ui.asideTab.addEventListener('click', ()=>{
+    document.body.classList.toggle('aside-collapsed');
+    updateAsideTab();
+    setTimeout(()=>{ ensureLayout(); drawGrid(); render(); redrawCursorOverlay(); }, 10);
+  });
+
+  // ========= カーソルオーバーレイ（消しゴムゴーストのみ） =========
+  function redrawCursorOverlay(){
+    const W=cursorCanvas.width/state.dpr, H=cursorCanvas.height/state.dpr;
+    cctx.clearRect(0,0,W,H);
+    const p = state.pointerPos;
+
+    if(state.tool==='erase'){
+      cctx.save();
+      cctx.beginPath();
+      const r = 14/2; // ピクセル消しの半径（lineWidth=14）
+      cctx.arc(p.x, p.y, r, 0, Math.PI*2);
+      cctx.fillStyle='rgba(180,180,180,0.2)';
+      cctx.strokeStyle='rgba(120,120,120,0.6)';
+      cctx.lineWidth=1;
+      cctx.fill(); cctx.stroke();
+      cctx.restore();
+    }
+  }
+	// ========= viewport 監視 =========
+	window.addEventListener('resize', onViewportChange);
+	if (window.visualViewport) {
+  	visualViewport.addEventListener('resize', onViewportChange);
+  	visualViewport.addEventListener('scroll', onViewportChange);
+	}
+  // ========= 起動 =========
+  function boot(){
+  	// ★ 画面ズーム/回転/可視ビューポート変化を監視
+  	window.addEventListener('resize', onViewportChange, {passive:true});
+  	window.addEventListener('orientationchange', onViewportChange, {passive:true});
+  	try{
+    	if (window.visualViewport) {
+      	visualViewport.addEventListener('resize', onViewportChange, {passive:true});
+      	visualViewport.addEventListener('scroll', onViewportChange, {passive:true});
+    	}
+  	}catch(_){}
+  // ★ iPadのダブルタップズーム&長押しメニュー&選択開始を封鎖（付箋内は許可）
+	(function(){
+		if (window.__iosTouchPatched) return; // ← 二重登録防止
+		window.__iosTouchPatched = true;
+
+		const inNote = (el)=> !!(el && (el.classList?.contains('note') || el.closest?.('.note')));
+
+  // dblclick を先に潰す
+  document.addEventListener('dblclick', (e)=>{
+    if(!inNote(e.target)) e.preventDefault();
+  }, {capture:true, passive:false});
+
+  // 連続タップ（ダブルタップ）によるズームも潰す
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e)=>{
+    if(inNote(e.target)) return;
+    const now = Date.now();
+    if (now - lastTouchEnd <= 350) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, {capture:true, passive:false});
+
+  // ピンチなどのジェスチャ開始も潰す（保険）
+  document.addEventListener('gesturestart', (e)=>{
+    if(!inNote(e.target)) e.preventDefault();
+  }, {capture:true, passive:false});
+
+  // 長押しのコンテキストメニュー
+  document.addEventListener('contextmenu', (e)=>{
+    if(!inNote(e.target)) e.preventDefault();
+  }, {capture:true, passive:false});
+
+  // テキスト選択開始
+  document.addEventListener('selectstart', (e)=>{
+    if(!inNote(e.target)) e.preventDefault();
+  }, {capture:true, passive:false});
+})();
+  
+  // タッチ端末ではスナップをさらに緩める
+  try{
+    if (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) {
+      state.snapTol = Math.max(state.snapTol, 20);
+    }
+  }catch(_){}
+    
+    const savedAside = localStorage.getItem('aside-collapsed');
+    if(savedAside===null){
+      if(window.innerWidth < 820) document.body.classList.add('aside-collapsed'); // 狭い画面はデフォ畳む
+    }else{
+      if(savedAside==='1') document.body.classList.add('aside-collapsed');
+      else document.body.classList.remove('aside-collapsed');
+    }
+    updateAsideTab();
+
+    // グリッド初期値を select に合わせて反映
+		{
+  		const cm = parseInt(ui.gridSize.value,10) || 3;
+  		state.gridPx = pxPerCm * cm;
+		}
+
+			ensureLayout();
+			const tick=()=>{
+      const r=board.getBoundingClientRect();
+      if(r.width<2 || r.height<2){ requestAnimationFrame(tick); return; }
+      drawGrid(); render(); redrawCursorOverlay();
+
+      // 初期履歴を積む（Undo空打ち回避）
+      if(state.history.length===0){
+        pushHistory();
+      }
+
+      const wrap=document.querySelector('.board-wrap');
+      if(window.ResizeObserver && wrap){
+        const ro=new ResizeObserver(()=>{ ensureLayout(); drawGrid(); render(); redrawCursorOverlay(); });
+        ro.observe(wrap);
+      }
+      window.addEventListener('resize', ()=>{ ensureLayout(); drawGrid(); render(); redrawCursorOverlay(); });
+    };
+    requestAnimationFrame(tick);
+  }
+  window.addEventListener('load', boot);
+</script>
 </body>
 </html>
