@@ -514,6 +514,17 @@
     canvas.height = Math.floor(cssH * dpr);
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
+  // ★ visualViewport/resize でズームやDPR変化を検知 → 再初期化
+	let __vpTick = null;
+	function onViewportChange() {
+ 		if (__vpTick) cancelAnimationFrame(__vpTick);
+  	__vpTick = requestAnimationFrame(()=>{
+    	ensureLayout();
+    	drawGrid();        // setSvgSizeByClient() 内で Canvas/SVG をサイズ更新
+    	render();
+    	redrawCursorOverlay();
+  	});
+	}
 
   // ========= 方眼描画（SVG lineで安定描画） =========
   function drawGrid(){
@@ -526,12 +537,17 @@
     const lw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--grid-pt')) || 1.0;
     const g = state.gridPx;
 
-    for(let x=GRID_PAD; x<=w-GRID_PAD+1; x+=g){
-      grid.appendChild(el('line', { x1: x, y1: GRID_PAD, x2: x, y2: h-GRID_PAD, stroke: color, 'stroke-width': lw, 'shape-rendering':'crispEdges' }));
-    }
-    for(let y=GRID_PAD; y<=h-GRID_PAD+1; y+=g){
-      grid.appendChild(el('line', { x1: GRID_PAD, y1: y, x2: w-GRID_PAD, y2: y, stroke: color, 'stroke-width': lw, 'shape-rendering':'crispEdges' }));
-    }
+    const pixelW = lw * state.dpr;
+		const pxOffset = (Math.round(pixelW) % 2 === 1) ? 0.5 : 0;
+
+		for(let x=0; x<=w+1; x+=g){
+  		const xx = x + pxOffset;
+  		grid.appendChild(el('line', { x1: xx, y1: 0, x2: xx, y2: h, stroke: color, 'stroke-width': lw, 'shape-rendering':'crispEdges' }));
+		}
+    for(let y=0; y<=h+1; y+=g){
+  		const yy = y + pxOffset;
+  		grid.appendChild(el('line', { x1: 0, y1: yy, x2: w, y2: yy, stroke: color, 'stroke-width': lw, 'shape-rendering':'crispEdges' }));
+		}
     board.appendChild(grid);
     board.appendChild(el('g',{id:'shapesLayer'}));
     board.appendChild(el('g',{id:'handlesLayer'}));
@@ -1462,6 +1478,15 @@
 
   // ========= 起動 =========
   function boot(){
+  	// ★ 画面ズーム/回転/可視ビューポート変化を監視
+  	window.addEventListener('resize', onViewportChange, {passive:true});
+  	window.addEventListener('orientationchange', onViewportChange, {passive:true});
+  	try{
+    	if (window.visualViewport) {
+      	visualViewport.addEventListener('resize', onViewportChange, {passive:true});
+      	visualViewport.addEventListener('scroll', onViewportChange, {passive:true});
+    	}
+  	}catch(_){}
   // ★ iPadのダブルタップズーム&長押しメニュー&選択開始を封鎖（付箋内は許可）
 	(function(){
 		if (window.__iosTouchPatched) return; // ← 二重登録防止
