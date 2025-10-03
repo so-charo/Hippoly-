@@ -121,1440 +121,228 @@
     body.aside-collapsed main{ grid-template-columns:1fr 0px; }
     body.aside-collapsed aside{ width:0; padding:0; border:none; opacity:0; pointer-events:none; }
     body.aside-collapsed #asideTab{ display:none; }
-
-    .board-wrap{
-      order:1; background:var(--panel-bg); color:var(--text);
-      border-radius:14px; padding:8px; box-shadow: var(--panel-shadow);
-      position:relative; min-height:420px; overflow:hidden;
-      display:flex; flex-direction:column;
+    #boardWrap{
+      order:1; position:relative; overflow:hidden; border-radius:14px;
+      background:var(--panel-bg); box-shadow: var(--panel-shadow);
+      display:flex; align-items:center; justify-content:center;
+    }
+    #board{
+      width:100%; height:100%; position:relative;
+      touch-action:none; /* iPadでの勝手なズームやスクロール禁止 */
+    }
+    svg, canvas{
+      position:absolute; top:0; left:0; width:100%; height:100%;
+      touch-action:none;
     }
 
-    .panel-title{font-size:14px; color:var(--hint); margin:2px 0 8px;}
-    .toolbar{display:grid; gap:8px;}
-    .group{border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;}
-    .tool-row{display:flex; flex-wrap:wrap; gap:6px; align-items:center;}
-
-    .board{width:100%; height:100%; border-radius:12px; display:block; background:#0b0b0b08; touch-action:none;}
-
-    /* 描画キャンバス & カーソルオーバーレイ */
-    canvas.draw, canvas.cursor-layer{
-      position:absolute; inset:0; width:100%; height:100%; pointer-events:none; touch-action:none;
-    }
-    canvas.cursor-layer{ z-index:6; }
-
-    /* 方眼線（SVG line） */
-    #gridLayer line { pointer-events:none; }
-
-    .shape{fill-opacity:.35; stroke-width:2;}
-    .selected{filter:drop-shadow(0 0 0.6px rgba(0,0,0,.25));}
-    .handle{fill:#fff; stroke:var(--accent); stroke-width:2; cursor:pointer; r:7;}
-    .bbox-handle{fill:#fff; stroke:#64748b; stroke-width:2; cursor:nwse-resize;}
-
-    .badgebar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;}
-    .badge{
-      background:var(--badge-bg); color:var(--badge-text);
-      border:1px solid var(--badge-border); border-radius:10px; padding:6px 10px; font-size:13px;
-    }
-    .hint{color:var(--hint); font-size:12px;}
-
-    /* 付箋 */
-    .note-wrap{ position:relative; width:100%; height:100%; overflow:visible; }
+    #notesLayer{ position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none; }
     .note{
-      width:100%; height:100%;
-      padding:6px 8px 10px 8px;
-      border-radius:8px; border:1px solid var(--btn-border);
-      background:var(--note-yellow);
-      box-shadow:0 2px 6px rgba(0,0,0,.08);
-      outline:none; line-height:1.4; overflow:auto; color:var(--text);
-      -webkit-user-select:text; user-select:text;
-      -webkit-touch-callout:default;
+      position:absolute; resize:both; min-width:100px; min-height:100px;
+      background:var(--note-yellow); color:var(--text);
+      padding:4px; border:1px solid var(--btn-border); border-radius:6px;
+      box-sizing:border-box; overflow:auto;
+      pointer-events:auto;
+      font-size:13pt;
     }
-    .note-yellow{ background:var(--note-yellow); }
-    .note-blue  { background:var(--note-blue); }
-    .note-pink  { background:var(--note-pink); }
 
-    .note-close{
-      position:absolute; right:4px; top:4px;
-      border:none; background:rgba(255,255,255,0.85);
-      border:1px solid var(--btn-border); border-radius:6px;
-      padding:2px 6px; cursor:pointer; font-size:12px; color:#111;
-    }
-    [data-theme="dark"] .note-close{ background:rgba(17,24,39,0.9); color:#e5e7eb; }
+    /* カーソルのゴースト円 */
+    #cursorCanvas{ pointer-events:none; }
 
-    .note-resize{
-      position:absolute; right:-6px; bottom:-6px; width:18px; height:18px; background:#fff;
-      border:1px solid #94a3b8; border-radius:3px; cursor:nwse-resize; box-shadow:0 1px 2px rgba(0,0,0,.1);
-    }
-    [data-theme="dark"] .note-resize{ background:#1f2937; border-color:#475569; }
-
-    /* 付箋ヘッダパネル（選択時だけ表示） */
-    #notePanel{ display:none; gap:8px; align-items:center; padding:4px 6px; border:1px solid var(--btn-border); border-radius:10px; }
-
-    /* モードバッジ（左・上） */
-    #modeBadge{
-      position:absolute; left:12px; top:12px;
-      background:rgba(255,255,255,0.9); border:1px solid var(--btn-border); border-radius:10px;
-      font-size:12px; padding:4px 8px; z-index:5; pointer-events:none; color:#111;
-    }
-    [data-theme="dark"] #modeBadge{ background:rgba(17,24,39,0.9); color:#e5e7eb; }
-
-    /* ステータスバー（右・下） */
-    #statusBar{
-      position:absolute; right:12px; bottom:12px;
-      background:rgba(255,255,255,0.9); border:1px solid var(--btn-border); border-radius:10px;
-      font-size:12px; padding:4px 8px; z-index:5; pointer-events:none; min-width: 180px; text-align:right; color:#111;
-    }
-    [data-theme="dark"] #statusBar{ background:rgba(17,24,39,0.9); color:#e5e7eb; }
-
-    /* タッチ端末：ハンドル太め＋半径アップ */
-    @media (pointer:coarse) {
-      .handle { r: 11 !important; }
-      .bbox-handle { width: 22px !important; height: 22px !important; }
-      button, select, input[type="color"] { padding:12px 14px; }
-    }
   </style>
 </head>
 <body>
-<header>
-  <div class="row">
-    <div class="title">図形ボード</div>
-
-    <label title="方眼のサイズを切り替え（1/3cm）">方眼：
-      <select id="gridSize" title="1/3cm 方眼">
-        <option value="1">1cm</option>
-        <option value="3" selected>3cm</option>
+  <header>
+    <div class="row">
+      <span class="title">図形ボード</span>
+      <button id="themeToggle">🌙</button>
+      <select id="gridSize">
+        <option value="3">3cm</option>
       </select>
-    </label>
-
-    <button id="undo" title="戻る（Undo）">↶ 戻る</button>
-    <button id="redo" title="進む（Redo）">↷ 進む</button>
-    <button id="reset" title="リセット（画面を再読み込み）">⟲ リセット</button>
-    <button id="export" title="保存（JSONとして保存）">💾 保存</button>
-    <label id="importLabel" class="toggle" title="読み込み（保存したJSONを選択）">📂 読み込み<input id="import" type="file" accept="application/json" style="display:none"></label>
-
-    <!-- テーマトグル -->
-    <button id="themeToggle" title="テーマ切替（ライト/ダーク）">🌙 ダーク</button>
-
-    <!-- 付箋選択時のみ表示するヘッダパネル -->
-    <div id="notePanel" title="付箋の見た目を変更">
-      <strong>付箋:</strong>
-      <label>色
-        <select id="noteHdrColor" title="付箋の色を変更">
-          <option value="yellow">黄色</option>
-          <option value="blue">水色</option>
-          <option value="pink">ピンク</option>
-        </select>
-      </label>
-      <label>文字サイズ
-        <select id="noteHdrSize" title="付箋の文字サイズを変更">
-          <option value="s">小（10pt）</option>
-          <option value="m" selected>中（13pt）</option>
-          <option value="l">大（18pt）</option>
-        </select>
-      </label>
+      <select id="penColor"></select>
+      <button id="undo">Undo</button>
+      <button id="redo">Redo</button>
+      <button id="save">保存</button>
+      <button id="load">読込</button>
+      <button id="reset">リセット</button>
     </div>
-  </div>
-</header>
-
-<main>
-  <div class="board-wrap">
-    <!-- モードバッジ -->
-    <div id="modeBadge">編集/移動</div>
-    <!-- ステータスバー -->
-    <div id="statusBar">(x: — cm, y: — cm) | Snap: —</div>
-
-    <svg id="board" class="board" aria-label="draw-board"></svg>
-    <canvas id="drawCanvas" class="draw"></canvas>
-    <canvas id="cursorCanvas" class="cursor-layer"></canvas>
-
-    <div class="badgebar">
-      <span class="badge">選択: <strong id="selType">—</strong></span>
-      <span class="badge"><span id="wLabel">幅</span>: <strong id="w">—</strong> <span id="u1">cm</span></span>
-      <span class="badge"><span id="hLabel">高さ</span>: <strong id="h">—</strong> <span id="u2">cm</span></span>
-      <span class="badge">頂点: <strong id="vh">—</strong></span>
-    </div>
-  </div>
-
-  <aside>
-    <div id="asideTab" title="ツールを隠す/出す">▶</div>
-    <div class="aside-head"><div class="panel-title">ツール</div></div>
-    <div class="toolbar" id="toolbar">
-      <div>
-        <div class="tool-row">
-          <button data-tool="edit" class="active" title="編集/移動（選択・移動・リサイズなど）"><span class="icon">🧭</span>編集/移動</button>
-          <button data-tool="text" title="付箋を1枚配置（配置後は自動で編集モードに戻ります）"><span class="icon">📝</span>ふせん</button>
-        </div>
-
-        <div class="group">
-          <div class="panel-title">手書き</div>
-          <div class="tool-row">
-            <button data-tool="draw" title="ペン（キャンバスに自由線を描画）"><span class="icon">🖊️</span>ペン</button>
-            <select id="penColor" title="ペン色"></select>
-            <select id="eraserMode" title="消しゴム">
-              <option value="pixel">ピクセル</option>
-              <option value="object">オブジェクト</option>
-              <option value="clear">全消し</option>
-            </select>
-            <button data-tool="erase" title="消しゴム（ピクセル/オブジェクト/全消し）"><span class="icon">🗑</span>消しゴム</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="group">
-        <div class="panel-title">図形の追加</div>
-        <div class="tool-row">
-          <button data-add="rect" title="長方形を追加">▭ 長方形</button>
-          <button data-add="tri" title="三角形（ランダム）を追加">△ 三角形</button>
-          <button data-add="trap" title="台形（3パターンからランダム）を追加">⏃ 台形</button>
-          <button data-add="para" title="平行四辺形を追加">▱ 平行四辺形</button>
-          <button data-add="rh" title="ひし形を追加">◇ ひし形</button>
-        </div>
-      </div>
-
-      <div class="group">
-        <div class="panel-title">図形編集</div>
-        <div class="tool-row">
-          <label class="toggle"><input type="checkbox" id="vertexEdit"/> 頂点編集</label>
-          <label class="toggle"><input type="checkbox" id="lockSize"/> サイズ固定</label>
-          <label>色 <input type="color" id="color" value="#2563eb"/></label>
-        </div>
-        <div class="tool-row" style="margin-top:6px;">
-          <button id="dup" title="選択図形をコピー">⧉ コピー</button>
-          <button id="front" title="前面へ">⤴ 手前へ</button>
-          <button id="back" title="背面へ">⤵ 奥へ</button>
-          <button id="rotL" title="反時計回りに回転">↺ 回転</button>
-          <button id="rotR" title="時計回りに回転">↻ 回転</button>
-          <button id="flipH" title="左右反転">⇔ 反転</button>
-          <button id="flipV" title="上下反転">⇕ 反転</button>
-          <button id="deleteShape" title="選択図形を削除">✖ 削除</button>
-        </div>
-      </div>
-
-      <div class="group">
-        <div class="panel-title">分割</div>
-        <div class="tool-row">
-          <button data-tool="splitLine" title="直線で分割（複数図形にも対応）"><span class="icon">✂️</span>直線で分割</button>
-          <label class="toggle" title="分割線を方眼に吸着させる">
-            <input type="checkbox" id="splitGridSnap"/> 線にそって切りとる
-          </label>
-        </div>
+  </header>
+  <main>
+    <div id="boardWrap">
+      <div id="board">
+        <svg id="gridLayer"></svg>
+        <svg id="shapesLayer"></svg>
+        <svg id="handlesLayer"></svg>
+        <canvas id="drawCanvas"></canvas>
+        <canvas id="cursorCanvas"></canvas>
+        <div id="notesLayer"></div>
       </div>
     </div>
-  </aside>
-</main>
-
-<script>
-  // ========= 基本 =========
-  const svgNS='http://www.w3.org/2000/svg';
-  const board=document.getElementById('board');
-  const drawCanvas=document.getElementById('drawCanvas');
-  const cursorCanvas=document.getElementById('cursorCanvas');
-  const ctx=drawCanvas.getContext('2d');
-  const cctx=cursorCanvas.getContext('2d'); // カーソルオーバーレイ
-  const pxPerCm=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--grid-cm'))||37.7952755906;
-
-  function el(name, attrs={}){ const n=document.createElementNS(svgNS,name); for(const k in attrs) n.setAttribute(k, attrs[k]); return n; }
-  function uid(){ return 's'+Math.random().toString(36).slice(2,9); }
-
-  // ========= 状態 =========
-  const state={
-    tool:'edit',
-    gridPx:pxPerCm*3,          // 起動時は3cmを強制
-    snapTol:12,                // タッチ向けにやや広め
-    shapes:[],
-    notes:[],   // 付箋 {id,x,y,w,h,html,color,font:'s'|'m'|'l'}
-    // タイムライン再生方式: [{type:'draw', stroke:{color, pts}}, {type:'erase', mask:{pts, radius}} ...]
-		timeline:[],
-    sel:null,          // 図形選択
-    selNoteId:null,    // 付箋選択
-    dragging:null,
-    lockSize:false,
-    vertexEdit:false,
-    history:[],
-    future:[],
-    penColor:'#1f2937',
-    eraserMode:'pixel',
-    splitPreview:null,
-    splitGridSnap:false,
-    pointerCaptured:false,
-    dpr: Math.max(1, window.devicePixelRatio || 1),
-    pointerPos:{x:0,y:0},
-    splitStart:null,          // 分割始点
-    splitPinEl:null,          // SVGの始点ピン
-    gridOffset:0              // 0.5px補正（drawGridで算出）
-  };
-
-  const ui={
-    selType:document.getElementById('selType'), w:document.getElementById('w'), h:document.getElementById('h'), vh:document.getElementById('vh'),
-    wLabel:document.getElementById('wLabel'), hLabel:document.getElementById('hLabel'),
-    color:document.getElementById('color'), lockSize:document.getElementById('lockSize'),
-    dup:document.getElementById('dup'), front:document.getElementById('front'), back:document.getElementById('back'),
-    rotL:document.getElementById('rotL'), rotR:document.getElementById('rotR'), flipH:document.getElementById('flipH'), flipV:document.getElementById('flipV'),
-    deleteShape:document.getElementById('deleteShape'),
-    toolbar:document.getElementById('toolbar'), undo:document.getElementById('undo'), redo:document.getElementById('redo'),
-    exportBtn:document.getElementById('export'), importInput:document.getElementById('import'),
-    penColor:document.getElementById('penColor'), eraserMode:document.getElementById('eraserMode'),
-    gridSize:document.getElementById('gridSize'), splitGridSnap:document.getElementById('splitGridSnap'),
-    vertexEdit:document.getElementById('vertexEdit'),
-    resetBtn:document.getElementById('reset'),
-    // 付箋ヘッダパネル
-    notePanel:document.getElementById('notePanel'),
-    noteHdrColor:document.getElementById('noteHdrColor'),
-    noteHdrSize:document.getElementById('noteHdrSize'),
-    // UI表示
-    modeBadge:document.getElementById('modeBadge'),
-    statusBar:document.getElementById('statusBar'),
-    themeToggle:document.getElementById('themeToggle'),
-    asideTab:document.getElementById('asideTab')
-  };
-
-  // ========= iPadの長押し選択 & ダブルタップ拡大の抑止 =========
-  // 本体はCSS+metaで抑止。保険としてイベント潰し（付箋は許可）
-  document.addEventListener('dblclick', (e)=>{ if(!e.target.closest('.note')) e.preventDefault(); }, {passive:false});
-  document.addEventListener('gesturestart', (e)=>{ e.preventDefault(); }, {passive:false});
-  document.addEventListener('contextmenu', (e)=>{ if(!e.target.closest('.note')) e.preventDefault(); });
-  document.addEventListener('selectstart', (e)=>{ if(!e.target.closest('.note')) e.preventDefault(); });
-
-  // ========= レイアウト安定化（方眼とサイドバーの高さ一致） =========
-  function ensureLayout(){
-    const header=document.querySelector('header');
-    const wrap=document.querySelector('.board-wrap');
-    const aside=document.querySelector('aside');
-    const hHeader=header?header.getBoundingClientRect().height:0;
-
-    const avail=Math.max(420, window.innerHeight - hHeader - 24);
-    if(wrap) wrap.style.height=avail+'px';
-    if(aside) aside.style.height=avail+'px';
-
-    setSvgSizeByClient();
-  }
-  function setSvgSizeByClient(){
-    const r=board.getBoundingClientRect();
-    const w=Math.max(1, Math.floor(r.width));
-    const h=Math.max(1, Math.floor(r.height));
-    board.setAttribute('width', w);
-    board.setAttribute('height', h);
-    setupCanvasDPR(drawCanvas, ctx, w, h);
-    setupCanvasDPR(cursorCanvas, cctx, w, h);
-    return {w,h};
-  }
-  function setupCanvasDPR(canvas, context, cssW, cssH){
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-    state.dpr = dpr;
-    canvas.style.width = cssW + 'px';
-    canvas.style.height = cssH + 'px';
-    canvas.width  = Math.floor(cssW * dpr);
-    canvas.height = Math.floor(cssH * dpr);
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-
-  // ★ visualViewport/resize でズームやDPR変化を検知 → 再初期化
-  let __vpTick = null;
-  function onViewportChange() {
-    if (__vpTick) cancelAnimationFrame(__vpTick);
-    __vpTick = requestAnimationFrame(()=>{
-      ensureLayout();
-      drawGrid();        // setSvgSizeByClient() 内で Canvas/SVG をサイズ更新
-      render();
-      redrawCursorOverlay();
-    });
-  }
-  if (window.visualViewport){
-    visualViewport.addEventListener('resize', onViewportChange);
-    visualViewport.addEventListener('scroll', onViewportChange);
-  }
-  window.addEventListener('resize', onViewportChange);
-
-  // ========= 方眼描画（SVG lineで安定描画） =========
-  function drawGrid(){
-    while(board.firstChild) board.removeChild(board.firstChild);
-    const {w,h}=setSvgSizeByClient();
-    if(!w||!h) return;
-
-    const grid = el('g', { id:'gridLayer' });
-    const color = (getComputedStyle(document.documentElement).getPropertyValue('--grid-stroke')||'#bfdbfe').trim();
-    const lw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--grid-pt')) || 1.0;
-    const g = state.gridPx;
-
-    // 1px線をDPRに合わせて半ピクセル補正して“パリッ”と出す
-    const pixelW = lw * state.dpr;
-    const pxOffset = (Math.round(pixelW) % 2 === 1) ? 0.5 : 0;
-    state.gridOffset = pxOffset;
-
-    for(let x=0; x<=w+1; x+=g){
-      const xx = x + pxOffset;
-      grid.appendChild(el('line', { x1: xx, y1: 0, x2: xx, y2: h, stroke: color, 'stroke-width': lw, 'shape-rendering':'crispEdges' }));
-    }
-    for(let y=0; y<=h+1; y+=g){
-      const yy = y + pxOffset;
-      grid.appendChild(el('line', { x1: 0, y1: yy, x2: w, y2: yy, stroke: color, 'stroke-width': lw, 'shape-rendering':'crispEdges' }));
-    }
-    board.appendChild(grid);
-    board.appendChild(el('g',{id:'shapesLayer'}));
-    board.appendChild(el('g',{id:'handlesLayer'}));
-    board.appendChild(el('g',{id:'textLayer'}));
-  }
-  function ensureLayers(){
-    const ids=['gridLayer','shapesLayer','handlesLayer','textLayer'];
-    for(const id of ids){
-      if(!document.getElementById(id)) board.appendChild(el('g',{id}));
-    }
-  }
-
-  // ========= 図形生成（常に方眼交点上に頂点） =========
-  function gridPoint(n, m){
-    const off = state.gridOffset || 0;
-    const g = state.gridPx;
-    return [n*g + off, m*g + off];
-  }
-  function addShape(type){
-    const g=state.gridPx;
-    // 左上から2マス右・2マス下の交点を起点に生成（完全スナップ）
-    const baseN=2, baseM=2;
-    const A = gridPoint(baseN,   baseM);
-    const B = gridPoint(baseN+3, baseM);
-    const C = gridPoint(baseN+3, baseM+2);
-    const D = gridPoint(baseN,   baseM+2);
-    let pts=[];
-    if(type==='rect') pts=[A,B,C,D];
-    if(type==='tri')  pts=[A, gridPoint(baseN+2,baseM+1), gridPoint(baseN+1,baseM+2)];
-    if(type==='trap'){
-      const v=Math.floor(Math.random()*3);
-      if(v===0) pts=[A, gridPoint(baseN+3,baseM), gridPoint(baseN+2.5,baseM+2), gridPoint(baseN+0.5,baseM+2)];
-      else if(v===1) pts=[gridPoint(baseN+0.5,baseM), gridPoint(baseN+2.5,baseM), gridPoint(baseN+3,baseM+2), D];
-      else pts=[gridPoint(baseN,baseM), gridPoint(baseN+2,baseM), gridPoint(baseN+3,baseM+2), gridPoint(baseN+1,baseM+2)];
-    }
-    if(type==='para') pts=[A, gridPoint(baseN+3,baseM), gridPoint(baseN+3.6,baseM+2), gridPoint(baseN+0.6,baseM+2)];
-    if(type==='rh')   pts=[gridPoint(baseN+1.5,baseM), gridPoint(baseN+3,baseM+1.2), gridPoint(baseN+1.5,baseM+2.4), gridPoint(baseN,baseM+1.2)];
-
-    const sh={id:uid(), type, points:pts, fill:ui.color.value, stroke:ui.color.value};
-    state.shapes.push(sh);
-    selectShape(sh);
-    pushHistory(); render();
-  }
-
-  // ========= 付箋 =========
-  function addNote(x,y){
-    // 既定サイズを5mm拡大（幅+18.9px/高さ+9.4px相当）
-    const n={id:uid(), x, y, w:160+19, h:80+9, html:'メモ', color:'yellow', font:'m'};
-    state.notes.push(n);
-    state.selNoteId=n.id;
-    pushHistory(); render();
-    setTool('edit');
-  }
-  function noteBgClass(color){
-    return color==='pink' ? 'note-pink' : color==='blue' ? 'note-blue' : 'note-yellow';
-  }
-  function fontPt(font){ return font==='s' ? '10pt' : font==='l' ? '18pt' : '13pt'; }
-
-  function renderNotes(){
-    const textLayer=document.getElementById('textLayer');
-    [...textLayer.querySelectorAll('foreignObject')].forEach(n=>n.remove());
-
-    for(const n of state.notes){
-      const fo=el('foreignObject',{x:n.x, y:n.y, width:n.w, height:n.h, 'data-nid':n.id});
-      const wrap=document.createElement('div'); wrap.className='note-wrap';
-
-      const div=document.createElement('div');
-      div.className=`note ${noteBgClass(n.color)}`;
-      div.contentEditable='true';
-      div.style.fontSize = fontPt(n.font);
-      div.innerHTML=n.html;
-
-      const close=document.createElement('button');
-      close.className='note-close';
-      close.textContent='✕';
-      close.title='付箋を削除';
-
-      const grip=document.createElement('div'); grip.className='note-resize'; grip.title='サイズ変更';
-
-      wrap.appendChild(div);
-      wrap.appendChild(close);
-      wrap.appendChild(grip);
-      fo.appendChild(wrap);
-      textLayer.appendChild(fo);
-
-      div.addEventListener('pointerdown',(e)=>{
-        e.stopPropagation();
-        state.selNoteId=n.id;
-        updateNoteHeaderPanel();
-        state.dragging={mode:'noteMove', note:n, start:pt(e), ox:n.x, oy:n.y};
-        try{board.setPointerCapture(e.pointerId);}catch(_){}
-      });
-      div.addEventListener('input', ()=>{ n.html=div.innerHTML; });
-      div.addEventListener('blur', ()=>{ n.html=div.innerHTML; pushHistory(); });
-
-      close.addEventListener('pointerdown', (e)=>{ e.stopPropagation(); });
-      close.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        state.notes = state.notes.filter(x=>x.id!==n.id);
-        if(state.selNoteId===n.id) state.selNoteId=null;
-        pushHistory(); render();
-      });
-
-      grip.addEventListener('pointerdown',(e)=>{
-        e.stopPropagation();
-        state.selNoteId=n.id;
-        updateNoteHeaderPanel();
-        state.dragging={mode:'noteResize', note:n, start:pt(e), ow:n.w, oh:n.h};
-        try{board.setPointerCapture(e.pointerId);}catch(_){}
-      });
-    }
-  }
-
-  // ========= レンダリング =========
-  function ptsToAttr(pts){ return pts.map(p=>p.join(',')).join(' '); }
-  function bbox(pts){ const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]); const x=Math.min(...xs), y=Math.min(...ys), w=Math.max(...xs)-x, h=Math.max(...ys)-y; return {x,y,w,h}; }
-  function centroid(pts){ const s=pts.reduce((a,p)=>({x:a.x+p[0],y:a.y+p[1]}),{x:0,y:0}); return {x:s.x/pts.length,y:s.y/pts.length}; }
-
-  function render(){
-    ensureLayers();
-    const layer=document.getElementById('shapesLayer');
-    const handles=document.getElementById('handlesLayer');
-    layer.innerHTML=''; handles.innerHTML='';
-
-    for(const sh of state.shapes){
-      const p=el('polygon',{points:ptsToAttr(sh.points), fill:sh.fill, stroke:sh.stroke, 'stroke-linejoin':'round', class:'shape'+(state.sel&&state.sel.id===sh.id?' selected':'')});
-      p.dataset.id=sh.id; layer.appendChild(p);
-      if(state.sel && state.sel.id===sh.id){
-        if(state.vertexEdit){
-          sh.points.forEach((pt,i)=> handles.appendChild(el('circle',{cx:pt[0],cy:pt[1],r:7,class:'handle','data-vidx':i,'data-id':sh.id})));
-        }else{
-          const bb=bbox(sh.points);
-          const hs=[
-            {x:bb.x,y:bb.y,c:'nw'},{x:bb.x+bb.w/2,y:bb.y,c:'n'},{x:bb.x+bb.w,y:bb.y,c:'ne'},
-            {x:bb.x,y:bb.y+bb.h/2,c:'w'},{x:bb.x+bb.w,y:bb.y+bb.h/2,c:'e'},
-            {x:bb.x,y:bb.y+bb.h,c:'sw'},{x:bb.x+bb.w/2,y:bb.y+bb.h,c:'s'},{x:bb.x+bb.w,y:bb.y+bb.h,c:'se'}
-          ];
-          hs.forEach(h=>{const r=el('rect',{x:h.x-7,y:h.y-7,width:14,height:14,rx:3,class:'bbox-handle'}); r.dataset.id=sh.id; r.dataset.corner=h.c; handles.appendChild(r);});
-          handles.appendChild(el('rect',{x:bb.x,y:bb.y,width:bb.w,height:bb.h,fill:'none',stroke:'#94a3b8','stroke-dasharray':'6 4'}));
-        }
-      }
-    }
-    renderNotes();
-    updateBadges();
-    updateNoteHeaderPanel();
-    updateModeBadge();
-    setCanvasInteractivity();
-    redrawCanvas();         // 描画 → マスクの順で毎回反映
-    redrawCursorOverlay();
-  }
-
-  // ========= スナップ等 =========
-  function pt(e){ const bb=board.getBoundingClientRect(); return {x:e.clientX-bb.left, y:e.clientY-bb.top}; }
-  function dist(x1,y1,x2,y2){ const dx=x1-x2, dy=y1-y2; return Math.hypot(dx,dy); }
-  function segI(A,B,C,D){
-    const den=(B[0]-A[0])*(D[1]-C[1])-(B[1]-A[1])*(D[0]-C[0]);
-    if(Math.abs(den)<1e-6) return null;
-    const t=((C[0]-A[0])*(D[1]-C[1])-(C[1]-A[1])*(D[0]-C[0]))/den;
-    const u=((C[0]-A[0])*(B[1]-A[1])-(C[1]-A[1])*(B[0]-A[0]))/den;
-    if(t<0||t>1||u<0||u>1) return null;
-    return {x:A[0]+t*(B[0]-A[0]), y:A[1]+t*(B[1]-A[1])};
-  }
-  function candidates(){
-    const pts=[]; const segs=[];
-    for(const sh of state.shapes){
-      const n=sh.points.length;
-      for(let i=0;i<n;i++){
-        const a=sh.points[i], b=sh.points[(i+1)%n];
-        pts.push(a);
-        pts.push([(a[0]+b[0])/2,(a[1]+b[1])/2]);
-        segs.push([a,b]);
-      }
-    }
-    for(let i=0;i<segs.length;i++) for(let j=i+1;j<segs.length;j++){ const I=segI(segs[i][0],segs[i][1],segs[j][0],segs[j][1]); if(I) pts.push([I.x,I.y]); }
-    candidates._segs=segs; return pts;
-  }
-  function snapPoint(x,y){
-    const pts=candidates();
-    const off = state.gridOffset || 0;
-    const gx = Math.round((x - off)/state.gridPx)*state.gridPx + off;
-    const gy = Math.round((y - off)/state.gridPx)*state.gridPx + off;
-    pts.push([gx,gy]);
-    let best=null, bestd=state.snapTol+1;
-    for(const c of pts){ const d=dist(x,y,c[0],c[1]); if(d<bestd){ bestd=d; best={x:c[0],y:c[1]}; } }
-    return bestd<=state.snapTol?best:null;
-  }
-  function projectPointToSeg(p,a,b){
-    const ax=a[0], ay=a[1], bx=b[0], by=b[1];
-    const abx=bx-ax, aby=by-ay; const apx=p.x-ax, apy=p.y-ay; const ab2=abx*abx+aby*aby; if(ab2===0) return null;
-    let t=(apx*abx+apy*aby)/ab2; if(t<0||t>1) return null; const x=ax+t*abx, y=ay+t*aby; const d=dist(p.x,p.y,x,y); return {x,y,d};
-  }
-  function projectToSegments(x,y){
-    const segs=candidates._segs||[]; let best=null, bestd=state.snapTol+1;
-    for(const s of segs){ const pr=projectPointToSeg({x,y}, s[0], s[1]); if(pr && pr.d<bestd){ best=pr; bestd=pr.d; } }
-    return best && best.d<=state.snapTol?{x:best.x,y:best.y}:null;
-  }
-  function snapPointWithProjection(x,y){ return snapPoint(x,y) || projectToSegments(x,y); }
-
-  function clampToBoard(pts, W, H){
-    const bb=bbox(pts); let dx=0, dy=0;
-    if(bb.x<0) dx=-bb.x; if(bb.y<0) dy=-bb.y;
-    if(bb.x+bb.w>W) dx = W-(bb.x+bb.w);
-    if(bb.y+bb.h>H) dy = H-(bb.y+bb.h);
-    return pts.map(p=>[p[0]+dx, p[1]+dy]);
-  }
-
-  // ========= 直線分割（始点固定＆グリッド吸着） =========
-  function nearestFrame(x,y){
-    const W=board.clientWidth, H=board.clientHeight;
-    const dTop=Math.abs(y-0), dBottom=Math.abs(H-y), dLeft=Math.abs(x-0), dRight=Math.abs(W-x);
-    const m=Math.min(dTop,dBottom,dLeft,dRight);
-    if(m===dTop) return {x:x,y:0,d:m,axis:'h',value:0};
-    if(m===dBottom) return {x:x,y:H,d:m,axis:'h',value:H};
-    if(m===dLeft) return {x:0,y:y,d:m,axis:'v',value:0};
-    return {x:W,y:y,d:m,axis:'v',value:W};
-  }
-
-  function splitSnapOnce(p){
-    const tol=state.snapTol;
-    for(const sh of state.shapes){
-      for(const v of sh.points){
-        if(dist(p.x,p.y,v[0],v[1])<=tol) return {pt:{x:v[0],y:v[1]}, lock:null, anchor:'vertex'};
-      }
-    }
-    if(state.splitGridSnap){
-      const g=state.gridPx, off = state.gridOffset||0;
-      const gx=Math.round((p.x-off)/g)*g+off, gy=Math.round((p.y-off)/g)*g+off;
-      const dx=Math.abs(p.x-gx), dy=Math.abs(p.y-gy);
-      if(Math.hypot(dx,dy)<=tol) return {pt:{x:gx,y:gy}, lock:null, anchor:'gridPoint'};
-      if(dx<=tol && dx<=dy) return {pt:{x:gx,y:p.y}, lock:{axis:'v',value:gx}, anchor:'gridLine'};
-      if(dy<=tol) return {pt:{x:p.x,y:gy}, lock:{axis:'h',value:gy}, anchor:'gridLine'};
-    }
-    const frame=nearestFrame(p.x,p.y);
-    if(frame && frame.d<=tol) return {pt:{x:frame.x,y:frame.y}, lock:{axis:frame.axis,value:frame.value}, anchor:'frame'};
-    return {pt:{x:p.x,y:p.y}, lock:null, anchor:'free'};
-  }
-  function splitSnapMove(p, existingLock, anchor, isShift){
-    const tol=state.snapTol;
-    if(existingLock){
-      if(existingLock.axis==='h') return {pt:{x:p.x,y:existingLock.value}, lock:existingLock};
-      if(existingLock.axis==='v') return {pt:{x:existingLock.value,y:p.y}, lock:existingLock};
-    }
-    for(const sh of state.shapes){
-      for(const v of sh.points){
-        if(dist(p.x,p.y,v[0],v[1])<=tol) return {pt:{x:v[0],y:v[1]}, lock:null};
-      }
-    }
-    if(state.splitGridSnap){
-      const g=state.gridPx, off = state.gridOffset||0;
-      const gx=Math.round((p.x-off)/g)*g+off, gy=Math.round((p.y-off)/g)*g+off;
-      const dx=Math.abs(p.x-gx), dy=Math.abs(p.y-gy);
-      if(Math.hypot(dx,dy)<=tol) return {pt:{x:gx,y:gy}, lock:null};
-      if(anchor!=='vertex' || isShift){
-        if(dx<=tol && dx<=dy) return {pt:{x:gx,y:p.y}, lock:{axis:'v',value:gx}};
-        if(dy<=tol)           return {pt:{x:p.x,y:gy}, lock:{axis:'h',value:gy}};
-      }
-    }
-    if(anchor!=='vertex' || isShift){
-      const frame=nearestFrame(p.x,p.y);
-      if(frame && frame.d<=tol) return {pt:{x:frame.x,y:frame.y}, lock:{axis:frame.axis,value:frame.value}};
-    }
-    return {pt:{x:p.x,y:p.y}, lock:null};
-  }
-
-  // 始点ピン（SVG）
-  function updateSplitPin(a){
-    const hl=document.getElementById('handlesLayer');
-    if(!hl) return;
-    if(!a){
-      if(state.splitPinEl){ state.splitPinEl.remove(); state.splitPinEl=null; }
-      return;
-    }
-    if(!state.splitPinEl){
-      state.splitPinEl = el('circle', { r:4, fill:'#ef4444', opacity:'1.0' });
-      hl.appendChild(state.splitPinEl);
-    }
-    state.splitPinEl.setAttribute('cx', a.x);
-    state.splitPinEl.setAttribute('cy', a.y);
-  }
-
-  function drawSplitPreview(a,b){
-    ensureLayers();
-    const hl=document.getElementById('handlesLayer');
-    if(state.splitPreview) state.splitPreview.remove();
-    const line=el('path',{d:`M ${a.x} ${a.y} L ${b.x} ${b.y}`, stroke:'#ef4444','stroke-dasharray':'6 4', fill:'none'});
-    hl.appendChild(line); state.splitPreview=line;
-    updateSplitPin(a);
-  }
-
-  // ========= UI ヘルパ =========
-  function setTool(name){
-    state.tool = name;
-    [...ui.toolbar.querySelectorAll('button')].forEach(x=>x.classList.remove('active'));
-    const btn = ui.toolbar.querySelector(`button[data-tool="${name}"]`);
-    if (btn) btn.classList.add('active');
-    setCanvasInteractivity();
-    updateModeBadge();
-    redrawCursorOverlay();
-  }
-  function selectShape(sh){ state.sel=sh; state.selNoteId=null; if(sh) ui.color.value=sh.fill; render(); }
-
-  // ====== board 側 pointerdown ======
-  board.addEventListener('pointerdown', (e)=>{
-    if(state.tool==='draw' || state.tool==='erase') return;
-    const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
-
-    const target=e.target;
-    const id=target && target.dataset ? target.dataset.id : null;
-    const isVHandle=target.classList && target.classList.contains('handle');
-    const isBBoxHandle=target.classList && target.classList.contains('bbox-handle');
-
-    if(state.tool==='text'){ addNote(p.x, p.y); return; }
-    if(state.tool==='splitLine'){
-      const s=splitSnapOnce(p);
-      state.dragging={mode:'split', a:s.pt, b:s.pt, lock:s.lock, anchor:s.anchor};
-      drawSplitPreview(state.dragging.a, state.dragging.b);
-      return;
-    }
-
-    if(state.sel && !state.vertexEdit && isBBoxHandle){
-      if(state.lockSize) return;
-      const bb=bbox(state.sel.points);
-      state.dragging={mode:'bbox', sh:state.sel, corner:target.dataset.corner, initBB:bb, initPts: state.sel.points.map(q=>q.slice())};
-      return;
-    }
-    if(isVHandle){
-      if(state.lockSize) return;
-      state.dragging={mode:'vertex', sh:state.sel, vidx:+target.getAttribute('data-vidx'), initPts: state.sel.points.map(q=>q.slice())};
-      return;
-    }
-
-    state.sel=null; state.selNoteId=null; updateNoteHeaderPanel(); render();
-
-    if(id){
-      const sh=state.shapes.find(s=>s.id===id);
-      selectShape(sh);
-
-      // “指で掴んだ位置”と“最も近い頂点”の差を保存して、移動中はずっと維持
-      const initPts = sh.points.map(q=>q.slice());
-      let nearest = 0, best=1e9;
-      for(let i=0;i<initPts.length;i++){
-        const d = dist(p.x,p.y, initPts[i][0], initPts[i][1]); if(d<best){best=d; nearest=i;}
-      }
-      const anchorStart = [initPts[nearest][0], initPts[nearest][1]];
-      const sStart = snapPointWithProjection(p.x, p.y) || {x:p.x, y:p.y};
-      const anchorOffset = { ox: anchorStart[0] - sStart.x, oy: anchorStart[1] - sStart.y };
-
-      state.dragging={mode:'move', sh, initPts, anchorStart, anchorOffset};
-    }
-  });
-
-  // ====== drawCanvas 側 pointer 入力（ペン/消しゴム） ======
-  drawCanvas.addEventListener('pointerdown', (e)=>{
-    const p = pt(e);
-    state.pointerPos = p; redrawCursorOverlay();
-    if (state.tool==='draw'){
-      e.preventDefault();
-      state.dragging={mode:'draw', stroke:{id:uid(), color: state.penColor, pts:[[p.x,p.y]]}};
-      try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
-      redrawCanvas();
-      return;
-    }
-    if (state.tool==='erase'){
-      e.preventDefault();
-      handleEraserDown(e, p);
-      return;
-    }
-  }, {passive:false});
-
-  drawCanvas.addEventListener('pointermove', (e)=>{
-    const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
-    if(!state.dragging) { updateStatusFromEvent(e); return; }
-    if(state.dragging.mode==='draw'){
-      e.preventDefault();
-      addStrokePoint(p);
-      redrawCanvas();
-    }else if(state.dragging.mode==='erasePixel'){
-      e.preventDefault();
-      addErasePoint(p);
-      redrawCanvas();
-    }
-    updateStatusFromEvent(e);
-  }, {passive:false});
-
-  drawCanvas.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
-  drawCanvas.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
-
-  // ====== board 側 pointermove（図形/分割/付箋） ======
-  board.addEventListener('pointermove', (e)=>{
-    const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
-    if(!state.dragging) { updateStatusFromEvent(e); return; }
-    const W=board.clientWidth, H=board.clientHeight;
-
-    if(state.dragging.mode==='move'){
-      const {sh, initPts, anchorStart, anchorOffset} = state.dragging;
-
-      // 現在のポインタをスナップ
-      const sNow = snapPointWithProjection(p.x, p.y) || {x:p.x, y:p.y};
-
-      // “開始時の指と基準頂点の差分”を維持したまま移動
-      const dx = (sNow.x + anchorOffset.ox) - anchorStart[0];
-      const dy = (sNow.y + anchorOffset.oy) - anchorStart[1];
-
-      // 初期頂点群から絶対平行移動（累積誤差なし）
-      const moved = initPts.map(q=>[q[0]+dx, q[1]+dy]);
-
-      // 見た目グリッドのオフセットで丸め（0.5px を考慮）
-      const g = state.gridPx, off = state.gridOffset || 0, eps = 0.25; // px
-      sh.points = moved.map(([x,y])=>{
-        const rx = Math.round((x-off)/g)*g + off;
-        const ry = Math.round((y-off)/g)*g + off;
-        return [
-          Math.abs(x-rx) <= eps ? rx : x,
-          Math.abs(y-ry) <= eps ? ry : y
-        ];
-      });
-
-      sh.points = clampToBoard(sh.points, W, H);
-      render();
-
-    }else if(state.dragging.mode==='bbox'){
-      const {sh,corner,initBB,initPts}=state.dragging;
-      resizeByBBoxSnap(sh, corner, initBB, initPts, {x:p.x, y:p.y});
-      sh.points = clampToBoard(sh.points, W, H);
-      render();
-
-    }else if(state.dragging.mode==='vertex'){
-      const { sh, vidx, initPts } = state.dragging;
-
-      // スナップ候補（頂点/中点/辺/グリッド）
-      const s = snapPointWithProjection(p.x, p.y) || { x:p.x, y:p.y };
-
-      // 見た目のグリッドに“完全吸着”（0.5px補正あり）
-      const g   = state.gridPx;
-      const off = state.gridOffset || 0;
-      const gx  = Math.round((s.x - off) / g) * g + off;
-      const gy  = Math.round((s.y - off) / g) * g + off;
-
-      // ドラッグ開始時の配列をベースに、当該頂点だけを更新
-      const pts = initPts.slice();
-      pts[vidx] = [gx, gy];
-      sh.points = pts;
-      render();
-
-    }else if(state.dragging.mode==='noteMove'){
-      const {note,start,ox,oy}=state.dragging;
-      note.x = ox + (p.x-start.x);
-      note.y = oy + (p.y-start.y);
-      renderNotes();
-
-    }else if(state.dragging.mode==='noteResize'){
-      const {note,start,ow,oh}=state.dragging;
-      note.w = Math.max(80, ow + (p.x-start.x));
-      note.h = Math.max(40, oh + (p.y-start.y));
-      renderNotes();
-
-    }else if(state.dragging.mode==='split'){
-      const isShift=!!e.shiftKey;
-      const snap=splitSnapMove(p, state.dragging.lock, state.dragging.anchor, isShift);
-      state.dragging.b=snap.pt;
-      if(state.dragging.lock==null && snap.lock) state.dragging.lock=snap.lock;
-      drawSplitPreview(state.dragging.a, state.dragging.b);
-    }
-    updateStatusFromEvent(e);
-  }, {passive:false});
-
-  // 終了処理（共通）
-  board.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
-  board.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
-  window.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
-  window.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
-  window.addEventListener('blur', onPointerUpOrCancel);
-
-  function onPointerUpOrCancel(e){
-    if(!state.dragging) return;
-    const m=state.dragging.mode;
-    if(m==='move' || m==='vertex' || m==='bbox' || m==='noteMove' || m==='noteResize'){ pushHistory(); }
-    if(m==='draw'){ finishStroke(); pushHistory(); redrawCanvas(); }
-    if(m==='erasePixel'){ finishEraseStroke(); pushHistory(); redrawCanvas(); }
-    if(m==='split'){ finishSplit(); pushHistory(); }
-    if(state.pointerCaptured){ try{ drawCanvas.releasePointerCapture(e.pointerId); }catch(_){ } state.pointerCaptured=false; }
-    state.dragging=null;
-    redrawCursorOverlay();
-  }
-
-  // bbox リサイズ（絶対吸着でズレ累積なし）
-  function resizeByBBoxSnap(sh, corner, initBB, initPts, curPt){
-    const g = state.gridPx, off = state.gridOffset || 0;
-
-    // 初期BBox辺位置
-    const L0 = initBB.x, T0 = initBB.y, R0 = initBB.x + initBB.w, B0 = initBB.y + initBB.h;
-
-    // 現在ポインタをグリッドへ
-    const gx = Math.round((curPt.x - off)/g)*g + off;
-    const gy = Math.round((curPt.y - off)/g)*g + off;
-
-    // 可動辺を更新
-    let L=L0, T=T0, R=R0, B=B0;
-    if(corner.includes('w')) L = gx;
-    if(corner.includes('e')) R = gx;
-    if(corner.includes('n')) T = gy;
-    if(corner.includes('s')) B = gy;
-
-    // 比率でスケール
-    const sx = (R - L) / (R0 - L0 || 1);
-    const sy = (B - T) / (B0 - T0 || 1);
-
-    const ox=L0, oy=T0;
-    const mapped = initPts.map(([x,y])=>[ L + (x-ox)*sx, T + (y-oy)*sy ]);
-
-    sh.points = mapped;
-  }
-
-  function updateStatus(x,y, snapLabel){
-    ui.statusBar.textContent = `(x: ${fmtLen(x)} cm, y: ${fmtLen(y)} cm) | Snap: ${snapLabel||'—'}`;
-  }
-  function classifySnap(x,y){
-    const tol=state.snapTol;
-    const segs=[]; const mids=[];
-    for(const sh of state.shapes){
-      const n=sh.points.length;
-      for(let i=0;i<n;i++){
-        const a=sh.points[i], b=sh.points[(i+1)%n];
-        if(dist(x,y,a[0],a[1])<=tol) return 'Vertex';
-        mids.push([(a[0]+b[0])/2,(a[1]+b[1])/2]);
-        segs.push([a,b]);
-      }
-    }
-    for(const m of mids){ if(dist(x,y,m[0],m[1])<=tol) return 'Midpoint'; }
-    for(const s of segs){ const pr=projectPointToSeg({x,y}, s[0], s[1]); if(pr && pr.d<=tol) return 'Edge'; }
-    const off = state.gridOffset || 0;
-    const gx = Math.round((x - off)/state.gridPx)*state.gridPx + off;
-    const gy = Math.round((y - off)/state.gridPx)*state.gridPx + off;
-    const dx=Math.abs(x-gx), dy=Math.abs(y-gy);
-    if(Math.hypot(dx,dy)<=tol) return 'GridPt';
-    if(dx<=tol || dy<=tol) return 'GridLine';
-    const frame=nearestFrame(x,y); if(frame && frame.d<=tol) return 'Frame';
-    return 'Free';
-  }
-  function updateStatusFromEvent(e){
-    const p = (e.target===drawCanvas || e.target===board) ? pt(e) : null;
-    if(!p){ return; }
-    updateStatus(p.x, p.y, classifySnap(p.x,p.y));
-  }
-
-  // ========= 手書き & カーソルオーバーレイ =========
-  function setCanvasInteractivity(){
-    const active = (state.tool==='draw' || state.tool==='erase');
-    drawCanvas.style.pointerEvents = active ? 'auto' : 'none';
-    if (state.tool==='draw'){
-      drawCanvas.style.cursor = pencilCursor();
-    } else {
-      drawCanvas.style.cursor = 'crosshair';
-    }
-  }
-  function pencilCursor(){
-    const svg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none">
-      <path d="M2 22l5.5-1.5L20 8 16 4 4.5 16.5 2 22z" fill="#444"/>
-      <path d="M16 4l4 4" stroke="#222" stroke-width="2"/>
-    </svg>`);
-    return `url("data:image/svg+xml,${svg}") 0 16, crosshair`;
-  }
-
-  function redrawCanvas(){
-  const W=drawCanvas.width/state.dpr, H=drawCanvas.height/state.dpr;
-  ctx.clearRect(0,0,W,H);
-
-  // タイムラインを順番に再生
-  for(const ev of state.timeline){
-    if(ev.type==='draw'){
-      const s = ev.stroke;
-      if(!s || !s.pts?.length) continue;
-      ctx.save();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.beginPath();
-      ctx.lineWidth = 2;
-      ctx.lineJoin = 'round';
-      ctx.lineCap  = 'round';
-      ctx.strokeStyle = s.color;
-      ctx.moveTo(s.pts[0][0], s.pts[0][1]);
-      for(let i=1;i<s.pts.length;i++) ctx.lineTo(s.pts[i][0], s.pts[i][1]);
-      ctx.stroke();
-      ctx.restore();
-    }else if(ev.type==='erase'){
-      const e = ev.mask;
-      if(!e || !e.pts?.length) continue;
-      ctx.save();
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = e.radius;
-      ctx.lineCap   = 'round';
-      ctx.lineJoin  = 'round';
-      ctx.beginPath();
-      ctx.moveTo(e.pts[0][0], e.pts[0][1]);
-      for(let i=1;i<e.pts.length;i++) ctx.lineTo(e.pts[i][0], e.pts[i][1]);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-
-  // ドラッグ中プレビューは最後に重ねる（確定前なので未来扱い）
-  if(state.dragging && state.dragging.mode==='draw' && state.dragging.stroke){
-    const s=state.dragging.stroke;
-    if(s.pts.length){
-      ctx.save();
-      ctx.globalCompositeOperation='source-over';
-      ctx.beginPath(); ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
-      ctx.moveTo(s.pts[0][0], s.pts[0][1]); for(let i=1;i<s.pts.length;i++) ctx.lineTo(s.pts[i][0], s.pts[i][1]);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-  if(state.dragging && state.dragging.mode==='erasePixel' && state.dragging.eraser){
-    const e=state.dragging.eraser;
-    if(e.pts.length){
-      ctx.save();
-      ctx.globalCompositeOperation='destination-out';
-      ctx.lineWidth=e.radius; ctx.lineCap='round'; ctx.lineJoin='round';
-      ctx.beginPath(); ctx.moveTo(e.pts[0][0], e.pts[0][1]); for(let i=1;i<e.pts.length;i++) ctx.lineTo(e.pts[i][0], e.pts[i][1]);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-}
-
-  function addStrokePoint(p){ state.dragging.stroke.pts.push([p.x,p.y]); }
-  function finishStroke(){
-  state.timeline.push({ type:'draw', stroke: state.dragging.stroke });
-}
-
-  function handleEraserDown(e, p){
-    const m=state.eraserMode;
-    if(m==='clear'){ state.timeline=[]; redrawCanvas(); pushHistory(); return; }
-    if(m==='object'){ eraseNearestObject(p); redrawCanvas(); pushHistory(); return; }
-    if(m==='pixel'){
-      state.dragging={mode:'erasePixel', eraser:{pts:[[p.x,p.y]], radius:14}};
-      try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
-      redrawCanvas();
-      return;
-    }
-  }
-  function addErasePoint(p){
-    if(state.dragging?.mode!=='erasePixel') return;
-    state.dragging.eraser.pts.push([p.x,p.y]);
-  }
-  
-  function finishEraseStroke(){
-  if(state.dragging?.mode!=='erasePixel') return;
-  state.timeline.push({ type:'erase', mask: state.dragging.eraser });
-	}
-
-  function eraseNearestObject(p){
-  // タイムラインから直近の draw を探索し、最短距離のものを除去
-  let bestd = 1e9, bestIndex = -1;
-  for(let i=state.timeline.length-1; i>=0; i--){
-    const ev = state.timeline[i];
-    if(ev.type!=='draw') continue;
-    const d = polylineDist(ev.stroke.pts, p);
-    if(d < bestd){ bestd = d; bestIndex = i; }
-    // そこそこ近いのが見つかったら早期終了してもいいが、ここは正確に全部見る
-  }
-  if(bestIndex>=0) state.timeline.splice(bestIndex, 1);
-	}
-  function polylineDist(pts, p){
-    let bd=1e9; for(let i=1;i<pts.length;i++){ bd=Math.min(bd, pointSegDist(p,{x:pts[i-1][0],y:pts[i-1][1]},{x:pts[i][0],y:pts[i][1]})); }
-    return bd;
-  }
-  function pointSegDist(p,a,b){
-    const pr=projectPointToSeg(p,[a.x,a.y],[b.x,b.y]); return pr?pr.d:1e9;
-  }
-
-  // ========= 形状判定（ラベル用） =========
-  function almostEq(a,b,eps=1e-2){ return Math.abs(a-b)<=eps; }
-  function vsub(a,b){ return [a[0]-b[0], a[1]-b[1]]; }
-  function vdot(a,b){ return a[0]*b[0] + a[1]*b[1]; }
-  function vcross(a,b){ return a[0]*b[1] - a[1]*b[0]; }
-  function vlen(a){ return Math.hypot(a[0],a[1]); }
-  function isParallel(u,v,eps=1e-2){ return Math.abs(vcross(u,v))<=eps; }
-  function isPerp(u,v,eps=1e-2){ return Math.abs(vdot(u,v))<=eps; }
-
-  function autoType(points){
-    const n=points.length;
-    if(n===3) return 'tri';
-    if(n===4){
-      const p=points;
-      const v0=vsub(p[1],p[0]);
-      const v1=vsub(p[2],p[1]);
-      const v2=vsub(p[3],p[2]);
-      const v3=vsub(p[0],p[3]);
-      const L=[vlen(v0), vlen(v1), vlen(v2), vlen(v3)];
-      const allEqual = almostEq(L[0],L[1]) && almostEq(L[1],L[2]) && almostEq(L[2],L[3]);
-      const para = isParallel(v0,v2) && isParallel(v1,v3);
-      const rect = para && isPerp(v0,v1);
-      const square = rect && allEqual;
-      const rhombus = para && allEqual && !rect;
-      const trapezoid = !para && (isParallel(v0,v2) || isParallel(v1,v3));
-      if(square) return 'square';
-      if(rect) return 'rect';
-      if(rhombus) return 'rh';
-      if(para) return 'para';
-      if(trapezoid) return 'trap';
-      return 'quad';
-    }
-    return `poly${n}`;
-  }
-  function labelByType(t){
-    if(t==='tri') return '三角形';
-    if(t==='square') return '正方形';
-    if(t==='rect') return '長方形';
-    if(t==='rh') return 'ひし形';
-    if(t==='para') return '平行四辺形';
-    if(t==='trap') return '台形';
-    if(t==='quad') return '四角形';
-    if(t.startsWith('poly')){ const n=+t.slice(4); return `多角形（${n}角形）`; }
-    return '図形';
-  }
-
-  // ========= 分割（複数図形対応 + 自動ラベル） =========
-  function lineIntersectsPolygon(a,b, poly){
-    let cnt=0; for(let i=0;i<poly.length;i++){ const P=poly[i], Q=poly[(i+1)%poly.length]; const I=segI([a.x,a.y],[b.x,b.y],P,Q); if(I) cnt++; if(cnt>=2) return true; }
-    return false;
-  }
-  function vertexIndexOnPolygon(poly, p, tolPx){ for(let i=0;i<poly.length;i++){ if(dist(poly[i][0],poly[i][1],p.x,p.y)<=tolPx) return i; } return -1; }
-  function cleanupCycle(arr){ if(arr.length>2 && dist(arr[0][0],arr[0][1],arr[arr.length-1][0],arr[arr.length-1][1])<0.5) arr.pop(); }
-  function splitByVertexIndices(poly, ia, ib){
-    const n=poly.length; if(n<3) return null; const path1=[], path2=[];
-    for(let k=0;k<=(ib-ia+n)%n;k++) path1.push( poly[(ia+k)%n] );
-    for(let k=0;k<=(ia-ib+n)%n;k++) path2.push( poly[(ib+k)%n] );
-    if(dist(poly[ia][0],poly[ia][1],poly[ib][0],poly[ib][1])>0.5){ path1.push(poly[ia]); path2.push(poly[ib]); }
-    cleanupCycle(path1); cleanupCycle(path2);
-    if(path1.length>=3 && path2.length>=3) return [path1,path2];
-    return null;
-  }
-  function splitPolygonByLine(pts, a, b){
-    const left=[], right=[]; const n=pts.length; if(n<3) return null; const EPS=1e-6;
-    function isLeft(a,b,p){ return (b.x-a.x)*(p[1]-a.y) - (b.y-a.y)*(p[0]-a.x); }
-    function pushUniq(arr, p){ const m=arr.length; if(!m || dist(arr[m-1][0],arr[m-1][1],p[0],p[1])>0.5) arr.push([p[0],p[1]]); }
-    function lineIntersectSeg(a,b,P,Q){ return segI([a.x,a.y],[b.x,b.y],P,Q); }
-    for(let i=0;i<n;i++){
-      const P=pts[i], Q=pts[(i+1)%n];
-      const sP=isLeft(a,b,P), sQ=isLeft(a,b,Q);
-      if(sP>=-EPS) pushUniq(left, P); if(sP<=EPS) pushUniq(right, P);
-      if((sP>EPS && sQ<-EPS) || (sP<-EPS && sQ>EPS)){
-        const I=lineIntersectSeg(a,b,P,Q); if(I){ const Ipt=[I.x,I.y]; pushUniq(left,Ipt); pushUniq(right,Ipt); }
-      }else if(Math.abs(sQ)<=EPS && i<n-1){ pushUniq(left,Q); pushUniq(right,Q); }
-    }
-    cleanupCycle(left); cleanupCycle(right);
-    if(left.length>=3 && right.length>=3) return [left,right];
-    return null;
-  }
-  function finishSplit(){
-    const {a,b}=state.dragging;
-    if(!a || !b){ if(state.splitPreview) state.splitPreview.remove(); updateSplitPin(null); setTool('edit'); render(); return; }
-    for(let t=state.shapes.length-1; t>=0; t--){
-      const sh=state.shapes[t];
-      if(!lineIntersectsPolygon(a,b, sh.points)) continue;
-
-      const viA=vertexIndexOnPolygon(sh.points, a, 1.0);
-      const viB=vertexIndexOnPolygon(sh.points, b, 1.0);
-      let res=null;
-      if(viA!==-1 && viB!==-1 && viA!==viB) res=splitByVertexIndices(sh.points, viA, viB);
-      if(!res) res=splitPolygonByLine(sh.points, a, b);
-      if(res && res.length===2){
-        const base={...sh};
-        state.shapes.splice(t,1);
-        const s1Pts=res[0], s2Pts=res[1];
-        const s1Type=autoType(s1Pts);
-        const s2Type=autoType(s2Pts);
-        state.shapes.splice(t,0,
-          {...base,id:uid(),type:s1Type,points:s1Pts},
-          {...base,id:uid(),type:s2Type,points:s2Pts}
-        );
-      }
-    }
-    if(state.splitPreview) state.splitPreview.remove();
-    updateSplitPin(null);
-    setTool('edit');
-    render();
-  }
-
-  // ========= ラベル/単位 & UI =========
-  function pxToCm(px){ return px/pxPerCm; }
-  function fmtLen(px){ return pxToCm(px).toFixed(2); }
-  function updateBadges(){
-    const sh=state.sel;
-    if(!sh){
-      ui.selType.textContent='—';
-      ui.w.textContent='—'; ui.h.textContent='—'; ui.vh.textContent='—';
-      ui.wLabel.textContent='幅'; ui.hLabel.textContent='高さ';
-      return;
-    }
-    const t = autoType(sh.points);
-    ui.selType.textContent = labelByType(t);
-    const bb=bbox(sh.points);
-    ui.w.textContent=fmtLen(bb.w); ui.h.textContent=fmtLen(bb.h);
-    document.getElementById('u1').textContent='cm'; document.getElementById('u2').textContent='cm';
-    ui.vh.textContent=`${sh.points.length}`;
-
-    if(t==='tri' || t==='para'){ ui.wLabel.textContent='底辺'; ui.hLabel.textContent='高さ'; }
-    else if(t==='rect' || t==='square'){ ui.wLabel.textContent='横'; ui.hLabel.textContent='たて'; }
-    else { ui.wLabel.textContent='幅'; ui.hLabel.textContent='高さ'; }
-  }
-
-  function updateNoteHeaderPanel(){
-    const nid = state.selNoteId;
-    if(!nid){ ui.notePanel.style.display='none'; return; }
-    const note = state.notes.find(n=>n.id===nid);
-    if(!note){ ui.notePanel.style.display='none'; return; }
-    ui.notePanel.style.display='flex';
-    ui.noteHdrColor.value = note.color || 'yellow';
-    ui.noteHdrSize.value  = note.font  || 'm';
-  }
-  ui.noteHdrColor.addEventListener('change', ()=>{
-    const nid=state.selNoteId; if(!nid) return;
-    const n=state.notes.find(x=>x.id===nid); if(!n) return;
-    n.color=ui.noteHdrColor.value; pushHistory(); render();
-  });
-  ui.noteHdrSize.addEventListener('change', ()=>{
-    const nid=state.selNoteId; if(!nid) return;
-    const n=state.notes.find(x=>x.id===nid); if(!n) return;
-    n.font=ui.noteHdrSize.value; pushHistory(); render();
-  });
-
-  function updateModeBadge(){
-    const m = state.tool;
-    let txt = '編集/移動';
-    if(m==='draw'){ txt = `ペン（${penColorLabel(state.penColor)}）`; }
-    else if(m==='erase'){
-      const label = (state.eraserMode==='pixel'?'ピクセル': state.eraserMode==='object'?'オブジェクト':'全消し');
-      txt = `消しゴム（${label}）`;
-    }
-    else if(m==='splitLine'){ txt = `分割（吸着${state.splitGridSnap?'ON':'OFF'}）`; }
-    else if(m==='text'){ txt = 'ふせん配置'; }
-    ui.modeBadge.textContent = txt;
-  }
-  function penColorLabel(hex){
-    const map = {
-      '#1f2937':'黒','#ef4444':'赤','#2563eb':'青','#16a34a':'緑',
-      '#ffffff':'白','#ffb347':'薄橙','#87cefa':'水色','#90ee90':'黄緑'
-    };
-    return map[hex] || hex;
-  }
-
-  // ========= 履歴 =========
-  function snapshot(){
-  return JSON.stringify({
-    shapes:state.shapes,
-    notes:state.notes,
-    timeline:state.timeline
-  });
-}
-function restore(json){
-  const s=JSON.parse(json);
-  state.shapes = s.shapes || [];
-  state.notes  = s.notes  || [];
-  // 後方互換: 古い保存形式(drawings/eraseStrokes)が来たら timeline に変換
-  if(Array.isArray(s.timeline)){
-    state.timeline = s.timeline;
-  }else{
-    const tl = [];
-    if(Array.isArray(s.drawings))     for(const d of s.drawings)     tl.push({type:'draw',  stroke:d});
-    if(Array.isArray(s.eraseStrokes)) for(const e of s.eraseStrokes) tl.push({type:'erase', mask:e});
-    state.timeline = tl;
-  }
-  drawGrid(); render();
-}
-  function pushHistory(){ state.history.push(snapshot()); state.future=[]; }
-  ui.undo.addEventListener('click', ()=>{ if(!state.history.length) return; const cur=snapshot(); const prev=state.history.pop(); state.future.push(cur); restore(prev); });
-  ui.redo.addEventListener('click', ()=>{ if(!state.future.length) return; const cur=snapshot(); const next=state.future.pop(); state.history.push(cur); restore(next); });
-
-  // ========= 保存・読み込み・リセット =========
-  ui.exportBtn.addEventListener('click', ()=>{
-    const data=snapshot();
-    const blob=new Blob([data],{type:'application/json'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='board.json'; a.click(); URL.revokeObjectURL(a.href);
-  });
-  document.getElementById('importLabel').addEventListener('click', ()=> ui.importInput.click());
-  ui.importInput.addEventListener('change', async (e)=>{
-    const f=e.target.files[0]; if(!f) return; const tx=await f.text(); restore(tx); pushHistory();
-  });
-  ui.resetBtn.addEventListener('click', ()=>{ location.reload(); });
-
-  // ========= その他UI =========
-  ui.toolbar.addEventListener('click', (e)=>{
-    const b=e.target.closest('button'); if(!b) return;
-    const add=b.getAttribute('data-add'); const tool=b.getAttribute('data-tool');
-    [...ui.toolbar.querySelectorAll('button')].forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    if(add){ addShape(add); return; }
-    if(tool){ setTool(tool); render(); return; }
-  });
-  ui.gridSize.addEventListener('change', ()=>{
-    const cm=parseInt(ui.gridSize.value,10)||3;
-    state.gridPx=pxPerCm*cm;
-    drawGrid(); render(); redrawCursorOverlay();
-  });
-  ui.splitGridSnap.addEventListener('change', ()=> { state.splitGridSnap=ui.splitGridSnap.checked; updateModeBadge(); });
-  ui.vertexEdit.addEventListener('change', ()=>{ state.vertexEdit=ui.vertexEdit.checked; render(); });
-
-  ui.color.addEventListener('input', ()=>{ if(state.sel){ state.sel.fill=ui.color.value; state.sel.stroke=ui.color.value; pushHistory(); render(); } });
-  ui.lockSize.addEventListener('change', ()=> state.lockSize=ui.lockSize.checked );
-  ui.dup.addEventListener('click', ()=>{ if(!state.sel) return; const c=JSON.parse(JSON.stringify(state.sel)); c.id=uid(); c.points=c.points.map(p=>[p[0]+state.gridPx/6,p[1]+state.gridPx/6]); state.shapes.push(c); selectShape(c); pushHistory(); });
-  ui.front.addEventListener('click', ()=>{ if(!state.sel) return; const i=state.shapes.findIndex(s=>s.id===state.sel.id); state.shapes.push(...state.shapes.splice(i,1)); pushHistory(); render(); });
-  ui.back.addEventListener('click', ()=>{ if(!state.sel) return; const i=state.shapes.findIndex(s=>s.id===state.sel.id); state.shapes.unshift(...state.shapes.splice(i,1)); pushHistory(); render(); });
-  ui.rotL.addEventListener('click', ()=> rotateSel(-15));
-  ui.rotR.addEventListener('click', ()=> rotateSel(15));
-  ui.flipH.addEventListener('click', ()=> flipSel(true,false));
-  ui.flipV.addEventListener('click', ()=> flipSel(false,true));
-  ui.deleteShape.addEventListener('click', ()=>{ if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); } });
-
-  // サイドバー折りたたみ
-  ui.asideTab.addEventListener('click', ()=>{
-    document.body.classList.add('aside-collapsed');
-    setTimeout(()=>{ ensureLayout(); drawGrid(); render(); }, 10);
-  });
-  document.addEventListener('keydown', (e)=>{
-    // Escでサイドバー再表示
-    if(e.key==='Escape'){ document.body.classList.remove('aside-collapsed'); ensureLayout(); drawGrid(); render(); }
-    // Deleteで削除
-    if(e.key==='Delete' && !document.activeElement.isContentEditable){
-      if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
-    }
-  });
-
-  // 変形
-  function rotateSel(deg){ if(!state.sel) return; const c=centroid(state.sel.points); const r=deg*Math.PI/180;
-    state.sel.points=state.sel.points.map(([x,y])=>{const dx=x-c.x, dy=y-c.y; return [c.x+dx*Math.cos(r)-dy*Math.sin(r), c.y+dx*Math.sin(r)+dy*Math.cos(r)];});
-    // 回転後も見た目グリッドに寄せる（近ければ）
-    const g=state.gridPx, off=state.gridOffset||0, eps=0.35;
-    state.sel.points=state.sel.points.map(([x,y])=>{
-      const rx=Math.round((x-off)/g)*g+off, ry=Math.round((y-off)/g)*g+off;
-      return [Math.abs(x-rx)<=eps?rx:x, Math.abs(y-ry)<=eps?ry:y];
-    });
-    pushHistory(); render();
-  }
-  function flipSel(h,v){ if(!state.sel) return; const c=centroid(state.sel.points);
-    state.sel.points=state.sel.points.map(([x,y])=>[ h?(2*c.x-x):x, v?(2*c.y-y):y ]);
-    // 反転後寄せ
-    const g=state.gridPx, off=state.gridOffset||0, eps=0.35;
-    state.sel.points=state.sel.points.map(([x,y])=>{
-      const rx=Math.round((x-off)/g)*g+off, ry=Math.round((y-off)/g)*g+off;
-      return [Math.abs(x-rx)<=eps?rx:x, Math.abs(y-ry)<=eps?ry:y];
-    });
-    pushHistory(); render();
-  }
-
-  // ========== テーマ切替 & ペン色パレット ==========
-
-  function applyPenPalette(theme){
-    // テーマに合わせて選択肢を作り直す
-    const light = [
-      {v:'#1f2937', label:'黒'},
-      {v:'#ef4444', label:'赤'},
-      {v:'#2563eb', label:'青'},
-      {v:'#16a34a', label:'緑'},
-    ];
-    const dark = [
-      {v:'#ffffff', label:'白'},
-      {v:'#ffb347', label:'薄橙'},
-      {v:'#87cefa', label:'水色'},
-      {v:'#90ee90', label:'黄緑'},
-    ];
-    const palette = theme==='dark' ? dark : light;
-    ui.penColor.innerHTML = '';
-    for(const opt of palette){
-      const o=document.createElement('option'); o.value=opt.v; o.textContent=opt.label; ui.penColor.appendChild(o);
-    }
-    // 既存値がパレット外なら1色目へ
-    const found = palette.some(p=>p.v===state.penColor);
-    if(!found){ state.penColor = palette[0].v; }
-    ui.penColor.value = state.penColor;
-  }
-
-  function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme', theme);
-  ui.themeToggle.textContent = (theme==='dark') ? '☀️ ライト' : '🌙 ダーク';
-  localStorage.setItem('board-theme', theme);
-
-  // パレット再構築
-  applyPenPalette(theme);
-
-  // state と UI の色選択を安全に同期
-  const opts = Array.from(ui.penColor.options).map(o=>o.value);
-  if(!opts.includes(state.penColor)){
-    // 現在色がパレット外なら先頭を採用
-    state.penColor = opts[0] || (theme==='dark' ? '#ffffff' : '#1f2937');
-  }
-  ui.penColor.value = state.penColor;
-
-  updateModeBadge();
-
-  // テーマ反映のたびにグリッドなどを描画更新
-  drawGrid();
-  render();
-  redrawCanvas?.();
-  redrawCursorOverlay?.();
-}
- 
-  ui.themeToggle.addEventListener('click', ()=>{
-    const cur = document.documentElement.getAttribute('data-theme') || 'light';
-    applyTheme(cur==='light' ? 'dark' : 'light');
-  });
-  // ========= ペンパレット（テーマ連動） =========
+    <aside id="aside">
+      <div id="asideTab">▶</div>
+      <div class="aside-head">ツール</div>
+      <div id="toolbar">
+        <button id="modeSelect">選択</button>
+        <button id="modeDraw">ペン</button>
+        <button id="modeErase">消し</button>
+        <button id="modeNote">付箋</button>
+        <button id="modeCut">カット</button>
+        <button id="modeRect">長方形</button>
+        <button id="modeTri">三角形</button>
+        <button id="modePara">平行四辺形</button>
+        <button id="modeTrap">台形</button>
+        <button id="modeRhomb">ひし形</button>
+      </div>
+    </aside>
+  </main>
+  <script>
+'use strict';
+const state={
+  gridCm:3,
+  gridPx:Math.round(37.795*3),
+  dpr:1,
+  shapes:[],
+  notes:[],
+  timeline:[],
+  penColor:'#000000',
+  undoStack:[],
+  redoStack:[],
+  snapTol:12,
+  mode:'select'
+};
+const ui={
+  gridLayer:document.getElementById('gridLayer'),
+  shapesLayer:document.getElementById('shapesLayer'),
+  handlesLayer:document.getElementById('handlesLayer'),
+  drawCanvas:document.getElementById('drawCanvas'),
+  cursorCanvas:document.getElementById('cursorCanvas'),
+  notesLayer:document.getElementById('notesLayer'),
+  aside:document.getElementById('aside'),
+  asideTab:document.getElementById('asideTab'),
+  penColor:document.getElementById('penColor'),
+  themeToggle:document.getElementById('themeToggle')
+};
+// ========= ペンパレット（テーマ連動） =========
 function applyPenPalette(theme){
-  // 既存の option を全削除
-  while (ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
+  // option削除
+  while(ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
 
-  // ライト: 黒, 赤, 青, 緑 / ダーク: 白, 明るい橙, 水色, 黄緑
-  const palette = (theme === 'dark')
+  const palette = (theme==='dark')
     ? [
-        {label:'白', value:'#ffffff'},
-        {label:'薄橙', value:'#ffb347'},
-        {label:'水色', value:'#87cefa'},
-        {label:'黄緑', value:'#90ee90'}
-      ]
+      {label:'白', value:'#ffffff'},
+      {label:'薄橙', value:'#ffb347'},
+      {label:'水色', value:'#87cefa'},
+      {label:'黄緑', value:'#90ee90'}
+    ]
     : [
-        {label:'黒', value:'#1f2937'},
-        {label:'赤', value:'#ef4444'},
-        {label:'青', value:'#2563eb'},
-        {label:'緑', value:'#16a34a'}
-      ];
-
-  // option 再構築
-  for (const c of palette){
-    const opt = document.createElement('option');
-    opt.value = c.value;
-    opt.textContent = c.label;
+      {label:'黒', value:'#1f2937'},
+      {label:'赤', value:'#ef4444'},
+      {label:'青', value:'#2563eb'},
+      {label:'緑', value:'#16a34a'}
+    ];
+  for(const c of palette){
+    const opt=document.createElement('option');
+    opt.value=c.value; opt.textContent=c.label;
     ui.penColor.appendChild(opt);
   }
 }
 
-// 変更イベントはそのまま
 ui.penColor.addEventListener('change', ()=>{
   state.penColor = ui.penColor.value;
-  updateModeBadge();
-  setCanvasInteractivity();
-  render();
 });
 
-  // ========== 起動（堅牢シーケンス） =========
-  function boot(){
-  ensureLayout();
+// ========= テーマ適用 =========
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  ui.themeToggle.textContent = (theme==='dark') ? '☀️' : '🌙';
+  localStorage.setItem('board-theme', theme);
 
-  // 起動時は3cmを強制
-  ui.gridSize.value = '3';
-  state.gridPx = pxPerCm * 3;
+  applyPenPalette(theme);
 
-  // テーマ初期化 → ペンパレットも更新
-  const saved = localStorage.getItem('board-theme');
-  const theme = saved ? saved : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
-  applyTheme(theme);
+  // stateとUI同期
+  const opts = Array.from(ui.penColor.options).map(o=>o.value);
+  if(!opts.includes(state.penColor)){
+    state.penColor = opts[0] || (theme==='dark' ? '#ffffff' : '#1f2937');
+  }
+  ui.penColor.value = state.penColor;
 
-  // ★テーマ適用直後にも明示的に描画しておく
   drawGrid();
   render();
   redrawCanvas();
   redrawCursorOverlay();
+}
 
-  const tick=()=>{
-    const r=board.getBoundingClientRect();
-    if(r.width<2 || r.height<2){ requestAnimationFrame(tick); return; }
-    drawGrid(); render(); redrawCursorOverlay();
-    ...
-  };
-  requestAnimationFrame(tick);
-	}
-  window.addEventListener('load', boot);
-</script>
+// ========= レイアウト調整 =========
+function ensureLayout(){
+  const W = document.getElementById('board').clientWidth;
+  const H = document.getElementById('board').clientHeight;
+  [ui.gridLayer,ui.shapesLayer,ui.handlesLayer].forEach(el=>{
+    el.setAttribute('width',W);
+    el.setAttribute('height',H);
+  });
+  [ui.drawCanvas, ui.cursorCanvas].forEach(cv=>{
+    cv.width = W*state.dpr;
+    cv.height = H*state.dpr;
+    cv.style.width = W+'px';
+    cv.style.height = H+'px';
+    const ctx=cv.getContext('2d');
+    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
+  });
+}
+
+// ========= グリッド描画 =========
+function drawGrid(){
+  const W=ui.gridLayer.clientWidth, H=ui.gridLayer.clientHeight;
+  ui.gridLayer.innerHTML='';
+  const g = state.gridPx;
+  for(let x=0;x<=W;x+=g){
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x); line.setAttribute('y1',0);
+    line.setAttribute('x2',x); line.setAttribute('y2',H);
+    line.setAttribute('stroke','var(--grid-stroke)');
+    line.setAttribute('stroke-width','1');
+    ui.gridLayer.appendChild(line);
+  }
+  for(let y=0;y<=H;y+=g){
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',0); line.setAttribute('y1',y);
+    line.setAttribute('x2',W); line.setAttribute('y2',y);
+    line.setAttribute('stroke','var(--grid-stroke)');
+    line.setAttribute('stroke-width','1');
+    ui.gridLayer.appendChild(line);
+  }
+}
+
+// ========= Boot =========
+function boot(){
+  state.dpr = window.devicePixelRatio||1;
+  ensureLayout();
+
+  // 起動時は3cm固定
+  state.gridPx = Math.round(37.795*3);
+  document.getElementById('gridSize').value='3';
+
+  const saved = localStorage.getItem('board-theme');
+  const theme = saved ? saved : ((window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
+  applyTheme(theme);
+
+  // 初期描画
+  drawGrid(); render(); redrawCanvas(); redrawCursorOverlay();
+
+  window.addEventListener('resize', ()=>{
+    ensureLayout();
+    drawGrid(); render(); redrawCanvas(); redrawCursorOverlay();
+  });
+}
+
+// ========= ダミー関数群 =========
+function render(){}
+function redrawCanvas(){}
+function redrawCursorOverlay(){}
+
+// ========= 起動 =========
+window.addEventListener('load', boot);
+  </script>
 </body>
 </html>
+
+	  
