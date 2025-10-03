@@ -308,7 +308,6 @@
 
     <!-- 付箋選択時のみ表示するヘッダパネル -->
     <div id="notePanel" title="付箋の見た目を変更" style="display:none; gap:8px; align-items:center; padding:4px 6px; border:1px solid var(--btn-border); border-radius:10px;">
-      <strong>付箋:</strong>
       <label>色
         <select id="noteHdrColor" title="付箋の色を変更">
           <option value="yellow">黄色</option>
@@ -318,9 +317,9 @@
       </label>
       <label>文字サイズ
         <select id="noteHdrSize" title="付箋の文字サイズを変更">
-          <option value="s">小（10pt）</option>
-          <option value="m" selected>中（13pt）</option>
-          <option value="l">大（18pt）</option>
+          <option value="s">小</option>
+          <option value="m" selected>中</option>
+          <option value="l">大</option>
         </select>
       </label>
     </div>
@@ -352,8 +351,8 @@
       <div class="panel-title">ツール</div>
       <div class="toolbar" id="toolbar">
         <div>
-          <button data-tool="edit" class="active" title="編集/移動（選択・移動・リサイズなど）"><span class="icon">🧭</span>編集/移動</button>
-          <button data-tool="text" title="付箋を1枚配置（配置後は自動で編集モードに戻ります）"><span class="icon">📝</span>ふせん</button>
+          <button data-tool="edit" class="active" title="編集/移動（選択・移動・リサイズなど）"><span class="icon">✋</span>移動</button>
+          <button data-tool="text" title="付箋を1枚配置（配置後は自動で編集モードに戻ります）"><span class="icon">📝</span>コメント</button>
           <div class="group">
             <div class="panel-title">手書き</div>
             <div class="tool-row">
@@ -363,6 +362,8 @@
                 <option value="#ef4444">赤</option>
                 <option value="#2563eb">青</option>
                 <option value="#16a34a">緑</option>
+　　　　　　　　　<option value="#f2f6fa">白</option>
+
               </select>
               <button data-tool="erase" title="消しゴム（ピクセル/オブジェクト/全消し）"><span class="icon">🗑</span>消しゴム</button>
               <select id="eraserMode" class="compact" title="消しゴムモード">
@@ -375,11 +376,11 @@
         </div>
 
         <div class="group">
-          <div class="panel-title">図形の追加</div>
+          <div class="panel-title">図形</div>
           <div class="tool-row">
             <button data-add="rect" title="長方形を追加">▭ 長方形</button>
             <button data-add="tri" title="三角形（ランダム）を追加">△ 三角形</button>
-            <button data-add="trap" title="台形（3パターンからランダム）を追加">⏃ 台形</button>
+            <button data-add="trap" title="台形（3パターンからランダム）を追加">□ 台形</button>
             <button data-add="para" title="平行四辺形を追加">▱ 平行四辺形</button>
             <button data-add="rh" title="ひし形を追加">◇ ひし形</button>
           </div>
@@ -1509,4 +1510,5 @@
 </script>
 </body>
 </html>
+
 
