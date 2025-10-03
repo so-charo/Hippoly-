@@ -2,152 +2,68 @@
 <html lang="ja" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <!-- iPadのダブルタップ拡大を抑止。ユーザー拡大なし -->
+  <!-- iPadでのダブルタップ拡大や長押し選択を防止 -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>図形ボード（iPad最適・方眼吸着強化）</title>
   <style>
-    /* ========== テーマ（ライト/ダーク） ========== */
     :root{
-      /* 基本 */
       --page-bg:#f7fafc;
       --text:#111827;
       --panel-bg:#ffffff;
       --panel-shadow:0 10px 30px rgba(0,0,0,.06);
       --accent:#2563eb;
       --soft:#e5e7eb;
-
-      /* ボタン */
       --btn-bg:#ffffff;
       --btn-border:#e5e7eb;
       --btn-active:#dbeafe;
       --btn-hover-shadow:0 1px 3px rgba(0,0,0,.06);
       --btn-focus:#93c5fd;
-
-      /* 方眼 */
-      --grid-cm:37.7952755906; /* 96dpi前提 1cm ≒ 37.795px */
-      --grid-stroke:#bfdbfe;   /* 薄水色 */
-      --grid-pt:1.0;           /* 1px */
-
-      /* 付箋色 */
+      --grid-cm:37.7952755906;
+      --grid-stroke:#bfdbfe;
       --note-yellow:#fffbe6;
       --note-blue:#e6f3ff;
       --note-pink:#ffeaf1;
-
-      /* バッジ/ヘルプ */
       --badge-bg:#eef2ff;
       --badge-border:#c7d2fe;
       --badge-text:#1e3a8a;
       --hint:#6b7280;
-
-      /* サイドバー */
       --aside-width:320px;
     }
-
     [data-theme="dark"]{
       --page-bg:#0f172a;
       --text:#e5e7eb;
       --panel-bg:#111827;
       --panel-shadow:0 10px 30px rgba(0,0,0,.35);
-
       --btn-bg:#1f2937;
       --btn-border:#334155;
       --btn-active:#1d4ed8;
       --btn-hover-shadow:0 1px 3px rgba(255,255,255,.06);
       --btn-focus:#60a5fa;
-
       --grid-stroke:#334155;
-      --grid-pt:1.0;
-
       --note-yellow:#5b5b3a;
       --note-blue:#334e68;
       --note-pink:#6e3948;
-
       --badge-bg:#1f2937;
       --badge-border:#374151;
       --badge-text:#dbeafe;
       --hint:#94a3b8;
     }
-
-    html,body{height:100%;}
-    /* ページスクロール禁止。中の領域で完結 */
-    html,body{overflow:hidden;}
-    body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
-      background:var(--page-bg); color:var(--text); display:grid; grid-template-rows:auto 1fr;
-      -webkit-user-select:none; user-select:none;
-      -webkit-touch-callout:none;
-      -webkit-tap-highlight-color: transparent;
-    }
+    html,body{height:100%;overflow:hidden;margin:0;font-family:sans-serif;background:var(--page-bg);color:var(--text);}
     header{
-      background:var(--panel-bg); color:var(--text);
-      padding:10px 12px; box-shadow:0 2px 10px rgba(0,0,0,.06); position:sticky; top:0; z-index:10;
+      background:var(--panel-bg);color:var(--text);
+      padding:10px 12px;box-shadow:0 2px 10px rgba(0,0,0,.06);z-index:10;
     }
-    header .row{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
-    header .title{font-weight:700;}
-    select, input[type="color"], button, label.toggle{
-      border:1px solid var(--btn-border); background:var(--btn-bg); color:var(--text);
-      border-radius:10px; padding:10px 12px; font-size:14px;
-      transition: box-shadow .12s ease, background .12s ease, transform .04s ease;
-    }
-    button{cursor:pointer;}
-    button:hover{ box-shadow: var(--btn-hover-shadow); }
-    button:active{ transform: translateY(0.5px); }
-    button:focus-visible{ outline: 2px solid var(--btn-focus); outline-offset: 2px; }
-    button:disabled{opacity:.5; cursor:not-allowed;}
-    .active{background:var(--btn-active)!important; color:#fff; }
-
-    main{
-      display:grid; grid-template-columns:1fr var(--aside-width); gap:12px; padding:12px;
-      transition: grid-template-columns .15s ease;
-      align-items:stretch;
-    }
-
-    aside{
-      order:2; background:var(--panel-bg); color:var(--text); border-radius:14px;
-      padding:12px; box-shadow: var(--panel-shadow); overflow:hidden; position:relative;
-      display:flex; flex-direction:column;
-    }
-    .aside-head{
-      display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;
-    }
-    /* 左上に折りたたみタブ */
-    #asideTab{
-      position:absolute; left:-18px; top:12px;
-      width:18px; height:40px; border-radius:8px 0 0 8px;
-      background:var(--btn-bg); border:1px solid var(--btn-border);
-      display:flex; align-items:center; justify-content:center;
-      font-size:12px; cursor:pointer;
-    }
-    body.aside-collapsed main{ grid-template-columns:1fr 0px; }
-    body.aside-collapsed aside{ width:0; padding:0; border:none; opacity:0; pointer-events:none; }
-    body.aside-collapsed #asideTab{ display:none; }
-    #boardWrap{
-      order:1; position:relative; overflow:hidden; border-radius:14px;
-      background:var(--panel-bg); box-shadow: var(--panel-shadow);
-      display:flex; align-items:center; justify-content:center;
-    }
-    #board{
-      width:100%; height:100%; position:relative;
-      touch-action:none; /* iPadでの勝手なズームやスクロール禁止 */
-    }
-    svg, canvas{
-      position:absolute; top:0; left:0; width:100%; height:100%;
-      touch-action:none;
-    }
-
-    #notesLayer{ position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none; }
-    .note{
-      position:absolute; resize:both; min-width:100px; min-height:100px;
-      background:var(--note-yellow); color:var(--text);
-      padding:4px; border:1px solid var(--btn-border); border-radius:6px;
-      box-sizing:border-box; overflow:auto;
-      pointer-events:auto;
-      font-size:13pt;
-    }
-
-    /* カーソルのゴースト円 */
-    #cursorCanvas{ pointer-events:none; }
-
+    header .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+    main{display:grid;grid-template-columns:1fr var(--aside-width);gap:12px;padding:12px;align-items:stretch;}
+    aside{background:var(--panel-bg);color:var(--text);border-radius:14px;padding:12px;box-shadow:var(--panel-shadow);position:relative;}
+    #asideTab{position:absolute;left:-18px;top:12px;width:18px;height:40px;border-radius:8px 0 0 8px;background:var(--btn-bg);border:1px solid var(--btn-border);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;}
+    body.aside-collapsed main{grid-template-columns:1fr 0;}
+    body.aside-collapsed aside{width:0;padding:0;opacity:0;pointer-events:none;}
+    #boardWrap{position:relative;overflow:hidden;border-radius:14px;background:var(--panel-bg);box-shadow:var(--panel-shadow);}
+    #board{width:100%;height:100%;position:relative;touch-action:none;}
+    svg,canvas{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;}
+    #notesLayer{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;}
+    .note{position:absolute;resize:both;min-width:100px;min-height:100px;background:var(--note-yellow);color:var(--text);padding:4px;border:1px solid var(--btn-border);border-radius:6px;box-sizing:border-box;overflow:auto;pointer-events:auto;font-size:13pt;}
   </style>
 </head>
 <body>
@@ -179,7 +95,6 @@
     </div>
     <aside id="aside">
       <div id="asideTab">▶</div>
-      <div class="aside-head">ツール</div>
       <div id="toolbar">
         <button id="modeSelect">選択</button>
         <button id="modeDraw">ペン</button>
@@ -221,11 +136,10 @@ const ui={
   penColor:document.getElementById('penColor'),
   themeToggle:document.getElementById('themeToggle')
 };
-// ========= ペンパレット（テーマ連動） =========
-function applyPenPalette(theme){
-  // option削除
-  while(ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
 
+// ===== ペンパレット =====
+function applyPenPalette(theme){
+  while(ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
   const palette = (theme==='dark')
     ? [
       {label:'白', value:'#ffffff'},
@@ -245,12 +159,9 @@ function applyPenPalette(theme){
     ui.penColor.appendChild(opt);
   }
 }
+ui.penColor.addEventListener('change', ()=>{ state.penColor = ui.penColor.value; });
 
-ui.penColor.addEventListener('change', ()=>{
-  state.penColor = ui.penColor.value;
-});
-
-// ========= テーマ適用 =========
+// ===== テーマ適用 =====
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
   ui.themeToggle.textContent = (theme==='dark') ? '☀️' : '🌙';
@@ -258,7 +169,6 @@ function applyTheme(theme){
 
   applyPenPalette(theme);
 
-  // stateとUI同期
   const opts = Array.from(ui.penColor.options).map(o=>o.value);
   if(!opts.includes(state.penColor)){
     state.penColor = opts[0] || (theme==='dark' ? '#ffffff' : '#1f2937');
@@ -271,7 +181,7 @@ function applyTheme(theme){
   redrawCursorOverlay();
 }
 
-// ========= レイアウト調整 =========
+// ===== レイアウト調整 =====
 function ensureLayout(){
   const W = document.getElementById('board').clientWidth;
   const H = document.getElementById('board').clientHeight;
@@ -289,7 +199,7 @@ function ensureLayout(){
   });
 }
 
-// ========= グリッド描画 =========
+// ===== グリッド描画 =====
 function drawGrid(){
   const W=ui.gridLayer.clientWidth, H=ui.gridLayer.clientHeight;
   ui.gridLayer.innerHTML='';
@@ -312,12 +222,11 @@ function drawGrid(){
   }
 }
 
-// ========= Boot =========
+// ===== Boot =====
 function boot(){
   state.dpr = window.devicePixelRatio||1;
   ensureLayout();
 
-  // 起動時は3cm固定
   state.gridPx = Math.round(37.795*3);
   document.getElementById('gridSize').value='3';
 
@@ -334,15 +243,13 @@ function boot(){
   });
 }
 
-// ========= ダミー関数群 =========
+// ===== ダミー関数 =====
 function render(){}
 function redrawCanvas(){}
 function redrawCursorOverlay(){}
 
-// ========= 起動 =========
+// ===== 起動 =====
 window.addEventListener('load', boot);
   </script>
 </body>
 </html>
-
-	  
