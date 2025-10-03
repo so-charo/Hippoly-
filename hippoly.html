@@ -43,7 +43,6 @@
 
       /* バッジ/ヘルプ */
       --badge-bg:#eef2ff;
-      --badge-border:#c7d2fe;
       --badge-text:#1e3a8a;
       --hint:#6b7280;
 
@@ -184,7 +183,7 @@
 
     .shape{fill-opacity:.35; stroke-width:2;}
     .selected{filter:drop-shadow(0 0 0.6px rgba(0,0,0,.25));}
-    .handle{fill:#fff; stroke:var(--accent); stroke-width:2; cursor:pointer;}
+    .handle{fill:#fff; stroke:var(--accent); stroke-width:2; cursor:pointer; r12;}
     .bbox-handle{fill:#fff; stroke:#64748b; stroke-width:2; cursor:nwse-resize;}
 
     /* 付箋の見た目（復元） */
@@ -242,8 +241,8 @@
 
     /* タッチ端末：ハンドル大きめ、操作余白も控えめに */
     @media (pointer:coarse) {
-      .handle { r: 10 !important; }
-      .bbox-handle { width: 18px !important; height: 18px !important; }
+      .handle { r: 14 !important; }
+      .bbox-handle { width: 24px !important; height: 24px !important; }
       button, select, input[type="color"] { padding:10px 12px; }
     }
 
@@ -410,7 +409,7 @@
   const state={
     tool:'edit',
     gridPx:pxPerCm*3,
-    snapTol:8,
+    snapTol:16,
     shapes:[],
     notes:[],
     drawings:[],
@@ -550,7 +549,8 @@
 
   // ========= 付箋 =========
   function addNote(x,y){
-    const n={id:uid(), x, y, w:160, h:80, html:'メモ', color:'yellow', font:'m'};
+		const dpx = Math.round(pxPerCm * 0.5); // 5mm ≒ 0.5cm
+		const n={id:uid(), x, y, w:160 + dpx, h:80 + dpx, html:'メモ', color:'yellow', font:'m'};
     state.notes.push(n);
     state.selNoteId=n.id;
     pushHistory(); render();
@@ -632,7 +632,7 @@
       p.dataset.id=sh.id; layer.appendChild(p);
       if(state.sel && state.sel.id===sh.id){
         if(state.vertexEdit){
-          sh.points.forEach((pt,i)=> handles.appendChild(el('circle',{cx:pt[0],cy:pt[1],r:6,class:'handle','data-vidx':i,'data-id':sh.id})));
+          sh.points.forEach((pt,i)=> handles.appendChild(el('circle',{cx:pt[0],cy:pt[1],r:12,class:'handle','data-vidx':i,'data-id':sh.id})));
         }else{
           const bb=bbox(sh.points);
           const hs=[
@@ -640,7 +640,7 @@
             {x:bb.x,y:bb.y+bb.h/2,c:'w'},{x:bb.x+bb.w,y:bb.y+bb.h/2,c:'e'},
             {x:bb.x,y:bb.y+bb.h,c:'sw'},{x:bb.x+bb.w/2,y:bb.y+bb.h,c:'s'},{x:bb.x+bb.w,y:bb.y+bb.h,c:'se'}
           ];
-          hs.forEach(h=>{const r=el('rect',{x:h.x-6,y:h.y-6,width:12,height:12,rx:3,class:'bbox-handle'}); r.dataset.id=sh.id; r.dataset.corner=h.c; handles.appendChild(r);});
+          hs.forEach(h=>{const r=el('rect',{x:h.x-10,y:h.y-10,width:20,height:20,rx:4,class:'bbox-handle'}); r.dataset.id=sh.id; r.dataset.corner=h.c; handles.appendChild(r);});
           handles.appendChild(el('rect',{x:bb.x,y:bb.y,width:bb.w,height:bb.h,fill:'none',stroke:'#94a3b8','stroke-dasharray':'6 4'}));
         }
       }
@@ -956,11 +956,22 @@
   }
 
   function snapMove(dx,dy,startPts){
-    const cand=startPts.map(q=>[q[0]+dx,q[1]+dy]);
-    const s=snapPoint(cand[0][0],cand[0][1]);
-    if(s){ const ddx=s.x-cand[0][0], ddy=s.y-cand[0][1]; return {dx:dx+ddx, dy:dy+ddy}; }
-    return {dx,dy};
+  const cand=startPts.map(q=>[q[0]+dx,q[1]+dy]);
+  // 代表点だけでなく、全頂点のうち最も近いスナップ候補に合わせる
+  let best=null, bestShift={dx:0,dy:0}, bestd=state.snapTol+1;
+  for(const p of cand){
+    const s = snapPointWithProjection(p[0], p[1]); // 頂点/中点/辺/グリッド
+    if(s){
+      const d = Math.hypot(s.x - p[0], s.y - p[1]);
+      if (d < bestd){
+        bestd = d;
+        best = s;
+        bestShift = { dx: dx + (s.x - p[0]), dy: dy + (s.y - p[1]) };
+      }
+    }
   }
+  return best ? bestShift : {dx,dy};
+}
 
   // ========= 手書き & カーソルオーバーレイ =========
   function setCanvasInteractivity(){
@@ -1385,6 +1396,13 @@
 
   // ========= 起動 =========
   function boot(){
+  // タッチ端末ではスナップをさらに緩める
+  try{
+    if (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) {
+      state.snapTol = Math.max(state.snapTol, 20);
+    }
+  }catch(_){}
+    
     const savedAside = localStorage.getItem('aside-collapsed');
     if(savedAside===null){
       if(window.innerWidth < 820) document.body.classList.add('aside-collapsed'); // 狭い画面はデフォ畳む
