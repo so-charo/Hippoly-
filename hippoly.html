@@ -852,9 +852,17 @@
     }
 
     if(state.sel && !state.vertexEdit && isBBoxHandle){
-      if(state.lockSize) return;
-      state.dragging={mode:'bbox', sh:state.sel, corner:target.dataset.corner, from:p, last:p};
-      return;
+		  if(state.lockSize) return;
+		  const bb0 = bbox(state.sel.points);
+		  state.dragging={
+		    mode:'bbox',
+        sh: state.sel,
+        corner: target.dataset.corner,
+        start: p,
+        initBB: bb0,                       // ★ ドラッグ開始時のBBoxを固定保存
+				initPts: state.sel.points.map(q=>q.slice()) // ★ 元頂点群を保存
+			};
+			return;
     }
     if(isVHandle){
       if(state.lockSize) return;
@@ -919,17 +927,19 @@
       const moved=startPts.map(q=>[q[0]+dx,q[1]+dy]);
       sh.points=clampToBoard(moved, W, H); render();
     }else if(state.dragging.mode==='vertex'){
-      const {sh,vidx}=state.dragging; let nx=p.x, ny=p.y;
-      const s=snapPointWithProjection(nx,ny) || {x:nx,y:ny};
-      const pts=sh.points.slice(); pts[vidx]=[s.x,s.y];
-      sh.points=clampToBoard(pts, W, H); render();
-    }else if(state.dragging.mode==='bbox'){
-      const {sh,corner,last}=state.dragging;
-      const snap=snapPoint(p.x,p.y) || {x:p.x,y:p.y};
-      resizeByBBox(sh, corner, last, snap);
-      state.dragging.last=snap;
-      sh.points=clampToBoard(sh.points, W, H); render();
-    }else if(state.dragging.mode==='notePending'){
+  		const {sh,vidx}=state.dragging;
+  		const g = state.gridPx;
+  		const gx = Math.round(p.x / g) * g;
+  		const gy = Math.round(p.y / g) * g;
+  		const pts=sh.points.slice(); pts[vidx]=[gx,gy];
+  		sh.points=clampToBoard(pts, W, H); render();
+		}else if(state.dragging.mode==='bbox'){
+  		const {sh,corner,initBB,initPts}=state.dragging;
+  		// ポインタ位置から絶対スケール。辺は内部でグリッド丸めされる
+  		resizeByBBoxSnap(sh, corner, initBB, initPts, {x:p.x, y:p.y});
+  		sh.points = clampToBoard(sh.points, W, H);
+  		render();
+		}else if(state.dragging.mode==='notePending'){
 			const {note,start,ox,oy}=state.dragging;
  			// 3px 以上動いたら「移動」扱いに昇格（長押し選択と衝突しにくくする）
  			if (Math.hypot(p.x - start.x, p.y - start.y) > 3) {
@@ -975,20 +985,41 @@
   }
 
   // bbox リサイズ
-  function resizeByBBox(sh, corner, fromPt, toPt){
-    const bb=bbox(sh.points);
-    const start={x:fromPt.x,y:fromPt.y};
-    const end={x:toPt.x,y:toPt.y};
-    let nx=bb.x, ny=bb.y, nw=bb.w, nh=bb.h;
-    const dx=end.x-start.x, dy=end.y-start.y;
-    if(corner.includes('e')) nw+=dx;
-    if(corner.includes('s')) nh+=dy;
-    if(corner.includes('w')){ nx+=dx; nw-=dx; }
-    if(corner.includes('n')){ ny+=dy; nh-=dy; }
-    nw=Math.max(5,nw); nh=Math.max(5,nh);
-    const sx=nw/bb.w, sy=nh/bb.h, ox=bb.x, oy=bb.y;
-    sh.points=sh.points.map(([x,y])=>[ nx+(x-ox)*sx, ny+(y-oy)*sy ]);
-  }
+  // ★ グリッドに“絶対吸着”するBBoxリサイズ（ズレ累積なし）
+	function resizeByBBoxSnap(sh, corner, initBB, initPts, curPt){
+ 	 const g = state.gridPx;
+
+	  // 初期BBoxの左右上下
+  	let L = initBB.x;
+  	let T = initBB.y;
+  	let R = initBB.x + initBB.w;
+  	let B = initBB.y + initBB.h;
+
+ 		// 現在ポインタをグリッドに丸め、動く辺だけ更新
+  	const gx = Math.round(curPt.x / g) * g;
+  	const gy = Math.round(curPt.y / g) * g;
+
+  	if (corner.includes('e')) R = gx;
+  	if (corner.includes('w')) L = gx;
+  	if (corner.includes('s')) B = gy;
+  	if (corner.includes('n')) T = gy;
+
+  	// 最小サイズを確保（5px）
+  	const MIN = 5;
+  	if (R - L < MIN) R = L + MIN;
+  	if (B - T < MIN) B = T + MIN;
+
+  	// 初期BBoxから絶対スケール
+  	const sx = (R - L) / initBB.w;
+  	const sy = (B - T) / initBB.h;
+  	const ox = initBB.x;
+  	const oy = initBB.y;
+
+  	sh.points = initPts.map(([x,y]) => [
+    	L + (x - ox) * sx,
+    	T + (y - oy) * sy
+  	]);
+	}
 
   function snapMove(dx,dy,startPts){
   const cand=startPts.map(q=>[q[0]+dx,q[1]+dy]);
