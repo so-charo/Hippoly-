@@ -1631,8 +1631,14 @@ function resizeByBBoxSnap(sh, corner, initBB, initPts, curPt){
     }
     updateAsideTab();
 
-    ensureLayout();
-    const tick=()=>{
+    // グリッド初期値を select に合わせて反映
+		{
+  		const cm = parseInt(ui.gridSize.value,10) || 3;
+  		state.gridPx = pxPerCm * cm;
+		}
+
+			ensureLayout();
+			const tick=()=>{
       const r=board.getBoundingClientRect();
       if(r.width<2 || r.height<2){ requestAnimationFrame(tick); return; }
       drawGrid(); render(); redrawCursorOverlay();
