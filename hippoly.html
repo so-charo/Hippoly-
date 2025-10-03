@@ -437,6 +437,7 @@
   const state={
     tool:'edit',
     gridPx:pxPerCm*3,
+    gridOffset:0,
     snapTol:16,
     shapes:[],
     notes:[],
@@ -539,6 +540,7 @@
 
     const pixelW = lw * state.dpr;
 		const pxOffset = (Math.round(pixelW) % 2 === 1) ? 0.5 : 0;
+    state.gridOffset = pxOffset;
 
 		for(let x=0; x<=w+1; x+=g){
   		const xx = x + pxOffset;
@@ -726,8 +728,9 @@
   }
   function snapPoint(x,y){
     const pts=candidates();
-    const gx=Math.round((x-GRID_PAD)/state.gridPx)*state.gridPx + GRID_PAD;
-    const gy=Math.round((y-GRID_PAD)/state.gridPx)*state.gridPx + GRID_PAD;
+		const off = state.gridOffset || GRID_PAD;
+		const gx = Math.round((x - off)/state.gridPx)*state.gridPx + off;
+		const gy = Math.round((y - off)/state.gridPx)*state.gridPx + off;
     pts.push([gx,gy]);
     let best=null, bestd=state.snapTol+1;
     for(const c of pts){ const d=dist(x,y,c[0],c[1]); if(d<bestd){ bestd=d; best={x:c[0],y:c[1]}; } }
@@ -974,9 +977,10 @@
   		render();
 		}else if(state.dragging.mode==='vertex'){
   		const {sh,vidx}=state.dragging;
-  		const g = state.gridPx;
-  		const gx = Math.round(p.x / g) * g;
-  		const gy = Math.round(p.y / g) * g;
+  		const g = state.gridPx, off = state.gridOffset || 0;
+			// ...
+			const gx = Math.round((curPt.x - off) / g) * g + off;
+			const gy = Math.round((curPt.y - off) / g) * g + off;
   		const pts=sh.points.slice(); pts[vidx]=[gx,gy];
   		sh.points=clampToBoard(pts, W, H); render();
 		}else if(state.dragging.mode==='bbox'){
@@ -1031,41 +1035,43 @@
   }
 
   // bbox リサイズ
-  // ★ グリッドに“絶対吸着”するBBoxリサイズ（ズレ累積なし）
-	function resizeByBBoxSnap(sh, corner, initBB, initPts, curPt){
- 	 const g = state.gridPx;
+  // ★ グリッドに“絶対吸着”するBBoxリサイズ（ズレ累積なし・見た目と一致）
+function resizeByBBoxSnap(sh, corner, initBB, initPts, curPt){
+  const g   = state.gridPx;
+  const off = (state.gridOffset ?? (typeof GRID_PAD !== 'undefined' ? GRID_PAD : 0)); // ← 見た目のオフセット
 
-	  // 初期BBoxの左右上下
-  	let L = initBB.x;
-  	let T = initBB.y;
-  	let R = initBB.x + initBB.w;
-  	let B = initBB.y + initBB.h;
+  // 初期BBoxの左右上下（固定基準）
+  let L = initBB.x;
+  let T = initBB.y;
+  let R = initBB.x + initBB.w;
+  let B = initBB.y + initBB.h;
 
- 		// 現在ポインタをグリッドに丸め、動く辺だけ更新
-  	const gx = Math.round(curPt.x / g) * g;
-  	const gy = Math.round(curPt.y / g) * g;
+  // 現在ポインタを「offset付きグリッド」に丸める
+  const gx = Math.round((curPt.x - off) / g) * g + off;
+  const gy = Math.round((curPt.y - off) / g) * g + off;
 
-  	if (corner.includes('e')) R = gx;
-  	if (corner.includes('w')) L = gx;
-  	if (corner.includes('s')) B = gy;
-  	if (corner.includes('n')) T = gy;
+  // 動く辺だけ更新
+  if (corner.includes('e')) R = gx;
+  if (corner.includes('w')) L = gx;
+  if (corner.includes('s')) B = gy;
+  if (corner.includes('n')) T = gy;
 
-  	// 最小サイズを確保（5px）
-  	const MIN = 5;
-  	if (R - L < MIN) R = L + MIN;
-  	if (B - T < MIN) B = T + MIN;
+  // 最小サイズ（見た目5px）
+  const MIN = 5;
+  if (R - L < MIN) R = L + MIN;
+  if (B - T < MIN) B = T + MIN;
 
-  	// 初期BBoxから絶対スケール
-  	const sx = (R - L) / initBB.w;
-  	const sy = (B - T) / initBB.h;
-  	const ox = initBB.x;
-  	const oy = initBB.y;
+  // 初期BBox基準の“絶対スケール”（増分なし）
+  const sx = (R - L) / initBB.w;
+  const sy = (B - T) / initBB.h;
+  const ox = initBB.x;
+  const oy = initBB.y;
 
-  	sh.points = initPts.map(([x,y]) => [
-    	L + (x - ox) * sx,
-    	T + (y - oy) * sy
-  	]);
-	}
+  sh.points = initPts.map(([x,y]) => [
+    L + (x - ox) * sx,
+    T + (y - oy) * sy
+  ]);
+}
 
   function snapMove(dx,dy,startPts){
   const cand=startPts.map(q=>[q[0]+dx,q[1]+dy]);
@@ -1369,8 +1375,9 @@
     }
     for(const m of mids){ if(dist(x,y,m[0],m[1])<=tol) return 'Midpoint'; }
     for(const s of segs){ const pr=projectPointToSeg({x,y}, s[0], s[1]); if(pr && pr.d<=tol) return 'Edge'; }
-    const gx=Math.round((x-GRID_PAD)/state.gridPx)*state.gridPx + GRID_PAD;
-    const gy=Math.round((y-GRID_PAD)/state.gridPx)*state.gridPx + GRID_PAD;
+		const off = state.gridOffset || GRID_PAD;
+		const gx = Math.round((x - off)/state.gridPx)*state.gridPx + off;
+		const gy = Math.round((y - off)/state.gridPx)*state.gridPx + off;
     const dx=Math.abs(x-gx), dy=Math.abs(y-gy);
     if(Math.hypot(dx,dy)<=tol) return 'GridPt';
     if(dx<=tol || dy<=tol) return 'GridLine';
@@ -1596,5 +1603,3 @@
 </script>
 </body>
 </html>
-
-
