@@ -889,10 +889,23 @@
     state.sel=null; state.selNoteId=null; updateNoteHeaderPanel(); render();
 
     if(id){
-      const sh=state.shapes.find(s=>s.id===id);
-      selectShape(sh);
-      state.dragging={mode:'move', sh, start:p, startPts: sh.points.map(q=>q.slice())};
-    }
+  		const sh=state.shapes.find(s=>s.id===id);
+  		selectShape(sh);
+  		// ★ 一番近い頂点をアンカーにして、そこをスナップ基準にする
+  		let anchorIdx = 0, best = 1e9;
+  		sh.points.forEach((q,i)=>{
+    		const d = Math.hypot(q[0]-p.x, q[1]-p.y);
+    		if(d < best){ best = d; anchorIdx = i; }
+  		});
+  		state.dragging = {
+    		mode:'move',
+    		sh,
+    		startPt: p,                     // ポインタ開始
+    		initPts: sh.points.map(q=>q.slice()), // ★ 初期頂点群（絶対計算の基準）
+    		anchorIdx,                      // ★ 基準となる頂点
+    		anchorStart: sh.points[anchorIdx] // ★ 基準頂点の初期位置
+  		};
+		}
   });
 
   // drawCanvas pointer
@@ -938,11 +951,28 @@
     const W=board.clientWidth, H=board.clientHeight;
 
     if(state.dragging.mode==='move'){
-      const {sh,start,startPts}=state.dragging;
-      let dx=p.x-start.x, dy=p.y-start.y; ({dx,dy}=snapMove(dx,dy,startPts));
-      const moved=startPts.map(q=>[q[0]+dx,q[1]+dy]);
-      sh.points=clampToBoard(moved, W, H); render();
-    }else if(state.dragging.mode==='vertex'){
+  		const {sh, initPts, anchorIdx, anchorStart} = state.dragging;
+  		// アンカー頂点を現在位置のスナップ先に合わせる（頂点/辺/グリッド点/線 どれでもOK）
+  		const s = snapPointWithProjection(p.x, p.y) || {x:p.x, y:p.y};
+  		const dx = s.x - anchorStart[0];
+  		const dy = s.y - anchorStart[1];
+
+  		// ★ 初期頂点群から“絶対”に平行移動（増分ではないので誤差が溜まらない）
+  		const moved = initPts.map(q=>[q[0]+dx, q[1]+dy]);
+
+  		// 仕上げにグリッド近傍を丸めて見かけの滲みを潰す
+  		const g = state.gridPx, eps = 0.25; // px
+  		sh.points = moved.map(([x,y])=>{
+    		const rx = Math.round(x/g)*g, ry = Math.round(y/g)*g;
+    		return [
+      		Math.abs(x-rx) <= eps ? rx : x,
+      		Math.abs(y-ry) <= eps ? ry : y
+    		];
+  		});
+
+  		sh.points = clampToBoard(sh.points, W, H);
+  		render();
+		}else if(state.dragging.mode==='vertex'){
   		const {sh,vidx}=state.dragging;
   		const g = state.gridPx;
   		const gx = Math.round(p.x / g) * g;
