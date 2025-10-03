@@ -1469,22 +1469,63 @@ function restore(json){
   // パレット再構築
   applyPenPalette(theme);
 
-  // ★stateとUIを同期させる
+  // state と UI の色選択を安全に同期
   const opts = Array.from(ui.penColor.options).map(o=>o.value);
   if(!opts.includes(state.penColor)){
-    state.penColor = opts[0] || '#000000';
+    // 現在色がパレット外なら先頭を採用
+    state.penColor = opts[0] || (theme==='dark' ? '#ffffff' : '#1f2937');
   }
   ui.penColor.value = state.penColor;
 
+  updateModeBadge();
+
+  // テーマ反映のたびにグリッドなどを描画更新
   drawGrid();
   render();
-  redrawCursorOverlay();
+  redrawCanvas?.();
+  redrawCursorOverlay?.();
 }
+ 
   ui.themeToggle.addEventListener('click', ()=>{
     const cur = document.documentElement.getAttribute('data-theme') || 'light';
     applyTheme(cur==='light' ? 'dark' : 'light');
   });
-  ui.penColor.addEventListener('change', ()=> { state.penColor=ui.penColor.value; updateModeBadge(); setCanvasInteractivity(); render(); });
+  // ========= ペンパレット（テーマ連動） =========
+function applyPenPalette(theme){
+  // 既存の option を全削除
+  while (ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
+
+  // ライト: 黒, 赤, 青, 緑 / ダーク: 白, 明るい橙, 水色, 黄緑
+  const palette = (theme === 'dark')
+    ? [
+        {label:'白', value:'#ffffff'},
+        {label:'薄橙', value:'#ffb347'},
+        {label:'水色', value:'#87cefa'},
+        {label:'黄緑', value:'#90ee90'}
+      ]
+    : [
+        {label:'黒', value:'#1f2937'},
+        {label:'赤', value:'#ef4444'},
+        {label:'青', value:'#2563eb'},
+        {label:'緑', value:'#16a34a'}
+      ];
+
+  // option 再構築
+  for (const c of palette){
+    const opt = document.createElement('option');
+    opt.value = c.value;
+    opt.textContent = c.label;
+    ui.penColor.appendChild(opt);
+  }
+}
+
+// 変更イベントはそのまま
+ui.penColor.addEventListener('change', ()=>{
+  state.penColor = ui.penColor.value;
+  updateModeBadge();
+  setCanvasInteractivity();
+  render();
+});
 
   // ========== 起動（堅牢シーケンス） =========
   function boot(){
