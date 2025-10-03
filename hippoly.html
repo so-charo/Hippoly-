@@ -259,7 +259,7 @@
 <body>
 <header>
   <div class="row">
-    <div class="title">図形ボード</div>
+    <div class="title">Hippoly!</div>
 
     <label title="方眼のサイズを切り替え（1/3cm）">方眼：
       <select id="gridSize" title="1/3cm 方眼">
@@ -278,7 +278,7 @@
     </label>
 
     <!-- テーマトグル -->
-    <button id="themeToggle" title="テーマ切替（ライト/ダーク）">🌙 ダーク</button>
+    <button id="themeToggle" title="テーマ">🌙</button>
 
     <!-- 付箋選択時のみ表示するヘッダパネル -->
     <div id="notePanel" title="付箋の見た目を変更" style="display:none; gap:8px; align-items:center; padding:4px 6px; border:1px solid var(--btn-border); border-radius:10px;">
@@ -1334,7 +1334,7 @@
   // ========== テーマ切替 ==========
   function applyTheme(theme){
     document.documentElement.setAttribute('data-theme', theme);
-    ui.themeToggle.textContent = (theme==='dark') ? '☀️ ライト' : '🌙 ダーク';
+    ui.themeToggle.textContent = (theme==='dark') ? '☀️' : '🌙';
     localStorage.setItem('board-theme', theme);
     drawGrid(); render(); redrawCursorOverlay();
   }
