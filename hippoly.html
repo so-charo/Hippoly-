@@ -1430,17 +1430,44 @@
 
   // ========= 起動 =========
   function boot(){
-  /* ★ ダブルタップでのズーム抑止（保険）。300ms以内の連続touchendをキャンセル */
-  (function(){
-    let lastTouchEnd = 0;
-    document.addEventListener('touchend', function(e){
-      const now = Date.now();
-      if (now - lastTouchEnd <= 300) {
-        e.preventDefault();
-      }
-      lastTouchEnd = now;
-    }, {passive:false});
-  })();
+  // ★ iPadのダブルタップズーム&長押しメニュー&選択開始を封鎖（付箋内は許可）
+	(function(){
+		if (window.__iosTouchPatched) return; // ← 二重登録防止
+		window.__iosTouchPatched = true;
+
+		const inNote = (el)=> !!(el && (el.classList?.contains('note') || el.closest?.('.note')));
+
+  // dblclick を先に潰す
+  document.addEventListener('dblclick', (e)=>{
+    if(!inNote(e.target)) e.preventDefault();
+  }, {capture:true, passive:false});
+
+  // 連続タップ（ダブルタップ）によるズームも潰す
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e)=>{
+    if(inNote(e.target)) return;
+    const now = Date.now();
+    if (now - lastTouchEnd <= 350) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, {capture:true, passive:false});
+
+  // ピンチなどのジェスチャ開始も潰す（保険）
+  document.addEventListener('gesturestart', (e)=>{
+    if(!inNote(e.target)) e.preventDefault();
+  }, {capture:true, passive:false});
+
+  // 長押しのコンテキストメニュー
+  document.addEventListener('contextmenu', (e)=>{
+    if(!inNote(e.target)) e.preventDefault();
+  }, {capture:true, passive:false});
+
+  // テキスト選択開始
+  document.addEventListener('selectstart', (e)=>{
+    if(!inNote(e.target)) e.preventDefault();
+  }, {capture:true, passive:false});
+})();
   
   // タッチ端末ではスナップをさらに緩める
   try{
