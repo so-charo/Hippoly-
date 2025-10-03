@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+html<!DOCTYPE html>
 <html lang="ja" data-theme="light">
 <head>
   <meta charset="UTF-8" />
@@ -702,7 +702,12 @@
   }
 
   // ========= スナップ等 =========
-  function pt(e){ const bb=board.getBoundingClientRect(); return {x:e.clientX-bb.left, y:e.clientY-bb.top}; }
+  function pt(e){
+  	// イベントターゲットの実 DOM に合わせて座標を取る（canvas は board 内で 8px inset）
+  	const tgt = (e.currentTarget && (e.currentTarget.getBoundingClientRect?.() ? e.currentTarget : null)) || board;
+  	const bb = tgt.getBoundingClientRect();
+  	return { x: e.clientX - bb.left, y: e.clientY - bb.top };
+	}
   function dist(x1,y1,x2,y2){ const dx=x1-x2, dy=y1-y2; return Math.hypot(dx,dy); }
   function segI(A,B,C,D){
     const den=(B[0]-A[0])*(D[1]-C[1])-(B[1]-A[1])*(D[0]-C[0]);
@@ -884,29 +889,49 @@
 			return;
     }
     if(isVHandle){
-      if(state.lockSize) return;
-      state.dragging={mode:'vertex', sh:state.sel, vidx:+target.getAttribute('data-vidx')};
-      return;
-    }
+  		if(state.lockSize) return;
+  		// ★ 頂点ドラッグ開始時に「元の頂点配列」を保持しておく
+  		state.dragging={
+    		mode:'vertex',
+    		sh: state.sel,
+    		vidx: +target.getAttribute('data-vidx'),
+    		initPts: state.sel.points.map(q=>q.slice())
+  		};
+  		try{ board.setPointerCapture(e.pointerId); }catch(_){}
+  		return;
+		}
 
     state.sel=null; state.selNoteId=null; updateNoteHeaderPanel(); render();
 
     if(id){
   		const sh=state.shapes.find(s=>s.id===id);
   		selectShape(sh);
-  		// ★ 一番近い頂点をアンカーにして、そこをスナップ基準にする
+
+  		// 一番近い頂点をアンカーに
   		let anchorIdx = 0, best = 1e9;
   		sh.points.forEach((q,i)=>{
     		const d = Math.hypot(q[0]-p.x, q[1]-p.y);
     		if(d < best){ best = d; anchorIdx = i; }
   		});
+  		const anchorStart = sh.points[anchorIdx];
+
+  		// ポインタ位置のスナップ起点（辺・中点・頂点・グリッドを許容）
+  		const sStart = snapPointWithProjection(p.x, p.y) || {x:p.x, y:p.y};
+
+  		// ★ 重要：指と基準頂点の差分を保存（これが無いと開始時に図形が“寄って”しまう）
+  		const anchorOffset = {
+    		ox: anchorStart[0] - sStart.x,
+    		oy: anchorStart[1] - sStart.y
+  		};
+
   		state.dragging = {
     		mode:'move',
     		sh,
-    		startPt: p,                     // ポインタ開始
-    		initPts: sh.points.map(q=>q.slice()), // ★ 初期頂点群（絶対計算の基準）
-    		anchorIdx,                      // ★ 基準となる頂点
-    		anchorStart: sh.points[anchorIdx] // ★ 基準頂点の初期位置
+    		startPt: p,
+    		initPts: sh.points.map(q=>q.slice()),
+    		anchorIdx,
+    		anchorStart,
+    		anchorOffset
   		};
 		}
   });
@@ -954,19 +979,23 @@
     const W=board.clientWidth, H=board.clientHeight;
 
     if(state.dragging.mode==='move'){
-  		const {sh, initPts, anchorIdx, anchorStart} = state.dragging;
-  		// アンカー頂点を現在位置のスナップ先に合わせる（頂点/辺/グリッド点/線 どれでもOK）
-  		const s = snapPointWithProjection(p.x, p.y) || {x:p.x, y:p.y};
-  		const dx = s.x - anchorStart[0];
-  		const dy = s.y - anchorStart[1];
+  		const {sh, initPts, anchorStart, anchorOffset} = state.dragging;
 
-  		// ★ 初期頂点群から“絶対”に平行移動（増分ではないので誤差が溜まらない）
+  		// 現在のポインタをスナップ
+  		const sNow = snapPointWithProjection(p.x, p.y) || {x:p.x, y:p.y};
+
+  		// ★ “開始時の指と基準頂点の差分”を維持したまま移動
+  		const dx = (sNow.x + anchorOffset.ox) - anchorStart[0];
+  		const dy = (sNow.y + anchorOffset.oy) - anchorStart[1];
+
+  		// 初期頂点群から絶対平行移動（累積誤差なし）
   		const moved = initPts.map(q=>[q[0]+dx, q[1]+dy]);
 
-  		// 仕上げにグリッド近傍を丸めて見かけの滲みを潰す
-  		const g = state.gridPx, eps = 0.25; // px
+  		// 見た目グリッドのオフセットで丸め（0.5px を考慮）
+  		const g = state.gridPx, off = state.gridOffset || 0, eps = 0.25; // px
   		sh.points = moved.map(([x,y])=>{
-    		const rx = Math.round(x/g)*g, ry = Math.round(y/g)*g;
+    		const rx = Math.round((x-off)/g)*g + off;
+    		const ry = Math.round((y-off)/g)*g + off;
     		return [
       		Math.abs(x-rx) <= eps ? rx : x,
       		Math.abs(y-ry) <= eps ? ry : y
@@ -975,21 +1004,33 @@
 
   		sh.points = clampToBoard(sh.points, W, H);
   		render();
-		}else if(state.dragging.mode==='vertex'){
-  		const {sh,vidx}=state.dragging;
-  		const g = state.gridPx, off = state.gridOffset || 0;
-			// ...
-			const gx = Math.round((curPt.x - off) / g) * g + off;
-			const gy = Math.round((curPt.y - off) / g) * g + off;
-  		const pts=sh.points.slice(); pts[vidx]=[gx,gy];
-  		sh.points=clampToBoard(pts, W, H); render();
 		}else if(state.dragging.mode==='bbox'){
   		const {sh,corner,initBB,initPts}=state.dragging;
   		// ポインタ位置から絶対スケール。辺は内部でグリッド丸めされる
   		resizeByBBoxSnap(sh, corner, initBB, initPts, {x:p.x, y:p.y});
   		sh.points = clampToBoard(sh.points, W, H);
   		render();
-		}else if(state.dragging.mode==='notePending'){
+		
+    }else if(state.dragging.mode==='vertex'){
+  		const { sh, vidx, initPts } = state.dragging;
+
+  		// スナップ候補（頂点/中点/辺/グリッド）
+  		const s = snapPointWithProjection(p.x, p.y) || { x:p.x, y:p.y };
+
+  		// 見た目のグリッドに“完全吸着”（0.5px補正あり）
+  		const g   = state.gridPx;
+  		const off = state.gridOffset || 0;  // drawGrid() で算出している補正
+  		const gx  = Math.round((s.x - off) / g) * g + off;
+  		const gy  = Math.round((s.y - off) / g) * g + off;
+
+  		// ★ ドラッグ開始時の配列をベースに、当該頂点だけを更新
+  		const pts = initPts.slice();
+  		pts[vidx] = [gx, gy];
+
+  		sh.points = clampToBoard(pts, W, H);
+  		render();
+      
+    }else if(state.dragging.mode==='notePending'){
 			const {note,start,ox,oy}=state.dragging;
  			// 3px 以上動いたら「移動」扱いに昇格（長押し選択と衝突しにくくする）
  			if (Math.hypot(p.x - start.x, p.y - start.y) > 3) {
