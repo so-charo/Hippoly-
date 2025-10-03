@@ -1466,18 +1466,19 @@ function restore(json){
   ui.themeToggle.textContent = (theme==='dark') ? '☀️ ライト' : '🌙 ダーク';
   localStorage.setItem('board-theme', theme);
 
-  // テーマに応じてパレット再構築 → state.penColor を安全に反映
+  // パレット再構築
   applyPenPalette(theme);
 
-  // 現在の state.penColor がパレット外なら先頭を採用
+  // ★stateとUIを同期させる
   const opts = Array.from(ui.penColor.options).map(o=>o.value);
   if(!opts.includes(state.penColor)){
-    state.penColor = opts[0];
+    state.penColor = opts[0] || '#000000';
   }
   ui.penColor.value = state.penColor;
 
-  updateModeBadge();
-  drawGrid(); render(); redrawCursorOverlay();
+  drawGrid();
+  render();
+  redrawCursorOverlay();
 }
   ui.themeToggle.addEventListener('click', ()=>{
     const cur = document.documentElement.getAttribute('data-theme') || 'light';
@@ -1487,30 +1488,31 @@ function restore(json){
 
   // ========== 起動（堅牢シーケンス） =========
   function boot(){
-    ensureLayout();
+  ensureLayout();
 
-    // 起動時は3cmを強制
-    ui.gridSize.value = '3';
-    state.gridPx = pxPerCm * 3;
+  // 起動時は3cmを強制
+  ui.gridSize.value = '3';
+  state.gridPx = pxPerCm * 3;
 
-    // テーマ初期化 → ペンパレットも更新
-    const saved = localStorage.getItem('board-theme');
-		const theme = saved ? saved : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
-		applyTheme(theme);  // ← ここでパレットも作られる
+  // テーマ初期化 → ペンパレットも更新
+  const saved = localStorage.getItem('board-theme');
+  const theme = saved ? saved : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+  applyTheme(theme);
 
-    const tick=()=>{
-      const r=board.getBoundingClientRect();
-      if(r.width<2 || r.height<2){ requestAnimationFrame(tick); return; }
-      drawGrid(); render(); redrawCursorOverlay();
+  // ★テーマ適用直後にも明示的に描画しておく
+  drawGrid();
+  render();
+  redrawCanvas();
+  redrawCursorOverlay();
 
-      const wrap=document.querySelector('.board-wrap');
-      if(window.ResizeObserver && wrap){
-        const ro=new ResizeObserver(()=>{ ensureLayout(); drawGrid(); render(); redrawCursorOverlay(); });
-        ro.observe(wrap);
-      }
-    };
-    requestAnimationFrame(tick);
-  }
+  const tick=()=>{
+    const r=board.getBoundingClientRect();
+    if(r.width<2 || r.height<2){ requestAnimationFrame(tick); return; }
+    drawGrid(); render(); redrawCursorOverlay();
+    ...
+  };
+  requestAnimationFrame(tick);
+	}
   window.addEventListener('load', boot);
 </script>
 </body>
