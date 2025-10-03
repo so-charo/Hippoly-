@@ -562,8 +562,8 @@
 
   // ========= 図形生成（常に方眼交点上に頂点） =========
   function gridPoint(n, m){ // n,m は整数
-    return [GRID_PAD + n*state.gridPx, GRID_PAD + m*state.gridPx];
-  }
+ 		return [n*state.gridPx, m*state.gridPx];
+	}
   function addShape(type){
     const g=state.gridPx;
     // 画面左上から2マス右・2マス下を基準に、すべて方眼交点で構成
