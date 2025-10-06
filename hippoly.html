@@ -390,7 +390,8 @@
     dpr: Math.max(1, window.devicePixelRatio || 1),
     pointerPos:{x:0,y:0},
     splitStart:null,
-    splitPinEl:null
+    splitPinEl:null,
+    actions: [], // ← 追加：{type:'draw'|'erase', ...} の時系列
   };
 
   const ui={
@@ -1064,74 +1065,93 @@
   }
 
   function redrawCanvas(){
-    const W=drawCanvas.width/state.dpr, H=drawCanvas.height/state.dpr;
-    ctx.clearRect(0,0,W,H);
+  	const W=drawCanvas.width/state.dpr, H=drawCanvas.height/state.dpr;
+  	ctx.clearRect(0,0,W,H);
 
-    // 1) すべての描画ストローク
-    for(const s of state.drawings){
-      ctx.beginPath(); ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
-      const pts=s.pts; if(!pts.length) continue;
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
-      ctx.stroke();
-    }
+  	// 1) actions を時系列で再生
+  	for(const act of state.actions){
+   		if(act.type==='draw'){
+      	ctx.save();
+      	ctx.globalCompositeOperation='source-over';
+      	ctx.beginPath();
+      	ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=act.color;
+      	const pts=act.pts; if(!pts || !pts.length){ ctx.restore(); continue; }
+      	ctx.moveTo(pts[0][0], pts[0][1]);
+      	for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      	ctx.stroke();
+      	ctx.restore();
+    	}else if(act.type==='erase'){
+      	ctx.save();
+      	ctx.globalCompositeOperation='destination-out';
+      	ctx.lineWidth=act.radius; ctx.lineCap='round'; ctx.lineJoin='round';
+      	const pts=act.pts; if(!pts || !pts.length){ ctx.restore(); continue; }
+      	ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      	for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      	ctx.stroke();
+      	ctx.restore();
+    	}
+  	}
 
-    // 2) すべての消去マスク
-    for(const e of state.eraseStrokes){
-      ctx.save();
-      ctx.globalCompositeOperation='destination-out';
-      ctx.lineWidth=e.radius; ctx.lineCap='round'; ctx.lineJoin='round';
-      const pts=e.pts; if(pts.length){
-        ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    // 3) ドラッグ中のプレビュー
-    if(state.dragging && state.dragging.mode==='draw' && state.dragging.stroke){
-      const s=state.dragging.stroke;
-      ctx.beginPath(); ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
-      const pts=s.pts; if(pts.length){ ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
-    }
-    if(state.dragging && state.dragging.mode==='erasePixel' && state.dragging.eraser){
-      const e=state.dragging.eraser;
-      ctx.save(); ctx.globalCompositeOperation='destination-out';
-      ctx.lineWidth=e.radius; ctx.lineCap='round'; ctx.lineJoin='round';
-      const pts=e.pts; if(pts.length){ ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
-      ctx.restore();
-    }
+  // 2) ドラッグ中のプレビュー
+  if(state.dragging && state.dragging.mode==='draw' && state.dragging.stroke){
+    const s=state.dragging.stroke;
+    ctx.save();
+    ctx.globalCompositeOperation='source-over';
+    ctx.beginPath(); ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
+    const pts=s.pts; if(pts.length){ ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
+    ctx.restore();
   }
-
+  if(state.dragging && state.dragging.mode==='erasePixel' && state.dragging.eraser){
+    const e=state.dragging.eraser;
+    ctx.save();
+    ctx.globalCompositeOperation='destination-out';
+    ctx.lineWidth=e.radius; ctx.lineCap='round'; ctx.lineJoin='round';
+    const pts=e.pts; if(pts.length){ ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
+    ctx.restore();
+  }
+}
   function addStrokePoint(p){ state.dragging.stroke.pts.push([p.x,p.y]); }
-  function finishStroke(){ state.drawings.push(state.dragging.stroke); }
+  function finishStroke(){
+  	// 旧: state.drawings.push(...)
+  	const s = state.dragging.stroke;
+  	state.actions.push({type:'draw', color:s.color, pts:s.pts});
+	}
 
   function handleEraserDown(e, p){
-    const m=state.eraserMode;
-    if(m==='clear'){ state.drawings=[]; state.eraseStrokes=[]; redrawCanvas(); pushHistory(); return; }
-    if(m==='object'){ eraseNearestObject(p); redrawCanvas(); pushHistory(); return; }
-    if(m==='pixel'){
-      state.dragging={mode:'erasePixel', eraser:{pts:[[p.x,p.y]], radius:14}};
-      try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
-      redrawCanvas();
-      return;
-    }
-  }
+  	const m=state.eraserMode;
+  	if(m==='clear'){
+    	state.actions = [];   // ← 全クリア
+    	redrawCanvas(); pushHistory(); return;
+  	}
+  	if(m==='object'){
+    	eraseNearestDrawAction(p); // ← 下で定義
+    	redrawCanvas(); pushHistory(); return;
+  	}
+  	if(m==='pixel'){
+    	state.dragging={mode:'erasePixel', eraser:{pts:[[p.x,p.y]], radius:14}};
+    	try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
+    	redrawCanvas();
+    	return;
+  	}
+	}
+  function eraseNearestDrawAction(p){
+  	let bestd=1e9, idx=-1;
+  	state.actions.forEach((a,i)=>{
+    	if(a.type!=='draw') return;
+    	const d=polylineDist(a.pts,p);
+    	if(d<bestd){ bestd=d; idx=i; }
+  	});
+  	if(idx>=0) state.actions.splice(idx,1);
+	}
   function addErasePoint(p){
     if(state.dragging?.mode!=='erasePixel') return;
     state.dragging.eraser.pts.push([p.x,p.y]);
   }
   function finishEraseStroke(){
-    if(state.dragging?.mode!=='erasePixel') return;
-    state.eraseStrokes.push(state.dragging.eraser);
-  }
-
-  function eraseNearestObject(p){
-    let bestd=1e9, idx=-1;
-    state.drawings.forEach((s,i)=>{ const d=polylineDist(s.pts,p); if(d<bestd){ bestd=d; idx=i; } });
-    if(idx>=0) state.drawings.splice(idx,1);
-  }
+  	// 旧: state.eraseStrokes.push(...)
+  	const e = state.dragging.eraser;
+  	state.actions.push({type:'erase', radius:e.radius, pts:e.pts});
+	}
   function polylineDist(pts, p){
     let bd=1e9; for(let i=1;i<pts.length;i++){ bd=Math.min(bd, pointSegDist(p,{x:pts[i-1][0],y:pts[i-1][1]},{x:pts[i][0],y:pts[i][1]})); }
     return bd;
@@ -1294,15 +1314,20 @@
   });
 
   // ========= 履歴 =========
-  function snapshot(){ return JSON.stringify({shapes:state.shapes, notes:state.notes, drawings:state.drawings, eraseStrokes: state.eraseStrokes}); }
+  function snapshot(){
+  	return JSON.stringify({
+    	shapes: state.shapes,
+    	notes: state.notes,
+    	actions: state.actions
+  	});
+	}
   function restore(json){
-    const s=JSON.parse(json);
-    state.shapes=s.shapes||[];
-    state.notes=s.notes||[];
-    state.drawings=s.drawings||[];
-    state.eraseStrokes=s.eraseStrokes||[];
-    drawGrid(); render();
-  }
+  	const s=JSON.parse(json);
+  	state.shapes = s.shapes || [];
+  	state.notes  = s.notes  || [];
+  	state.actions = s.actions || [];
+  	drawGrid(); render();
+	}
   function pushHistory(){ state.history.push(snapshot()); state.future=[]; }
   ui.undo.addEventListener('click', ()=>{ if(!state.history.length) return; const cur=snapshot(); const prev=state.history.pop(); state.future.push(cur); restore(prev); });
   ui.redo.addEventListener('click', ()=>{ if(!state.future.length) return; const cur=snapshot(); const next=state.future.pop(); state.history.push(cur); restore(next); });
