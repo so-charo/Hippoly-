@@ -1362,7 +1362,7 @@
   // ========== テーマ切替 & 永続化 ==========
   function applyTheme(theme){
     document.documentElement.setAttribute('data-theme', theme);
-    ui.themeToggle.textContent = (theme==='dark') ? '☀️ ライト' : '🌙 ダーク';
+    ui.themeToggle.textContent = (theme==='dark') ? '☀️' : '🌙';
     localStorage.setItem('board-theme', theme);
     drawGrid(); render(); redrawCursorOverlay();
   }
