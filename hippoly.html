@@ -662,7 +662,28 @@
                 : [[cx+0.3*g,cy],[cx+2.3*g,cy],[cx+3.0*g,cy+2*g],[cx+0.8*g,cy+2*g]];
       }
     }
-    if(type==='para') pts=[[cx,cy],[cx+3*g,cy],[cx+3.6*g,cy+2*g],[cx+0.6*g,cy+2*g]];
+    if (type === 'para') {
+  		// グリッド1マスの大きさ
+  		const g = state.gridPx;
+  		const off = state.gridOffset || 0;
+
+  		// グリッド何マス分にするか（1cmグリッドでも3cmグリッドでも整数マスになる指定）
+  		const baseCells   = 9;  // 底辺 9cm
+  		const heightCells = 6;  // 高さ 6cm
+  		const skewCells   = 3;  // 平行四辺形の“ずらし”を 3cm（＝左辺のxを+3cm）
+
+  		// 配置開始位置（グリッド交点上）
+  		const x0 = off + 2 * g;
+  		const y0 = off + 2 * g;
+
+  		// すべてグリッド交点上になるように、g の整数倍で置く
+  		pts = [
+    		[x0,                              y0],                       // 左上
+    		[x0 + baseCells * g,              y0],                       // 右上
+    		[x0 + (baseCells + skewCells) * g, y0 + heightCells * g],    // 右下
+    		[x0 + skewCells * g,              y0 + heightCells * g]      // 左下
+  		];
+		}
     // ひし形はグリッド整合
     if(type==='rh'){
       const g = state.gridPx;
