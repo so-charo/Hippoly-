@@ -110,12 +110,54 @@
       transition: grid-template-columns .15s ease;
     }
     body.aside-collapsed main{ grid-template-columns: 1fr 0px; }
-    aside{
-      order:2; background:var(--panel-bg); color:var(--text); border-radius:14px;
-      padding:12px; box-shadow: var(--panel-shadow); overflow:hidden; position:relative;
-      transition: width .15s ease, opacity .15s ease;
-    }
-    body.aside-collapsed aside{ width:0; padding:0; border:none; opacity:0; pointer-events:none; }
+    /* ========== aside（ここ重要） ========== */
+aside{
+  order:2; background:var(--panel-bg); color:var(--text); border-radius:14px;
+  padding:12px; box-shadow: var(--panel-shadow);
+  overflow: visible;     /* ★ タブがはみ出しても見えるように */
+  position:relative;
+  transition: width .15s ease, opacity .15s ease;
+}
+
+/* 折りたたみ時：aside 全体は透明にしない。中身だけ隠す */
+body.aside-collapsed aside{
+  width:0;
+  padding:0;
+  border:none;
+  opacity:1;             /* ★ 0 → 1 に変更（タブが消えない） */
+  pointer-events:none;   /* 一旦親は無効化 */
+}
+
+/* 折りたたみ時、タブ以外の中身は非表示にする */
+body.aside-collapsed aside > *:not(.aside-tab){
+  display:none;
+}
+
+/* タブだけは常に前面＆タップ可 */
+.aside-tab {
+  position: absolute;
+  left: -26px;           /* はみ出して見える位置 */
+  top: 12px;
+  width: 22px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 8px 0 0 8px;
+  cursor: pointer;
+  box-shadow: var(--btn-hover-shadow);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  z-index: 9999;
+}
+
+/* 折りたたみ時でもタブは操作できるようにする（親の pointer-events:none を無効化） */
+body.aside-collapsed .aside-tab{
+  pointer-events:auto;
+}
     /* サイドバー突起タブ */
 		.aside-tab {
   		position: absolute;
