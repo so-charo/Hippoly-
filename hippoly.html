@@ -169,6 +169,17 @@
       position:absolute; inset:0; width:100%; height:100%; pointer-events:none; touch-action:none;
     }
     canvas.cursor-layer{ z-index:6; }
+    /* ←ここは追記（既存の .board, canvas の定義のすぐ下あたりでOK） */
+		svg#board.board{
+  		position:absolute;
+  		inset:0;
+  		width:100%;
+  		height:100%;
+ 		 	display:block;
+  		z-index:1;          /* 下地 */
+		}
+		canvas.draw{ z-index:2; }         /* 明示しておくと安全 */
+		canvas.cursor-layer{ z-index:6; }  /* 既存に合わせる */
 
     /* 方眼線（SVG line） */
     #gridLayer line { pointer-events:none; }
@@ -480,15 +491,22 @@
   	if (wrap) wrap.style.height = avail + 'px';
 	}
   function setSvgSizeByClient(){
-    const r=board.getBoundingClientRect();
-    const w=Math.max(1, Math.floor(r.width));
-    const h=Math.max(1, Math.floor(r.height));
-    board.setAttribute('width', w);
-    board.setAttribute('height', h);
-    setupCanvasDPR(drawCanvas, ctx, w, h);
-    setupCanvasDPR(cursorCanvas, cctx, w, h);
-    return {w,h};
-  }
+  	// SVG自身ではなく親（.board-wrap）の実サイズを基準にする
+  	const host = board.parentElement || board;
+  	const r = host.getBoundingClientRect();
+
+  	// 0回避（初期タイミングでも最低1pxにはする）
+  	const w = Math.max(1, Math.floor(r.width));
+  	const h = Math.max(1, Math.floor(r.height));
+
+  	// SVGとキャンバスの実ピクセルサイズを同期
+  	board.setAttribute('width', w);
+  	board.setAttribute('height', h);
+  	setupCanvasDPR(drawCanvas, ctx, w, h);
+  	setupCanvasDPR(cursorCanvas, cctx, w, h);
+
+  	return {w,h};
+	}
   function setupCanvasDPR(canvas, context, cssW, cssH){
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     state.dpr = dpr;
@@ -1642,6 +1660,7 @@
   	}catch(_){}
 
   	ensureLayout();
+    drawGrid(); render(); redrawCursorOverlay();
   	const tick=()=>{
     	const r=board.getBoundingClientRect();
     	if(r.width<2 || r.height<2){ requestAnimationFrame(tick); return; }
