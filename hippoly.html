@@ -1461,10 +1461,12 @@
   	ui.themeToggle.textContent = (theme === 'dark') ? '☀️' : '🌙';
   	localStorage.setItem('board-theme', theme);
 
-  	// ===== ペン色リストの切り替え =====
+  	// ===== ペン色リストの切り替え（value判定版） =====
   	const penOptions = ui.penColor.querySelectorAll('option');
   	penOptions.forEach(opt => {
-    	const isDarkColor = opt.textContent.includes('（暗）');
+    	const val = opt.value.toLowerCase();
+    	const isDarkColor =
+      	val === '#ffffff' || val === '#ff6b00' || val === '#33ddff' || val === '#a8ff00';
     	opt.hidden = (theme === 'dark') ? !isDarkColor : isDarkColor;
   	});
 
@@ -1526,8 +1528,8 @@
   	// ===== 再描画 =====
   	drawGrid();
   	render();
-  	redrawCursorOverlay();
-  	redrawCanvas();  // ← これで既存の線も即反映
+    redrawCanvas();  // ← これで既存の線も即反映
+  	redrawCursorOverlay();  	
 	}
   
   ui.themeToggle.addEventListener('click', ()=>{
