@@ -169,17 +169,6 @@
       position:absolute; inset:0; width:100%; height:100%; pointer-events:none; touch-action:none;
     }
     canvas.cursor-layer{ z-index:6; }
-    /* ←ここは追記（既存の .board, canvas の定義のすぐ下あたりでOK） */
-		svg#board.board{
-  		position:absolute;
-  		inset:0;
-  		width:100%;
-  		height:100%;
- 		 	display:block;
-  		z-index:1;          /* 下地 */
-		}
-		canvas.draw{ z-index:2; }         /* 明示しておくと安全 */
-		canvas.cursor-layer{ z-index:6; }  /* 既存に合わせる */
 
     /* 方眼線（SVG line） */
     #gridLayer line { pointer-events:none; }
@@ -323,7 +312,7 @@
 
 <main>
   <div class="board-wrap">
-    <svg id="board" class="board" aria-label="draw-board" xmlns="http://www.w3.org/2000/svg"></svg>
+    <svg id="board" class="board" aria-label="draw-board"></svg>
     <canvas id="drawCanvas" class="draw"></canvas>
     <canvas id="cursorCanvas" class="cursor-layer"></canvas>
 
@@ -490,28 +479,16 @@
 
   	if (wrap) wrap.style.height = avail + 'px';
 	}
-  	function setSvgSizeByClient(){
-  	// SVG自身ではなく親（.board-wrap）の実サイズを基準にする
-  	const host = board.parentElement || board;
-  	const r = host.getBoundingClientRect();
-
-  	// 0回避（初期タイミングでも最低1pxにはする）
-  	const w = Math.max(1, Math.floor(r.width));
-  	const h = Math.max(1, Math.floor(r.height));
-
-  	// SVGの実ピクセルサイズを同期
-  	board.setAttribute('width', w);
-  	board.setAttribute('height', h);
-
-  	// ★ 追加：内部ビューポートも同期（Safari初回描画の安定化）
-  	board.setAttribute('viewBox', `0 0 ${w} ${h}`);
-
-  	// キャンバスも同じサイズに
-  	setupCanvasDPR(drawCanvas, ctx, w, h);
-  	setupCanvasDPR(cursorCanvas, cctx, w, h);
-
-  	return {w,h};
-	}
+  function setSvgSizeByClient(){
+    const r=board.getBoundingClientRect();
+    const w=Math.max(1, Math.floor(r.width));
+    const h=Math.max(1, Math.floor(r.height));
+    board.setAttribute('width', w);
+    board.setAttribute('height', h);
+    setupCanvasDPR(drawCanvas, ctx, w, h);
+    setupCanvasDPR(cursorCanvas, cctx, w, h);
+    return {w,h};
+  }
   function setupCanvasDPR(canvas, context, cssW, cssH){
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     state.dpr = dpr;
@@ -1477,77 +1454,49 @@
       if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
     }
   });
-	// 追加：テーマごとの候補リスト
-	const LIGHT_PENS = [
-  	{ value: '#1f2937', label: '黒' },
-  	{ value: '#ef4444', label: '赤' },
-  	{ value: '#2563eb', label: '青' },
-  	{ value: '#16a34a', label: '緑' },
-	];
-	const DARK_PENS = [
-  	{ value: '#ffffff', label: '白' },
-  	{ value: '#ff6b00', label: 'オレンジ' },
-  	{ value: '#33ddff', label: '水色' },
-  	{ value: '#a8ff00', label: '黄緑' },
-	];
-
 	function showPenOptionsForTheme(theme){
-    // テーマ間の色対応表
-		const DARK_PEN_MAP = {
-  		'#1f2937':'#ffffff', // 黒→白
-  		'#ef4444':'#ff6b00', // 赤→蛍光オレンジ
-  		'#2563eb':'#33ddff', // 青→蛍光水色
-  		'#16a34a':'#a8ff00'  // 緑→蛍光黄緑
-		};
-		const LIGHT_PEN_MAP = {
-  		'#ffffff':'#1f2937', // 白→黒
-  		'#ff6b00':'#ef4444', // 蛍光オレンジ→赤
-  		'#33ddff':'#2563eb', // 蛍光水色→青
-  		'#a8ff00':'#16a34a'  // 蛍光黄緑→緑
-		};
+  	const opts = ui.penColor.querySelectorAll('option');
+  	opts.forEach(opt=>{
+    	const v = opt.value.toLowerCase();
+    	const isDark =
+      	v==='#ffffff' || v==='#ff6b00' || v==='#33ddff' || v==='#a8ff00';
+    	// ダークでは蛍光色だけ表示、ライトでは通常色だけ表示
+    	opt.hidden = (theme==='dark') ? !isDark : isDark;
+  	});
+	}
+  const DARK_PEN_MAP = {
+  	'#1f2937':'#ffffff', // 黒→白
+  	'#ef4444':'#ff6b00', // 赤→蛍光オレンジ
+  	'#2563eb':'#33ddff', // 青→蛍光水色
+  	'#16a34a':'#a8ff00'  // 緑→蛍光黄緑
+	};
+	const LIGHT_PEN_MAP = {
+  	'#ffffff':'#1f2937', // 白→黒
+  	'#ff6b00':'#ef4444', // 蛍光オレンジ→赤
+  	'#33ddff':'#2563eb', // 蛍光水色→青
+  	'#a8ff00':'#16a34a'  // 蛍光黄緑→緑
+	};
 
-		// 既に描いた線の色を一括でテーマ色へ置換
-		function recolorDrawActionsForTheme(theme){
-  		const map = (theme === 'dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
-  		for (const act of state.actions){
-    		if (act.type !== 'draw') continue; // ← typeで判定
-    		const c = (act.color || '').toLowerCase();
-    		if (map[c]) act.color = map[c];
-  		}
-		}
-
-		// 現在選択中のペン色もテーマに合わせて置換＋セレクトの値を安全に更新
-		function remapCurrentPenColor(theme){
-  		const map = (theme === 'dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
-
-  		// 現在値をテーマ色にマップ
-  		const cur = (state.penColor || '').toLowerCase();
-  		if (map[cur]) state.penColor = map[cur];
-
-  		// セレクト内の可視オプションの中に現在値が無ければ先頭へフォールバック
-  		const visible = Array.from(ui.penColor.options);
-  		const hasSame = visible.some(o => o.value.toLowerCase() === state.penColor.toLowerCase());
-  		ui.penColor.value = hasSame ? state.penColor : (visible[0]?.value || state.penColor);
-		}
-    
-  	// 1) 以前の選択値を保持（復元できるなら復元する）
-  	const prev = (ui.penColor.value || '').toLowerCase();
-
-  	// 2) <select> の中身を全部クリア
-  	while (ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
-
-  	// 3) テーマに応じて4色だけを再構築（Safariでも確実に効く）
-  	const list = (theme === 'dark') ? DARK_PENS : LIGHT_PENS;
-  	for (const {value, label} of list){
-    	const opt = document.createElement('option');
-    	opt.value = value;
-    	opt.textContent = label;
-    	ui.penColor.appendChild(opt);
+	function recolorDrawActionsForTheme(theme){
+  	const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
+  	for(const act of state.actions){
+    	if (act.type !== 'draw') continue; // ← ここが重要（modeではなくtype）
+    	const c = (act.color||'').toLowerCase();
+    	if (map[c]) act.color = map[c];
   	}
+	}
+  
+  function remapCurrentPenColor(theme){
+  	const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
 
-  	// 4) 可能なら以前の値を維持、なければ先頭にフォールバック
-  	const hasPrev = list.some(x => x.value.toLowerCase() === prev);
-  	ui.penColor.value = hasPrev ? prev : list[0].value;
+  	// 現在値をテーマ色にマップ
+  	const cur = (state.penColor||'').toLowerCase();
+  	if (map[cur]) state.penColor = map[cur];
+
+  	// セレクトの選択状態を反映（隠れているvalueだったら、見えている先頭にフォールバック）
+  	const visible = Array.from(ui.penColor.options).filter(o=>!o.hidden);
+  	const hasVisibleSame = visible.some(o => o.value.toLowerCase() === state.penColor.toLowerCase());
+  	ui.penColor.value = hasVisibleSame ? state.penColor : (visible[0]?.value || state.penColor);
 	}
   // ========== テーマ切替 & 永続化 ==========
   function applyTheme(theme){
@@ -1574,14 +1523,13 @@
     	if (state.sel){ state.sel.fill = '#2563eb'; state.sel.stroke = '#2563eb'; }
   	}
 
-  	// 6) 再描画
-		setTimeout(() => {
-  		drawGrid();
-  		render();
-  		redrawCanvas();
-  		redrawCursorOverlay();
-		}, 100);
- }  
+  	// 6) 再描画（キャンバスも必ず）
+  	drawGrid();
+  	render();
+  	redrawCanvas();
+  	redrawCursorOverlay();
+	}
+  
   ui.themeToggle.addEventListener('click', ()=>{
     const cur = document.documentElement.getAttribute('data-theme') || 'light';
     applyTheme(cur==='light' ? 'dark' : 'light');
@@ -1625,87 +1573,59 @@
       cctx.restore();
     }
   }
-	function nextFrame(){
-  	return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-	}
-	function waitBoardSize(cb){
-  	const wrap = document.querySelector('.board-wrap');
-  	const tryOnce = ()=>{
-    	ensureLayout();
-    	const r = (wrap || board.parentElement || board).getBoundingClientRect();
-    	if (r.width >= 2 && r.height >= 2){
-      	cb();
-    	} else {
-      nextFrame().then(tryOnce);
-    	}
-  	};
-  	tryOnce();
-	}
+
   // ========= 起動 =========
-  	function boot(){
-  	// --- 既存の各種パッチ/イベント登録（ここはそのまま） ---
-  	(function(){
-    	if (window.__iosTouchPatched) return;
-    	window.__iosTouchPatched = true;
-    	const inNote = (el)=> !!(el && (el.classList?.contains('note') || el.closest?.('.note')));
-    	document.addEventListener('dblclick', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
-    	let lastTouchEnd = 0;
-    	document.addEventListener('touchend', (e)=>{
-      	if(inNote(e.target)) return;
-      	const now = Date.now();
-      	if (now - lastTouchEnd <= 350) e.preventDefault();
-      	lastTouchEnd = now;
-    	}, {capture:true, passive:false});
-    	document.addEventListener('gesturestart', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
-    	document.addEventListener('contextmenu', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
-    	document.addEventListener('selectstart', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
-  	})();
+  function boot(){
+    // iPadのダブルタップズーム/長押しメニュー/選択開始を抑止（付箋内は許可）
+    (function(){
+      if (window.__iosTouchPatched) return;
+      window.__iosTouchPatched = true;
+      const inNote = (el)=> !!(el && (el.classList?.contains('note') || el.closest?.('.note')));
 
-  	try{
-    	if (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) {
-      	state.snapTol = Math.max(state.snapTol, 20);
-    	}
-  	}catch(_){}
+      document.addEventListener('dblclick', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', (e)=>{
+        if(inNote(e.target)) return;
+        const now = Date.now();
+        if (now - lastTouchEnd <= 350) e.preventDefault();
+        lastTouchEnd = now;
+      }, {capture:true, passive:false});
+      document.addEventListener('gesturestart', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
+      document.addEventListener('contextmenu', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
+      document.addEventListener('selectstart', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
+    })();
 
-  	window.addEventListener('resize', onViewportChange, {passive:true});
-  	window.addEventListener('orientationchange', onViewportChange, {passive:true});
-  	try{
-    	if (window.visualViewport) {
-      	visualViewport.addEventListener('resize', onViewportChange, {passive:true});
-      	visualViewport.addEventListener('scroll', onViewportChange, {passive:true});
-    	}
-  	}catch(_){}
+    // タッチ端末ではスナップ閾値を少し緩める
+    try{
+      if (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) {
+        state.snapTol = Math.max(state.snapTol, 20);
+      }
+    }catch(_){}
 
-  	ensureLayout();
+    // viewport 監視
+    window.addEventListener('resize', onViewportChange, {passive:true});
+    window.addEventListener('orientationchange', onViewportChange, {passive:true});
+    try{
+      if (window.visualViewport) {
+        visualViewport.addEventListener('resize', onViewportChange, {passive:true});
+        visualViewport.addEventListener('scroll', onViewportChange, {passive:true});
+      }
+    }catch(_){}
 
-  	// ★ 初回は「サイズが安定するまで」待ってから描画する
-  	waitBoardSize(() => {
-    	drawGrid();
-    	render();
-    	redrawCursorOverlay();
-
-    	// 以降は ResizeObserver で追随
-    	const wrap = document.querySelector('.board-wrap');
-    	if (window.ResizeObserver && wrap){
-      	const ro = new ResizeObserver(()=>{
-        	ensureLayout();
-        	drawGrid();
-        	render();
-        	redrawCursorOverlay();
-      	});
-      	ro.observe(wrap);
-    	}
-  	});
-
-  	// 念のための保険（遅延後にもう一度安定化）
-  	setTimeout(()=>{
-    	ensureLayout();
-    	drawGrid();
-    	render();
-    	redrawCursorOverlay();
-  	}, 500);
-	}
-	window.addEventListener('load', boot);
+    ensureLayout();
+    const tick=()=>{
+      const r=board.getBoundingClientRect();
+      if(r.width<2 || r.height<2){ requestAnimationFrame(tick); return; }
+      drawGrid(); render(); redrawCursorOverlay();
+      const wrap=document.querySelector('.board-wrap');
+      if(window.ResizeObserver && wrap){
+        const ro=new ResizeObserver(()=>{ ensureLayout(); drawGrid(); render(); redrawCursorOverlay(); });
+        ro.observe(wrap);
+      }
+    };
+    requestAnimationFrame(tick);
+  }
+  window.addEventListener('load', boot);
 </script>
 </body>
 </html>
