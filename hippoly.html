@@ -1458,53 +1458,76 @@
   // ========== テーマ切替 & 永続化 ==========
   function applyTheme(theme){
   	document.documentElement.setAttribute('data-theme', theme);
-  	ui.themeToggle.textContent = (theme==='dark') ? '☀️' : '🌙';
+  	ui.themeToggle.textContent = (theme === 'dark') ? '☀️' : '🌙';
   	localStorage.setItem('board-theme', theme);
 
-  	// ===== テーマ連動の色変更 =====
+  	// ===== ペン色リストの切り替え =====
+  	const penOptions = ui.penColor.querySelectorAll('option');
+  	penOptions.forEach(opt => {
+    	const isDarkColor = opt.textContent.includes('（暗）');
+    	opt.hidden = (theme === 'dark') ? !isDarkColor : isDarkColor;
+  	});
+
+  	// ===== テーマごとの色変換マップ =====
+  	const darkPenMap = {
+    	'#1f2937': '#ffffff',  // 黒 → 白
+    	'#ef4444': '#ff6b00',  // 赤 → 蛍光オレンジ
+    	'#2563eb': '#33ddff',  // 青 → 蛍光水色
+    	'#16a34a': '#a8ff00'   // 緑 → 蛍光黄緑
+  	};
+  	const lightPenMap = {
+    	'#ffffff': '#1f2937',  // 白 → 黒
+    	'#ff6b00': '#ef4444',  // 蛍光オレンジ → 赤
+    	'#33ddff': '#2563eb',  // 蛍光水色 → 青
+    	'#a8ff00': '#16a34a'   // 蛍光黄緑 → 緑
+  	};
+
+  	// ===== テーマごとの設定 =====
   	if (theme === 'dark') {
-    	// ペン色のマッピング（黒/赤/青/緑 → 白/蛍光オレンジ/蛍光水色/蛍光黄緑）
-    	const darkPenMap = {
-      	'#1f2937': '#ffffff',  // 黒 → 白
-      	'#ef4444': '#ff6b00',  // 赤 → 蛍光オレンジ
-      	'#2563eb': '#33ddff',  // 青 → 蛍光水色
-      	'#16a34a': '#a8ff00'   // 緑 → 蛍光黄緑
-    	};
-    	if (darkPenMap[state.penColor]) {
-      	state.penColor = darkPenMap[state.penColor];
-      	// （注意）この値は <select> の選択肢にないので表示が空欄になることがあります
-      	ui.penColor.value = state.penColor;
+    	// 新しいペン色
+    	const cur = state.penColor.toLowerCase();
+    	state.penColor = darkPenMap[cur] || state.penColor;
+    	ui.penColor.value = state.penColor;
+
+    	// すでに描いた線も変換
+    	for (const act of state.actions) {
+      	if (act.mode !== 'pen') continue;
+      	const c = act.color.toLowerCase();
+      	if (darkPenMap[c]) act.color = darkPenMap[c];
     	}
 
-    	// 図形の色は黄色に（新規作成の既定色も合わせる）
+    	// 図形の色 → 黄色
     	ui.color.value = '#facc15';
     	if (state.sel) {
-      	state.sel.fill   = '#facc15';
+      	state.sel.fill = '#facc15';
       	state.sel.stroke = '#facc15';
     	}
   	} else {
-    	// ライトに戻すときの逆変換
-    	const lightPenMap = {
-      	'#ffffff': '#1f2937',  // 白 → 黒
-      	'#ff6b00': '#ef4444',  // 蛍光オレンジ → 赤
-      	'#33ddff': '#2563eb',  // 蛍光水色 → 青
-      	'#a8ff00': '#16a34a'   // 蛍光黄緑 → 緑
-    	};
-    	if (lightPenMap[state.penColor]) {
-      	state.penColor = lightPenMap[state.penColor];
-      	ui.penColor.value = state.penColor;
+    	// ライトテーマ
+    	const cur = state.penColor.toLowerCase();
+    	state.penColor = lightPenMap[cur] || state.penColor;
+    	ui.penColor.value = state.penColor;
+
+    	// すでに描いた線も変換
+    	for (const act of state.actions) {
+      	if (act.mode !== 'pen') continue;
+      	const c = act.color.toLowerCase();
+      	if (lightPenMap[c]) act.color = lightPenMap[c];
     	}
 
-    	// 図形の既定色は元の青に
+    	// 図形の色 → 青
     	ui.color.value = '#2563eb';
     	if (state.sel) {
-      	state.sel.fill   = '#2563eb';
+      	state.sel.fill = '#2563eb';
       	state.sel.stroke = '#2563eb';
     	}
   	}
 
-  	// 再描画
-  	drawGrid(); render(); redrawCursorOverlay();
+  	// ===== 再描画 =====
+  	drawGrid();
+  	render();
+  	redrawCursorOverlay();
+  	redrawCanvas();  // ← これで既存の線も即反映
 	}
   
   ui.themeToggle.addEventListener('click', ()=>{
