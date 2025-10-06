@@ -704,7 +704,7 @@
         e.stopPropagation();
         state.selNoteId=n.id;
         updateNoteHeaderPanel();
-        state.dragging={mode:'noteResize', note:n, start:pt(e), ow:n.w, oh:n.h};
+        state.dragging = { mode:'noteResize', note:n, start:ptBoard(e), ow:n.w, oh:n.h };
         try{board.setPointerCapture(e.pointerId);}catch(_){}
       });
     }
