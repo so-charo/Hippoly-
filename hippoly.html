@@ -85,9 +85,9 @@
     html, body { height: 100%; overflow: hidden; }
     body{
       margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
-  		background:var(--page-bg); color:var(--text); display:grid; grid-template-rows:auto 1fr;
-  		overscroll-behavior: none;
-			}
+      background:var(--page-bg); color:var(--text); display:grid; grid-template-rows:auto 1fr;
+      overscroll-behavior: none;
+    }
     header{
       background:var(--panel-bg); color:var(--text);
       padding:10px 12px; box-shadow:0 2px 10px rgba(0,0,0,.06); position:sticky; top:0; z-index:10;
@@ -107,10 +107,10 @@
     .active{background:var(--btn-active)!important; color:#fff; }
 
     main{
-  		display:grid; grid-template-columns:1fr var(--aside-width); gap:12px; padding:12px;
-  		transition: grid-template-columns .15s ease;
-  		overflow:hidden;
-		}
+      display:grid; grid-template-columns:1fr var(--aside-width); gap:12px; padding:12px;
+      transition: grid-template-columns .15s ease;
+      overflow:hidden;
+    }
     body.aside-collapsed main{ grid-template-columns: 1fr 0px; }
 
     /* ========== aside（ここ重要） ========== */
@@ -216,33 +216,33 @@
 
     /* ヘッダの付箋パネル（選択時だけ表示） */
     #notePanel{ display:none; gap:8px; align-items:center; padding:4px 6px; border:1px solid var(--btn-border); border-radius:10px; }
-		/* ヘッダの行高さを安定させる */
-		header .row{
-  		min-height: 56px;        /* 端末差を吸収できる安全値 */
-  		align-items: center;
-		}
+    /* ヘッダの行高さを安定させる */
+    header .row{
+      min-height: 56px;        /* 端末差を吸収できる安全値 */
+      align-items: center;
+    }
 
-		/* 付箋パネルをボタンと同じ高さに固定 */
-		#notePanel{
-  		height: 36px;            /* ボタン(10px上下padding+font-size14pxの実高≒36px) */
-  		box-sizing: border-box;
-  		display: none;           /* 既存 */
-  		align-items: center;     /* 既存がなければ追加 */
-  		gap: 8px;                /* 既存がなければ追加 */
-		}
+    /* 付箋パネルをボタンと同じ高さに固定 */
+    #notePanel{
+      height: 36px;            /* ボタン(10px上下padding+font-size14pxの実高≒36px) */
+      box-sizing: border-box;
+      display: none;           /* 既存 */
+      align-items: center;     /* 既存がなければ追加 */
+      gap: 8px;                /* 既存がなければ追加 */
+    }
     /* ボタン群（アイコン＋ラベル） */
     .toolbar button { display:inline-flex; align-items:center; gap:6px; touch-action:manipulation; }
     .toolbar button .icon { font-size:16px; line-height:1; }
-		/* 図形ボタンのサイズを統一 */
-		#toolbar button[data-add] {
-  		min-width: 120px;   /* ボタンの横幅（調整可） */
-  		height: 44px;       /* 高さをそろえる */
-  		justify-content: center;
-  		text-align: center;
-  		font-size: 15px;
+    /* 図形ボタンのサイズを統一 */
+    #toolbar button[data-add] {
+      min-width: 120px;   /* ボタンの横幅（調整可） */
+      height: 44px;       /* 高さをそろえる */
+      justify-content: center;
+      text-align: center;
+      font-size: 15px;
       border-radius: 10px;
-  		box-shadow: var(--btn-hover-shadow);
-		}
+      box-shadow: var(--btn-hover-shadow);
+    }
     /* タッチ端末：ハンドル大きめ */
     @media (pointer:coarse) {
       .handle { r: 14 !important; }
@@ -250,28 +250,28 @@
       button, select, input[type="color"] { padding:12px 14px; }
     }
     /* ========== レイアウト微調整 ========== */
-		.toolbar{
-  		display:grid;
-  		gap:8px;
-  		grid-auto-rows: min-content; /* 内容の高さで詰める（Safari対策） */
-		}
-		/* 付箋パネル出現時にヘッダが下がらないように固定高さ */
-		header .row {
-  		align-items: center;
-  		min-height: 48px;
-		}
+    .toolbar{
+      display:grid;
+      gap:8px;
+      grid-auto-rows: min-content; /* 内容の高さで詰める（Safari対策） */
+    }
+    /* 付箋パネル出現時にヘッダが下がらないように固定高さ */
+    header .row {
+      align-items: center;
+      min-height: 48px;
+    }
 
-		/* 「頂点編集」「サイズ固定」「色」を横一列に並べる */
-		#vertexEdit, #lockSize, #color {
-  		display: inline-block;
-  		vertical-align: middle;
-  		margin-right: 6px;
-		}
+    /* 「頂点編集」「サイズ固定」「色」を横一列に並べる */
+    #vertexEdit, #lockSize, #color {
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
 
-		/* 付箋パネルのせいで下に押されないよう、メインエリアの高さ確保 */
-		main {
-  		overflow: hidden;
-		}
+    /* 付箋パネルのせいで下に押されないよう、メインエリアの高さ確保 */
+    main {
+      overflow: hidden;
+    }
   </style>
 </head>
 <body>
@@ -334,17 +334,10 @@
         <div class="group">
           <div class="panel-title">手書き</div>
           <button data-tool="draw" title="ペン（キャンバスに自由線を描画）"><span class="icon">🖊️</span>ペン</button>
-          <select id="penColor" title="ペン色">
-            <option value="#1f2937" selected>黒</option>
-            <option value="#ef4444">赤</option>
-            <option value="#2563eb">青</option>
-            <option value="#16a34a">緑</option>
-          	<!-- ダークテーマ用蛍光色 -->
-  					<option value="#ffffff" hidden>白</option>
-  					<option value="#ff6b00" hidden>オレンジ</option>
-  					<option value="#33ddff" hidden>水色</option>
-  					<option value="#a8ff00" hidden>黄緑</option>
-          </select>
+
+          <!-- テーマで動的に中身を埋める -->
+          <select id="penColor" title="ペン色"></select>
+
           <select id="eraserMode" title="消しゴム">
             <option value="pixel">ピクセル</option>
             <option value="object">オブジェクト</option>
@@ -366,15 +359,15 @@
 
       <div class="group">
         <div class="panel-title">図形編集</div>
-        <div class="inline-controls">  <!-- ← 追加 -->
-  				<label class="toggle">
-    				<input type="checkbox" id="vertexEdit"/> 頂点編集
-  				</label>
-  				<label class="toggle">
-    				<input type="checkbox" id="lockSize"/> サイズ固定
-  				</label>
-  				<label class="color-pick">色 <input type="color" id="color" value="#2563eb"/></label>
-				</div>
+        <div class="inline-controls">
+          <label class="toggle">
+            <input type="checkbox" id="vertexEdit"/> 頂点編集
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="lockSize"/> サイズ固定
+          </label>
+          <label class="color-pick">色 <input type="color" id="color" value="#2563eb"/></label>
+        </div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
           <button id="dup" title="選択図形をコピー">⧉ コピー</button>
           <button id="front" title="前面へ">⤴ 手前へ</button>
@@ -436,7 +429,7 @@
     pointerPos:{x:0,y:0},
     splitStart:null,
     splitPinEl:null,
-    actions: [], // ← 追加：{type:'draw'|'erase', ...} の時系列
+    actions: [], // {type:'draw'|'erase', ...}
   };
 
   const ui={
@@ -456,29 +449,22 @@
     notePanel:document.getElementById('notePanel'),
     noteHdrColor:document.getElementById('noteHdrColor'),
     noteHdrSize:document.getElementById('noteHdrSize'),
-    // UI表示（バッジ/ステータスは削除済み）
+    // UI表示
     themeToggle:document.getElementById('themeToggle'),
     asideTab:document.getElementById('asideTab')
   };
 
   // ========= レイアウト安定化 =========
   function ensureLayout(){
-  	const header = document.querySelector('header');
-  	const wrap = document.querySelector('.board-wrap');
-
-  	// iOS Safari 対策: 実際に見えている高さを採用
-  	const vv = (window.visualViewport && visualViewport.height)
-    	? visualViewport.height
-    	: window.innerHeight;
-
-  	const hHeader = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
-
-  	// main の上下パディング 12px × 2 = 24
-  	// 端数による 1px はみ出しを抑えるために -1 でマージン
-  	const avail = Math.max(420, Math.floor(vv) - hHeader - 24 - 1);
-
-  	if (wrap) wrap.style.height = avail + 'px';
-	}
+    const header = document.querySelector('header');
+    const wrap = document.querySelector('.board-wrap');
+    const vv = (window.visualViewport && visualViewport.height)
+      ? visualViewport.height
+      : window.innerHeight;
+    const hHeader = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+    const avail = Math.max(420, Math.floor(vv) - hHeader - 24 - 1);
+    if (wrap) wrap.style.height = avail + 'px';
+  }
   function setSvgSizeByClient(){
     const r=board.getBoundingClientRect();
     const w=Math.max(1, Math.floor(r.width));
@@ -650,7 +636,7 @@
   // ========= 図形生成 =========
   function gridPoint(n, m){
     const off = state.gridOffset || 0;
-    const g = state.gridPx;
+       const g = state.gridPx;
     return [n*g + off, m*g + off];
   }
   function addShape(type){
@@ -668,28 +654,22 @@
       }
     }
     if (type === 'para') {
-  		// グリッド1マスの大きさ
-  		const g = state.gridPx;
-  		const off = state.gridOffset || 0;
+      const g = state.gridPx;
+      const off = state.gridOffset || 0;
+      const baseCells   = 3;  // 底辺 3
+      const heightCells = 2;  // 高さ 2
+      const skewCells   = 1;  // ずらし 1
 
-  		// グリッド何マス分にするか（1cmグリッドでも3cmグリッドでも整数マスになる指定）
-  		const baseCells   = 3;  // 底辺 3cm
-  		const heightCells = 2;  // 高さ 2cm
-  		const skewCells   = 1;  // 平行四辺形の“ずらし”を 1cm（＝左辺のxを+1cm）
+      const x0 = off + 2 * g;
+      const y0 = off + 2 * g;
 
-  		// 配置開始位置（グリッド交点上）
-  		const x0 = off + 2 * g;
-  		const y0 = off + 2 * g;
-
-  		// すべてグリッド交点上になるように、g の整数倍で置く
-  		pts = [
-    		[x0,                              y0],                       // 左上
-    		[x0 + baseCells * g,              y0],                       // 右上
-    		[x0 + (baseCells + skewCells) * g, y0 + heightCells * g],    // 右下
-    		[x0 + skewCells * g,              y0 + heightCells * g]      // 左下
-  		];
-		}
-    // ひし形はグリッド整合
+      pts = [
+        [x0,                              y0],
+        [x0 + baseCells * g,              y0],
+        [x0 + (baseCells + skewCells) * g, y0 + heightCells * g],
+        [x0 + skewCells * g,              y0 + heightCells * g]
+      ];
+    }
     if(type==='rh'){
       const g = state.gridPx;
       const off = state.gridOffset || 0;
@@ -1116,11 +1096,7 @@
   function setCanvasInteractivity(){
     const active = (state.tool==='draw' || state.tool==='erase');
     drawCanvas.style.pointerEvents = active ? 'auto' : 'none';
-    if (state.tool==='draw'){
-      drawCanvas.style.cursor = pencilCursor();
-    } else {
-      drawCanvas.style.cursor = 'crosshair';
-    }
+    drawCanvas.style.cursor = (state.tool==='draw') ? pencilCursor() : 'crosshair';
   }
   function pencilCursor(){
     const svg = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none">
@@ -1131,93 +1107,91 @@
   }
 
   function redrawCanvas(){
-  	const W=drawCanvas.width/state.dpr, H=drawCanvas.height/state.dpr;
-  	ctx.clearRect(0,0,W,H);
+    const W=drawCanvas.width/state.dpr, H=drawCanvas.height/state.dpr;
+    ctx.clearRect(0,0,W,H);
 
-  	// 1) actions を時系列で再生
-  	for(const act of state.actions){
-   		if(act.type==='draw'){
-      	ctx.save();
-      	ctx.globalCompositeOperation='source-over';
-      	ctx.beginPath();
-      	ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=act.color;
-      	const pts=act.pts; if(!pts || !pts.length){ ctx.restore(); continue; }
-      	ctx.moveTo(pts[0][0], pts[0][1]);
-      	for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
-      	ctx.stroke();
-      	ctx.restore();
-    	}else if(act.type==='erase'){
-      	ctx.save();
-      	ctx.globalCompositeOperation='destination-out';
-      	ctx.lineWidth=act.radius; ctx.lineCap='round'; ctx.lineJoin='round';
-      	const pts=act.pts; if(!pts || !pts.length){ ctx.restore(); continue; }
-      	ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-      	for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
-      	ctx.stroke();
-      	ctx.restore();
-    	}
-  	}
+    // 1) actions を時系列で再生
+    for(const act of state.actions){
+      if(act.type==='draw'){
+        ctx.save();
+        ctx.globalCompositeOperation='source-over';
+        ctx.beginPath();
+        ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=act.color;
+        const pts=act.pts; if(!pts || !pts.length){ ctx.restore(); continue; }
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.stroke();
+        ctx.restore();
+      }else if(act.type==='erase'){
+        ctx.save();
+        ctx.globalCompositeOperation='destination-out';
+        ctx.lineWidth=act.radius; ctx.lineCap='round'; ctx.lineJoin='round';
+        const pts=act.pts; if(!pts || !pts.length){ ctx.restore(); continue; }
+        ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
 
-  // 2) ドラッグ中のプレビュー
-  if(state.dragging && state.dragging.mode==='draw' && state.dragging.stroke){
-    const s=state.dragging.stroke;
-    ctx.save();
-    ctx.globalCompositeOperation='source-over';
-    ctx.beginPath(); ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
-    const pts=s.pts; if(pts.length){ ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
-    ctx.restore();
+    // 2) ドラッグ中のプレビュー
+    if(state.dragging && state.dragging.mode==='draw' && state.dragging.stroke){
+      const s=state.dragging.stroke;
+      ctx.save();
+      ctx.globalCompositeOperation='source-over';
+      ctx.beginPath(); ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
+      const pts=s.pts; if(pts.length){ ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
+      ctx.restore();
+    }
+    if(state.dragging && state.dragging.mode==='erasePixel' && state.dragging.eraser){
+      const e=state.dragging.eraser;
+      ctx.save();
+      ctx.globalCompositeOperation='destination-out';
+      ctx.lineWidth=e.radius; ctx.lineCap='round'; ctx.lineJoin='round';
+      const pts=e.pts; if(pts.length){ ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
+      ctx.restore();
+    }
   }
-  if(state.dragging && state.dragging.mode==='erasePixel' && state.dragging.eraser){
-    const e=state.dragging.eraser;
-    ctx.save();
-    ctx.globalCompositeOperation='destination-out';
-    ctx.lineWidth=e.radius; ctx.lineCap='round'; ctx.lineJoin='round';
-    const pts=e.pts; if(pts.length){ ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
-    ctx.restore();
-  }
-}
   function addStrokePoint(p){ state.dragging.stroke.pts.push([p.x,p.y]); }
   function finishStroke(){
-  	// 旧: state.drawings.push(...)
-  	const s = state.dragging.stroke;
-  	state.actions.push({type:'draw', color:s.color, pts:s.pts});
-	}
+    const s = state.dragging.stroke;
+    state.actions.push({type:'draw', color:s.color, pts:s.pts});
+  }
 
   function handleEraserDown(e, p){
-  	const m=state.eraserMode;
-  	if(m==='clear'){
-    	state.actions = [];   // ← 全クリア
-    	redrawCanvas(); pushHistory(); return;
-  	}
-  	if(m==='object'){
-    	eraseNearestDrawAction(p); // ← 下で定義
-    	redrawCanvas(); pushHistory(); return;
-  	}
-  	if(m==='pixel'){
-    	state.dragging={mode:'erasePixel', eraser:{pts:[[p.x,p.y]], radius:14}};
-    	try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
-    	redrawCanvas();
-    	return;
-  	}
-	}
+    const m=state.eraserMode;
+    if(m==='clear'){
+      state.actions = [];
+      redrawCanvas(); pushHistory(); return;
+    }
+    if(m==='object'){
+      eraseNearestDrawAction(p);
+      redrawCanvas(); pushHistory(); return;
+    }
+    if(m==='pixel'){
+      state.dragging={mode:'erasePixel', eraser:{pts:[[p.x,p.y]], radius:14}};
+      try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
+      redrawCanvas();
+      return;
+    }
+  }
   function eraseNearestDrawAction(p){
-  	let bestd=1e9, idx=-1;
-  	state.actions.forEach((a,i)=>{
-    	if(a.type!=='draw') return;
-    	const d=polylineDist(a.pts,p);
-    	if(d<bestd){ bestd=d; idx=i; }
-  	});
-  	if(idx>=0) state.actions.splice(idx,1);
-	}
+    let bestd=1e9, idx=-1;
+    state.actions.forEach((a,i)=>{
+      if(a.type!=='draw') return;
+      const d=polylineDist(a.pts,p);
+      if(d<bestd){ bestd=d; idx=i; }
+    });
+    if(idx>=0) state.actions.splice(idx,1);
+  }
   function addErasePoint(p){
     if(state.dragging?.mode!=='erasePixel') return;
     state.dragging.eraser.pts.push([p.x,p.y]);
   }
   function finishEraseStroke(){
-  	// 旧: state.eraseStrokes.push(...)
-  	const e = state.dragging.eraser;
-  	state.actions.push({type:'erase', radius:e.radius, pts:e.pts});
-	}
+    const e = state.dragging.eraser;
+    state.actions.push({type:'erase', radius:e.radius, pts:e.pts});
+  }
   function polylineDist(pts, p){
     let bd=1e9; for(let i=1;i<pts.length;i++){ bd=Math.min(bd, pointSegDist(p,{x:pts[i-1][0],y:pts[i-1][1]},{x:pts[i][0],y:pts[i][1]})); }
     return bd;
@@ -1381,19 +1355,19 @@
 
   // ========= 履歴 =========
   function snapshot(){
-  	return JSON.stringify({
-    	shapes: state.shapes,
-    	notes: state.notes,
-    	actions: state.actions
-  	});
-	}
+    return JSON.stringify({
+      shapes: state.shapes,
+      notes: state.notes,
+      actions: state.actions
+    });
+  }
   function restore(json){
-  	const s=JSON.parse(json);
-  	state.shapes = s.shapes || [];
-  	state.notes  = s.notes  || [];
-  	state.actions = s.actions || [];
-  	drawGrid(); render();
-	}
+    const s=JSON.parse(json);
+    state.shapes = s.shapes || [];
+    state.notes  = s.notes  || [];
+    state.actions = s.actions || [];
+    drawGrid(); render();
+  }
   function pushHistory(){ state.history.push(snapshot()); state.future=[]; }
   ui.undo.addEventListener('click', ()=>{ if(!state.history.length) return; const cur=snapshot(); const prev=state.history.pop(); state.future.push(cur); restore(prev); });
   ui.redo.addEventListener('click', ()=>{ if(!state.future.length) return; const cur=snapshot(); const next=state.future.pop(); state.history.push(cur); restore(next); });
@@ -1422,7 +1396,7 @@
   ui.gridSize.addEventListener('change', ()=>{
     const cm=parseInt(ui.gridSize.value,10)||3; state.gridPx=pxPerCm*cm; drawGrid(); render(); redrawCursorOverlay();
   });
-  ui.splitGridSnap.addEventListener('change', ()=> { state.splitGridSnap=ui.splitGridSnap.checked; /* バッジ削除済みなので表示更新なし */ });
+  ui.splitGridSnap.addEventListener('change', ()=> { state.splitGridSnap=ui.splitGridSnap.checked; });
   ui.vertexEdit.addEventListener('change', ()=>{ state.vertexEdit=ui.vertexEdit.checked; render(); });
 
   ui.color.addEventListener('input', ()=>{ if(state.sel){ state.sel.fill=ui.color.value; state.sel.stroke=ui.color.value; pushHistory(); render(); } });
@@ -1454,82 +1428,101 @@
       if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
     }
   });
-	function showPenOptionsForTheme(theme){
-  	const opts = ui.penColor.querySelectorAll('option');
-  	opts.forEach(opt=>{
-    	const v = opt.value.toLowerCase();
-    	const isDark =
-      	v==='#ffffff' || v==='#ff6b00' || v==='#33ddff' || v==='#a8ff00';
-    	// ダークでは蛍光色だけ表示、ライトでは通常色だけ表示
-    	opt.hidden = (theme==='dark') ? !isDark : isDark;
-  	});
-	}
+
+  // ======== テーマ連動：ペン選択肢の構築（Safari対策） ========
+  const LIGHT_PENS = [
+    { value: '#1f2937', label: '黒' },
+    { value: '#ef4444', label: '赤' },
+    { value: '#2563eb', label: '青' },
+    { value: '#16a34a', label: '緑' },
+  ];
+  const DARK_PENS = [
+    { value: '#ffffff', label: '白' },
+    { value: '#ff6b00', label: 'オレンジ' },
+    { value: '#33ddff', label: '水色' },
+    { value: '#a8ff00', label: '黄緑' },
+  ];
+  function showPenOptionsForTheme(theme){
+    const prev = (ui.penColor.value || '').toLowerCase();
+    while (ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
+    const list = (theme === 'dark') ? DARK_PENS : LIGHT_PENS;
+    for (const {value, label} of list){
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = label;
+      ui.penColor.appendChild(opt);
+    }
+    const hasPrev = list.some(x => x.value.toLowerCase() === prev);
+    ui.penColor.value = hasPrev ? prev : list[0].value;
+  }
+
+  // ======== テーマ連動：色マップ & 既存線再配色 ========
   const DARK_PEN_MAP = {
-  	'#1f2937':'#ffffff', // 黒→白
-  	'#ef4444':'#ff6b00', // 赤→蛍光オレンジ
-  	'#2563eb':'#33ddff', // 青→蛍光水色
-  	'#16a34a':'#a8ff00'  // 緑→蛍光黄緑
-	};
-	const LIGHT_PEN_MAP = {
-  	'#ffffff':'#1f2937', // 白→黒
-  	'#ff6b00':'#ef4444', // 蛍光オレンジ→赤
-  	'#33ddff':'#2563eb', // 蛍光水色→青
-  	'#a8ff00':'#16a34a'  // 蛍光黄緑→緑
-	};
-
-	function recolorDrawActionsForTheme(theme){
-  	const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
-  	for(const act of state.actions){
-    	if (act.type !== 'draw') continue; // ← ここが重要（modeではなくtype）
-    	const c = (act.color||'').toLowerCase();
-    	if (map[c]) act.color = map[c];
-  	}
-	}
-  
+    '#1f2937':'#ffffff',
+    '#ef4444':'#ff6b00',
+    '#2563eb':'#33ddff',
+    '#16a34a':'#a8ff00'
+  };
+  const LIGHT_PEN_MAP = {
+    '#ffffff':'#1f2937',
+    '#ff6b00':'#ef4444',
+    '#33ddff':'#2563eb',
+    '#a8ff00':'#16a34a'
+  };
+  function recolorDrawActionsForTheme(theme){
+    const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
+    for(const act of state.actions){
+      if (act.type !== 'draw') continue;
+      const c = (act.color||'').toLowerCase();
+      if (map[c]) act.color = map[c];
+    }
+  }
   function remapCurrentPenColor(theme){
-  	const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
+    const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
+    const cur = (state.penColor||'').toLowerCase();
+    if (map[cur]) state.penColor = map[cur];
 
-  	// 現在値をテーマ色にマップ
-  	const cur = (state.penColor||'').toLowerCase();
-  	if (map[cur]) state.penColor = map[cur];
+    // 現在の state.penColor がセレクト内に無ければ先頭を採用
+    const hasSame = Array.from(ui.penColor.options)
+      .some(o => o.value.toLowerCase() === (state.penColor||'').toLowerCase());
+    if (!hasSame && ui.penColor.options.length){
+      state.penColor = ui.penColor.options[0].value;
+    }
+    ui.penColor.value = state.penColor;
+  }
 
-  	// セレクトの選択状態を反映（隠れているvalueだったら、見えている先頭にフォールバック）
-  	const visible = Array.from(ui.penColor.options).filter(o=>!o.hidden);
-  	const hasVisibleSame = visible.some(o => o.value.toLowerCase() === state.penColor.toLowerCase());
-  	ui.penColor.value = hasVisibleSame ? state.penColor : (visible[0]?.value || state.penColor);
-	}
   // ========== テーマ切替 & 永続化 ==========
   function applyTheme(theme){
-  	// 1) DOM属性とトグル表示
-  	document.documentElement.setAttribute('data-theme', theme);
-  	ui.themeToggle.textContent = (theme === 'dark') ? '☀️' : '🌙';
-  	localStorage.setItem('board-theme', theme);
+    // 1) DOM属性とトグル表示
+    document.documentElement.setAttribute('data-theme', theme);
+    ui.themeToggle.textContent = (theme === 'dark') ? '☀️' : '🌙';
+    localStorage.setItem('board-theme', theme);
 
-  	// 2) ペン色の選択肢を出し分け（先にやる）
-  	showPenOptionsForTheme(theme);
+    // 2) ペン色の選択肢を出し分け（先にやる）
+    showPenOptionsForTheme(theme);
 
-  	// 3) 現在の選択中ペン色をテーマに合わせて置き換え & 隠れ対策
-  	remapCurrentPenColor(theme);
+    // 3) 現在のペン色をテーマに合わせて置き換え & セレクトと整合
+    remapCurrentPenColor(theme);
 
-  	// 4) すでに描いた線を一括再配色（act.type==='draw'）
-  	recolorDrawActionsForTheme(theme);
+    // 4) 既に描いた線を一括再配色
+    recolorDrawActionsForTheme(theme);
 
-  	// 5) 図形の「既定色」を変更（選択中だけ即反映）
-  	if (theme==='dark'){
-    	ui.color.value = '#facc15';          // 黄色
-    	if (state.sel){ state.sel.fill = '#facc15'; state.sel.stroke = '#facc15'; }
-  	}else{
-    	ui.color.value = '#2563eb';          // 青
-    	if (state.sel){ state.sel.fill = '#2563eb'; state.sel.stroke = '#2563eb'; }
-  	}
+    // 5) 図形の既定色（選択中だけ即時反映）
+    if (theme==='dark'){
+      ui.color.value = '#facc15';
+      if (state.sel){ state.sel.fill = '#facc15'; state.sel.stroke = '#facc15'; }
+    }else{
+      ui.color.value = '#2563eb';
+      if (state.sel){ state.sel.fill = '#2563eb'; state.sel.stroke = '#2563eb'; }
+    }
 
-  	// 6) 再描画（キャンバスも必ず）
-  	drawGrid();
-  	render();
-  	redrawCanvas();
-  	redrawCursorOverlay();
-	}
-  
+    // 6) 再描画
+    drawGrid();
+    render();
+    redrawCanvas();
+    redrawCursorOverlay();
+  }
+
   ui.themeToggle.addEventListener('click', ()=>{
     const cur = document.documentElement.getAttribute('data-theme') || 'light';
     applyTheme(cur==='light' ? 'dark' : 'light');
