@@ -216,7 +216,20 @@
 
     /* ヘッダの付箋パネル（選択時だけ表示） */
     #notePanel{ display:none; gap:8px; align-items:center; padding:4px 6px; border:1px solid var(--btn-border); border-radius:10px; }
+		/* ヘッダの行高さを安定させる */
+		header .row{
+  		min-height: 56px;        /* 端末差を吸収できる安全値 */
+  		align-items: center;
+		}
 
+		/* 付箋パネルをボタンと同じ高さに固定 */
+		#notePanel{
+  		height: 36px;            /* ボタン(10px上下padding+font-size14pxの実高≒36px) */
+  		box-sizing: border-box;
+  		display: none;           /* 既存 */
+  		align-items: center;     /* 既存がなければ追加 */
+  		gap: 8px;                /* 既存がなければ追加 */
+		}
     /* ボタン群（アイコン＋ラベル） */
     .toolbar button { display:inline-flex; align-items:center; gap:6px; touch-action:manipulation; }
     .toolbar button .icon { font-size:16px; line-height:1; }
@@ -236,6 +249,29 @@
       .bbox-handle { width: 24px !important; height: 24px !important; }
       button, select, input[type="color"] { padding:12px 14px; }
     }
+    /* ========== レイアウト微調整 ========== */
+		.toolbar{
+  		display:grid;
+  		gap:8px;
+  		grid-auto-rows: min-content; /* 内容の高さで詰める（Safari対策） */
+		}
+		/* 付箋パネル出現時にヘッダが下がらないように固定高さ */
+		header .row {
+  		align-items: center;
+  		min-height: 48px;
+		}
+
+		/* 「頂点編集」「サイズ固定」「色」を横一列に並べる */
+		#vertexEdit, #lockSize, #color {
+  		display: inline-block;
+  		vertical-align: middle;
+  		margin-right: 6px;
+		}
+
+		/* 付箋パネルのせいで下に押されないよう、メインエリアの高さ確保 */
+		main {
+  		overflow: hidden;
+		}
   </style>
 </head>
 <body>
@@ -325,11 +361,15 @@
 
       <div class="group">
         <div class="panel-title">図形編集</div>
-        <label class="toggle" style="display:block;margin-bottom:6px;">
-          <input type="checkbox" id="vertexEdit"/> 頂点編集
-        </label>
-        <label class="toggle"><input type="checkbox" id="lockSize"/> サイズ固定</label>
-        <label>色 <input type="color" id="color" value="#2563eb"/></label>
+        <div class="inline-controls">  <!-- ← 追加 -->
+  				<label class="toggle">
+    				<input type="checkbox" id="vertexEdit"/> 頂点編集
+  				</label>
+  				<label class="toggle">
+    				<input type="checkbox" id="lockSize"/> サイズ固定
+  				</label>
+  				<label class="color-pick">色 <input type="color" id="color" value="#2563eb"/></label>
+				</div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
           <button id="dup" title="選択図形をコピー">⧉ コピー</button>
           <button id="front" title="前面へ">⤴ 手前へ</button>
@@ -343,9 +383,9 @@
 
       <div class="group">
         <div class="panel-title">分割</div>
-        <button data-tool="splitLine" title="直線で分割（複数図形にも対応）"><span class="icon">✂️</span>直線で分割</button>
+        <button data-tool="splitLine" title="直線で分割（複数図形にも対応）"><span class="icon">✂️</span>カット</button>
         <label class="toggle" style="display:block; margin-top:6px;" title="分割線を方眼に吸着させる">
-          <input type="checkbox" id="splitGridSnap"/> 線にそって切りとる
+          <input type="checkbox" id="splitGridSnap"/> 線にそってカット
         </label>
       </div>
     </div>
