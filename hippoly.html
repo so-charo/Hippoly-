@@ -1620,15 +1620,29 @@
       cctx.restore();
     }
   }
-
+	function nextFrame(){
+  	return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+	}
+	function waitBoardSize(cb){
+  	const wrap = document.querySelector('.board-wrap');
+  	const tryOnce = ()=>{
+    	ensureLayout();
+    	const r = (wrap || board.parentElement || board).getBoundingClientRect();
+    	if (r.width >= 2 && r.height >= 2){
+      	cb();
+    	} else {
+      nextFrame().then(tryOnce);
+    	}
+  	};
+  	tryOnce();
+	}
   // ========= 起動 =========
-  function boot(){
-  	// iPadのダブルタップズーム/長押しメニュー/選択開始を抑止（付箋内は許可）
+  	function boot(){
+  	// --- 既存の各種パッチ/イベント登録（ここはそのまま） ---
   	(function(){
     	if (window.__iosTouchPatched) return;
     	window.__iosTouchPatched = true;
     	const inNote = (el)=> !!(el && (el.classList?.contains('note') || el.closest?.('.note')));
-
     	document.addEventListener('dblclick', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
     	let lastTouchEnd = 0;
     	document.addEventListener('touchend', (e)=>{
@@ -1642,14 +1656,12 @@
     	document.addEventListener('selectstart', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
   	})();
 
-  	// タッチ端末ではスナップ閾値を少し緩める
   	try{
     	if (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) {
       	state.snapTol = Math.max(state.snapTol, 20);
     	}
   	}catch(_){}
 
-  	// viewport 監視
   	window.addEventListener('resize', onViewportChange, {passive:true});
   	window.addEventListener('orientationchange', onViewportChange, {passive:true});
   	try{
@@ -1660,14 +1672,17 @@
   	}catch(_){}
 
   	ensureLayout();
-    drawGrid(); render(); redrawCursorOverlay();
-  	const tick=()=>{
-    	const r=board.getBoundingClientRect();
-    	if(r.width<2 || r.height<2){ requestAnimationFrame(tick); return; }
-    	drawGrid(); render(); redrawCursorOverlay();
-    	const wrap=document.querySelector('.board-wrap');
-    	if(window.ResizeObserver && wrap){
-      	const ro=new ResizeObserver(()=>{
+
+  	// ★ 初回は「サイズが安定するまで」待ってから描画する
+  	waitBoardSize(() => {
+    	drawGrid();
+    	render();
+    	redrawCursorOverlay();
+
+    	// 以降は ResizeObserver で追随
+    	const wrap = document.querySelector('.board-wrap');
+    	if (window.ResizeObserver && wrap){
+      	const ro = new ResizeObserver(()=>{
         	ensureLayout();
         	drawGrid();
         	render();
@@ -1675,10 +1690,9 @@
       	});
       	ro.observe(wrap);
     	}
-  	};
-  	requestAnimationFrame(tick);
+  	});
 
-  	// 初期ロード時にもレイアウトを安定化
+  	// 念のための保険（遅延後にもう一度安定化）
   	setTimeout(()=>{
     	ensureLayout();
     	drawGrid();
