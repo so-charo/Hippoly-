@@ -1486,72 +1486,78 @@
   	{ value:'#33ddff', label:'水色' },
   	{ value:'#a8ff00', label:'黄緑' },
 	];
-  // ======== テーマ連動：色マップ & 既存線再配色 ========
-  const DARK_PEN_MAP = {
-    '#1f2937':'#ffffff',
-    '#ef4444':'#ff6b00',
-    '#2563eb':'#33ddff',
-    '#16a34a':'#a8ff00'
-  };
-  const LIGHT_PEN_MAP = {
-    '#ffffff':'#1f2937',
-    '#ff6b00':'#ef4444',
-    '#33ddff':'#2563eb',
-    '#a8ff00':'#16a34a'
-  };
-  function recolorDrawActionsForTheme(theme){
-    const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
-    for(const act of state.actions){
-      if (act.type !== 'draw') continue;
-      const c = (act.color||'').toLowerCase();
-      if (map[c]) act.color = map[c];
-    }
-  }
-  function remapCurrentPenColor(theme){
-    const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
-    const cur = (state.penColor||'').toLowerCase();
-    if (map[cur]) state.penColor = map[cur];
+  // 通常↔蛍光の相互マップ
+	const DARK_PEN_MAP = {
+  	'#1f2937':'#ffffff', // 黒→白
+  	'#ef4444':'#ff6b00', // 赤→蛍光オレンジ
+  	'#2563eb':'#33ddff', // 青→蛍光水色
+  	'#16a34a':'#a8ff00'  // 緑→蛍光黄緑
+	};
+	const LIGHT_PEN_MAP = {
+  	'#ffffff':'#1f2937', // 白→黒
+  	'#ff6b00':'#ef4444', // 蛍光オレンジ→赤
+  	'#33ddff':'#2563eb', // 蛍光水色→青
+  	'#a8ff00':'#16a34a'  // 蛍光黄緑→緑
+	};
 
-    // 現在の state.penColor がセレクト内に無ければ先頭を採用
-    const hasSame = Array.from(ui.penColor.options)
-      .some(o => o.value.toLowerCase() === (state.penColor||'').toLowerCase());
-    if (!hasSame && ui.penColor.options.length){
-      state.penColor = ui.penColor.options[0].value;
-    }
-    ui.penColor.value = state.penColor;
-  }
+	function recolorDrawActionsForTheme(theme){
+  	const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
+  	for(const act of state.actions){
+    	if (act.type !== 'draw') continue;
+    	const c = (act.color||'').toLowerCase();
+    	if (map[c]) act.color = map[c];
+  	}
+	}
 
-  // ========== テーマ切替 & 永続化 ==========
-  function applyTheme(theme){
-    // 1) DOM属性とトグル表示
-    document.documentElement.setAttribute('data-theme', theme);
-    ui.themeToggle.textContent = (theme === 'dark') ? '☀️' : '🌙';
-    localStorage.setItem('board-theme', theme);
+	function remapCurrentPenColor(theme){
+  	const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
 
-    // 2) ペン色の選択肢を出し分け（先にやる）
-    showPenOptionsForTheme(theme);
+  	// 1) state の現在色をマップ
+  	const cur = (state.penColor||'').toLowerCase();
+  	if (map[cur]) state.penColor = map[cur];
 
-    // 3) 現在のペン色をテーマに合わせて置き換え & セレクトと整合
-    remapCurrentPenColor(theme);
+  	// 2) UI の可視候補に合わせて value を調整
+  	const visible = Array.from(ui.penColor.options).filter(o=>!o.hidden);
+  	const hasVisibleSame = visible.some(o => o.value.toLowerCase() === state.penColor.toLowerCase());
+  	ui.penColor.value = hasVisibleSame ? state.penColor : (visible[0]?.value || state.penColor);
 
-    // 4) 既に描いた線を一括再配色
-    recolorDrawActionsForTheme(theme);
+  	// 3) 念のため state と同期（2）でフォールバックした場合にも反映
+  	state.penColor = ui.penColor.value;
+	}
 
-    // 5) 図形の既定色（選択中だけ即時反映）
-    if (theme==='dark'){
-      ui.color.value = '#facc15';
-      if (state.sel){ state.sel.fill = '#facc15'; state.sel.stroke = '#facc15'; }
-    }else{
-      ui.color.value = '#2563eb';
-      if (state.sel){ state.sel.fill = '#2563eb'; state.sel.stroke = '#2563eb'; }
-    }
+	function applyTheme(theme){
+  	// 0) DOM属性の切替
+  	document.documentElement.setAttribute('data-theme', theme);
+  	ui.themeToggle.textContent = (theme === 'dark') ? '☀️' : '🌙';
+  	localStorage.setItem('board-theme', theme);
 
-    // 6) 再描画
-    drawGrid();
-    render();
-    redrawCanvas();
-    redrawCursorOverlay();
-  }
+  	// 1) まず選択肢の可視/不可視を切替
+  	showPenOptionsForTheme(theme);
+
+  	// 2) 現在のペン色をテーマ側の色へ置換（不可視なら可視の先頭にフォールバック）
+  	remapCurrentPenColor(theme);
+
+  	// 3) 既に描いた線の色も一括でマップ
+  	recolorDrawActionsForTheme(theme);
+
+  	// 4) 図形の既定色（選択中は即反映）
+  	if (theme==='dark'){
+    	ui.color.value = '#facc15';
+    	if (state.sel){ state.sel.fill = '#facc15'; state.sel.stroke = '#facc15'; }
+  	}else{
+    	ui.color.value = '#2563eb';
+    	if (state.sel){ state.sel.fill = '#2563eb'; state.sel.stroke = '#2563eb'; }
+  	}
+
+  	// 5) 最後に再描画（キャンバス含む）
+  	drawGrid();
+  	render();
+  	redrawCanvas();
+  	redrawCursorOverlay();
+
+  	// 6) セレクト変更イベントを通知（外部依存があれば）
+  	ui.penColor.dispatchEvent(new Event('change', {bubbles:false}));
+	}
 
   ui.themeToggle.addEventListener('click', ()=>{
     const cur = document.documentElement.getAttribute('data-theme') || 'light';
