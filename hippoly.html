@@ -117,17 +117,24 @@
     }
     body.aside-collapsed aside{ width:0; padding:0; border:none; opacity:0; pointer-events:none; }
     /* サイドバー突起タブ */
-    .aside-tab{
-      position:absolute; left:-18px; top:12px; width:18px; height:36px; display:flex; align-items:center; justify-content:center;
-      background:var(--btn-bg); border:1px solid var(--btn-border); border-radius:8px 0 0 8px; cursor:pointer;
-      box-shadow: var(--btn-hover-shadow); user-select:none; touch-action:manipulation;
-    }
-
-    .board-wrap{
-      order:1; background:var(--panel-bg); color:var(--text);
-      border-radius:14px; padding:8px; box-shadow: var(--panel-shadow);
-      position:relative; min-height:420px; overflow:hidden;
-    }
+		.aside-tab {
+  		position: absolute;
+  		left: -26px;       /* ★ 少し外に出す。-18→-26 */
+  		top: 12px;
+  		width: 22px;
+  		height: 38px;
+  		display: flex;
+  		align-items: center;
+  		justify-content: center;
+  		background: var(--btn-bg);
+  		border: 1px solid var(--btn-border);
+  		border-radius: 8px 0 0 8px;
+  		cursor: pointer;
+  		box-shadow: var(--btn-hover-shadow);
+  		user-select: none;
+  		touch-action: manipulation;
+  		z-index: 9999;     /* ★ どんな要素よりも前面に */
+		}
 
     .panel-title{font-size:14px; color:var(--hint); margin:2px 0 8px;}
     .toolbar{display:grid; gap:8px;}
