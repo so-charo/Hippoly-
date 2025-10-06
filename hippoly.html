@@ -1454,49 +1454,40 @@
       if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
     }
   });
+	// 追加：テーマごとの候補リスト
+	const LIGHT_PENS = [
+  	{ value: '#1f2937', label: '黒' },
+  	{ value: '#ef4444', label: '赤' },
+  	{ value: '#2563eb', label: '青' },
+  	{ value: '#16a34a', label: '緑' },
+	];
+	const DARK_PENS = [
+  	{ value: '#ffffff', label: '白' },
+  	{ value: '#ff6b00', label: 'オレンジ' },
+  	{ value: '#33ddff', label: '水色' },
+  	{ value: '#a8ff00', label: '黄緑' },
+	];
+
+	// ここを置き換え
 	function showPenOptionsForTheme(theme){
-  	const opts = ui.penColor.querySelectorAll('option');
-  	opts.forEach(opt=>{
-    	const v = opt.value.toLowerCase();
-    	const isDark =
-      	v==='#ffffff' || v==='#ff6b00' || v==='#33ddff' || v==='#a8ff00';
-    	// ダークでは蛍光色だけ表示、ライトでは通常色だけ表示
-    	opt.hidden = (theme==='dark') ? !isDark : isDark;
-  	});
-	}
-  const DARK_PEN_MAP = {
-  	'#1f2937':'#ffffff', // 黒→白
-  	'#ef4444':'#ff6b00', // 赤→蛍光オレンジ
-  	'#2563eb':'#33ddff', // 青→蛍光水色
-  	'#16a34a':'#a8ff00'  // 緑→蛍光黄緑
-	};
-	const LIGHT_PEN_MAP = {
-  	'#ffffff':'#1f2937', // 白→黒
-  	'#ff6b00':'#ef4444', // 蛍光オレンジ→赤
-  	'#33ddff':'#2563eb', // 蛍光水色→青
-  	'#a8ff00':'#16a34a'  // 蛍光黄緑→緑
-	};
+  	// 1) 以前の選択値を保持（復元できるなら復元する）
+  	const prev = (ui.penColor.value || '').toLowerCase();
 
-	function recolorDrawActionsForTheme(theme){
-  	const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
-  	for(const act of state.actions){
-    	if (act.type !== 'draw') continue; // ← ここが重要（modeではなくtype）
-    	const c = (act.color||'').toLowerCase();
-    	if (map[c]) act.color = map[c];
+  	// 2) <select> の中身を全部クリア
+  	while (ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
+
+  	// 3) テーマに応じて4色だけを再構築（Safariでも確実に効く）
+  	const list = (theme === 'dark') ? DARK_PENS : LIGHT_PENS;
+  	for (const {value, label} of list){
+    	const opt = document.createElement('option');
+    	opt.value = value;
+    	opt.textContent = label;
+    	ui.penColor.appendChild(opt);
   	}
-	}
-  
-  function remapCurrentPenColor(theme){
-  	const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
 
-  	// 現在値をテーマ色にマップ
-  	const cur = (state.penColor||'').toLowerCase();
-  	if (map[cur]) state.penColor = map[cur];
-
-  	// セレクトの選択状態を反映（隠れているvalueだったら、見えている先頭にフォールバック）
-  	const visible = Array.from(ui.penColor.options).filter(o=>!o.hidden);
-  	const hasVisibleSame = visible.some(o => o.value.toLowerCase() === state.penColor.toLowerCase());
-  	ui.penColor.value = hasVisibleSame ? state.penColor : (visible[0]?.value || state.penColor);
+  	// 4) 可能なら以前の値を維持、なければ先頭にフォールバック
+  	const hasPrev = list.some(x => x.value.toLowerCase() === prev);
+  	ui.penColor.value = hasPrev ? prev : list[0].value;
 	}
   // ========== テーマ切替 & 永続化 ==========
   function applyTheme(theme){
