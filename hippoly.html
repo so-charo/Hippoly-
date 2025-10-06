@@ -178,6 +178,16 @@
     .handle{fill:#fff; stroke:var(--accent); stroke-width:2; cursor:pointer;}
     .bbox-handle{fill:#fff; stroke:#64748b; stroke-width:2; cursor:nwse-resize;}
 
+    /* ▼回転ハンドル（追加） */
+    .rot-stem{ stroke:#94a3b8; stroke-width:2; }
+    .rot-handle{
+      fill:var(--btn-bg);
+      stroke:#64748b;
+      stroke-width:2;
+      cursor:grab;
+    }
+    .rot-handle:active{ cursor:grabbing; }
+
     .badgebar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;}
     .badge{
       background:var(--badge-bg); color:var(--badge-text);
@@ -202,8 +212,7 @@
     .note-close{
       position:absolute; right:4px; top:4px;
       border:none; background:rgba(255,255,255,0.85);
-      border:1px solid var(--btn-border); border-radius:6px;
-      padding:2px 6px; cursor:pointer; font-size:12px; color:#111;
+      border:1px solid var(--btn-border); border-radius:6px; padding:2px 6px; cursor:pointer; font-size:12px; color:#111;
       touch-action:manipulation;
     }
     [data-theme="dark"] .note-close{ background:rgba(17,24,39,0.9); color:#e5e7eb; }
@@ -553,6 +562,15 @@
   function centroid(pts){ const s=pts.reduce((a,p)=>({x:a.x+p[0],y:a.y+p[1]}),{x:0,y:0}); return {x:s.x/pts.length,y:s.y/pts.length}; }
   function dist(x1,y1,x2,y2){ const dx=x1-x2, dy=y1-y2; return Math.hypot(dx,dy); }
 
+  /* ▼回転用ユーティリティ（追加） */
+  function rotatePointsAround(pts, cx, cy, rad){
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    return pts.map(([x,y])=>{
+      const dx = x - cx, dy = y - cy;
+      return [ cx + dx*cos - dy*sin, cy + dx*sin + dy*cos ];
+    });
+  }
+
   // ========= スナップ等 =========
   function segI(A,B,C,D){
     const den=(B[0]-A[0])*(D[1]-C[1])-(B[1]-A[1])*(D[0]-C[0]);
@@ -788,6 +806,23 @@
           ];
           hs.forEach(h=>{const r=el('rect',{x:h.x-10,y:h.y-10,width:20,height:20,rx:4,class:'bbox-handle'}); r.dataset.id=sh.id; r.dataset.corner=h.c; handles.appendChild(r);});
           handles.appendChild(el('rect',{x:bb.x,y:bb.y,width:bb.w,height:bb.h,fill:'none',stroke:'#94a3b8','stroke-dasharray':'6 4'}));
+
+          /* ▼回転ハンドル（追加） */
+          const topMid = { x: bb.x + bb.w/2, y: bb.y };
+          const offset = 28; // 突き出し量(px)
+          handles.appendChild(el('line', {
+            x1: topMid.x, y1: topMid.y,
+            x2: topMid.x, y2: topMid.y - offset + 10,
+            class: 'rot-stem'
+          }));
+          const rot = el('circle', {
+            cx: topMid.x, cy: topMid.y - offset,
+            r: 10, class: 'rot-handle'
+          });
+          rot.dataset.id = sh.id;
+          rot.dataset.rot = '1';
+          handles.appendChild(rot);
+          /* ▲回転ハンドル（追加ここまで） */
         }
       }
     }
@@ -889,8 +924,9 @@
 
     const target=e.target;
     const id=target && target.dataset ? target.dataset.id : null;
-    const isVHandle=target.classList && target.classList.contains('handle');
-    const isBBoxHandle=target.classList && target.classList.contains('bbox-handle');
+    const isVHandle   = target.classList && target.classList.contains('handle');
+    const isBBoxHandle= target.classList && target.classList.contains('bbox-handle');
+    const isRotHandle = target.classList && target.classList.contains('rot-handle');
 
     if(state.tool==='text'){
       addNote(p.x, p.y);
@@ -902,6 +938,21 @@
       drawSplitPreview(state.dragging.a, state.dragging.b);
       return;
     }
+
+    /* ▼回転ハンドル開始（追加） */
+    if (isRotHandle && state.sel){
+      const c = centroid(state.sel.points);
+      const a0 = Math.atan2(p.y - c.y, p.x - c.x);
+      state.dragging = {
+        mode: 'rotateFree',
+        sh: state.sel,
+        center: c,
+        startAngle: a0,
+        initPts: state.sel.points.map(q=>q.slice())
+      };
+      return;
+    }
+    /* ▲回転ハンドル開始（追加ここまで） */
 
     if(state.sel && !state.vertexEdit && isBBoxHandle){
       if(state.lockSize) return;
@@ -1025,6 +1076,17 @@
       note.w = Math.max(80, ow + (p.x-start.x));
       note.h = Math.max(40, oh + (p.y-start.y));
       renderNotes();
+    }else if(state.dragging.mode==='rotateFree'){
+      /* ▼回転中の更新（追加） */
+      const {sh, center, startAngle, initPts} = state.dragging;
+      let ang = Math.atan2(p.y - center.y, p.x - center.x) - startAngle;
+      if (e.shiftKey){
+        const step = 15 * Math.PI/180;
+        ang = Math.round(ang / step) * step;
+      }
+      sh.points = rotatePointsAround(initPts, center.x, center.y, ang);
+      render();
+      /* ▲回転中の更新（追加ここまで） */
     }else if(state.dragging.mode==='split'){
       const isShift=!!e.shiftKey;
       const snap=splitSnapMove(p, state.dragging.lock, state.dragging.anchor, isShift);
@@ -1038,7 +1100,7 @@
   function onPointerUpOrCancel(e){
     if(!state.dragging) return;
     const m=state.dragging.mode;
-    if(m==='move' || m==='vertex' || m==='bbox' || m==='noteMove' || m==='noteResize'){ pushHistory(); }
+    if(m==='move' || m==='vertex' || m==='bbox' || m==='noteMove' || m==='noteResize' || m==='rotateFree'){ pushHistory(); }
     if(m==='draw'){ finishStroke(); pushHistory(); redrawCanvas(); }
     if(m==='erasePixel'){ finishEraseStroke(); pushHistory(); redrawCanvas(); }
     if(m==='split'){ finishSplit(); pushHistory(); }
