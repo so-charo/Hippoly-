@@ -135,7 +135,13 @@
   		touch-action: manipulation;
   		z-index: 9999;     /* ★ どんな要素よりも前面に */
 		}
-
+    
+		.board-wrap{
+  		order:1; background:var(--panel-bg); color:var(--text);
+  		border-radius:14px; padding:8px; box-shadow: var(--panel-shadow);
+  		position:relative; min-height:420px; overflow:hidden;
+		}
+    
     .panel-title{font-size:14px; color:var(--hint); margin:2px 0 8px;}
     .toolbar{display:grid; gap:8px;}
     .group{border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;}
