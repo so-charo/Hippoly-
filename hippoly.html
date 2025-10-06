@@ -220,7 +220,16 @@
     /* ボタン群（アイコン＋ラベル） */
     .toolbar button { display:inline-flex; align-items:center; gap:6px; touch-action:manipulation; }
     .toolbar button .icon { font-size:16px; line-height:1; }
-
+		/* 図形ボタンのサイズを統一 */
+		#toolbar button[data-add] {
+  		min-width: 120px;   /* ボタンの横幅（調整可） */
+  		height: 44px;       /* 高さをそろえる */
+  		justify-content: center;
+  		text-align: center;
+  		font-size: 15px;
+      border-radius: 10px;
+  		box-shadow: var(--btn-hover-shadow);
+		}
     /* タッチ端末：ハンドル大きめ */
     @media (pointer:coarse) {
       .handle { r: 14 !important; }
@@ -246,8 +255,6 @@
     <button id="reset" title="リセット（画面を再読み込み）">⟲ リセット</button>
     <button id="export" title="保存（JSONとして保存）">💾 保存</button>
     <label class="toggle" title="読み込み（保存したJSONを選択）">📂 読み込み<input id="import" type="file" accept="application/json" style="display:none"></label>
-
-    <!-- テーマトグル -->
     <button id="themeToggle" title="テーマ切替（ライト/ダーク）">🌙</button>
 
     <!-- 付箋選択時のみ表示するヘッダパネル -->
@@ -269,7 +276,6 @@
 
 <main>
   <div class="board-wrap">
-    <!-- ※モードバッジ/ステータスバー削除済み -->
     <svg id="board" class="board" aria-label="draw-board"></svg>
     <canvas id="drawCanvas" class="draw"></canvas>
     <canvas id="cursorCanvas" class="cursor-layer"></canvas>
@@ -310,11 +316,11 @@
       <div class="group">
         <div class="panel-title">図形</div>
         <button data-add="rect" title="長方形を追加">▭ 長方形</button>
+        <button data-add="para" title="平行四辺形を追加">▱ 平行四辺形</button>
         <button data-add="tri" title="三角形（ランダム）を追加">△ 三角形</button>
         <button data-add="trap" title="台形（3パターンからランダム）を追加">⏃ 台形</button>
-        <button data-add="para" title="平行四辺形を追加">▱ 平行四辺形</button>
         <button data-add="rh" title="ひし形を追加">◇ ひし形</button>
-        <!-- 重複していた削除ボタンは「図形編集」側だけに残す -->
+        <button id="deleteShape" title="選択図形を削除">✖ 削除</button>
       </div>
 
       <div class="group">
@@ -332,7 +338,6 @@
           <button id="rotR" title="時計回りに回転">↻ 回転</button>
           <button id="flipH" title="左右反転">⇔ 反転</button>
           <button id="flipV" title="上下反転">⇕ 反転</button>
-          <button id="deleteShape" title="選択図形を削除">✖ 削除</button>
         </div>
       </div>
 
