@@ -110,61 +110,52 @@
       transition: grid-template-columns .15s ease;
     }
     body.aside-collapsed main{ grid-template-columns: 1fr 0px; }
+
     /* ========== aside（ここ重要） ========== */
-aside{
-  order:2; background:var(--panel-bg); color:var(--text); border-radius:14px;
-  padding:12px; box-shadow: var(--panel-shadow);
-  overflow: visible;     /* ★ タブがはみ出しても見えるように */
-  position:relative;
-  transition: width .15s ease, opacity .15s ease;
-}
+    aside{
+      order:2; background:var(--panel-bg); color:var(--text); border-radius:14px;
+      padding:12px; box-shadow: var(--panel-shadow);
+      overflow: visible;     /* タブがはみ出しても見えるように */
+      position:relative;
+      transition: width .15s ease, opacity .15s ease;
+    }
+    body.aside-collapsed aside{
+      width:0;
+      padding:0;
+      border:none;
+      opacity:1;             /* タブは消さない */
+      pointer-events:none;
+    }
+    body.aside-collapsed aside > *:not(.aside-tab){
+      display:none;
+    }
+    .aside-tab {
+      position: absolute;
+      left: -26px;
+      top: 12px;
+      width: 26px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--btn-bg);
+      border: 1px solid var(--btn-border);
+      border-radius: 8px 0 0 8px;
+      cursor: pointer;
+      box-shadow: var(--btn-hover-shadow);
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      z-index: 9999;
+    }
+    body.aside-collapsed .aside-tab{ pointer-events:auto; }
 
-/* 折りたたみ時：aside 全体は透明にしない。中身だけ隠す */
-body.aside-collapsed aside{
-  width:0;
-  padding:0;
-  border:none;
-  opacity:1;             /* ★ 0 → 1 に変更（タブが消えない） */
-  pointer-events:none;   /* 一旦親は無効化 */
-}
+    .board-wrap{
+      order:1; background:var(--panel-bg); color:var(--text);
+      border-radius:14px; padding:8px; box-shadow: var(--panel-shadow);
+      position:relative; min-height:420px; overflow:hidden;
+    }
 
-/* 折りたたみ時、タブ以外の中身は非表示にする */
-body.aside-collapsed aside > *:not(.aside-tab){
-  display:none;
-}
-
-/* タブだけは常に前面＆タップ可 */
-.aside-tab {
-  position: absolute;
-  left: -26px;           /* はみ出して見える位置 */
-  top: 12px;
-  width: 26px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
-  border-radius: 8px 0 0 8px;
-  cursor: pointer;
-  box-shadow: var(--btn-hover-shadow);
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: manipulation;
-  z-index: 9999;
-}
-
-/* 折りたたみ時でもタブは操作できるようにする（親の pointer-events:none を無効化） */
-body.aside-collapsed .aside-tab{
-  pointer-events:auto;
-}
-	  
-	.board-wrap{
-  	order:1; background:var(--panel-bg); color:var(--text);
-  	border-radius:14px; padding:8px; box-shadow: var(--panel-shadow);
-  	position:relative; min-height:420px; overflow:hidden;
-	}
-    
     .panel-title{font-size:14px; color:var(--hint); margin:2px 0 8px;}
     .toolbar{display:grid; gap:8px;}
     .group{border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;}
@@ -224,22 +215,6 @@ body.aside-collapsed .aside-tab{
     /* ヘッダの付箋パネル（選択時だけ表示） */
     #notePanel{ display:none; gap:8px; align-items:center; padding:4px 6px; border:1px solid var(--btn-border); border-radius:10px; }
 
-    /* モードバッジ（左・上） */
-    #modeBadge{
-      position:absolute; left:12px; top:12px;
-      background:rgba(255,255,255,0.9); border:1px solid var(--btn-border); border-radius:10px;
-      font-size:12px; padding:4px 8px; z-index:5; pointer-events:none; color:#111;
-    }
-    [data-theme="dark"] #modeBadge{ background:rgba(17,24,39,0.9); color:#e5e7eb; }
-
-    /* ステータスバー（右・下） */
-    #statusBar{
-      position:absolute; right:12px; bottom:12px;
-      background:rgba(255,255,255,0.9); border:1px solid var(--btn-border); border-radius:10px;
-      font-size:12px; padding:4px 8px; z-index:5; pointer-events:none; min-width: 180px; text-align:right; color:#111;
-    }
-    [data-theme="dark"] #statusBar{ background:rgba(17,24,39,0.9); color:#e5e7eb; }
-
     /* ボタン群（アイコン＋ラベル） */
     .toolbar button { display:inline-flex; align-items:center; gap:6px; touch-action:manipulation; }
     .toolbar button .icon { font-size:16px; line-height:1; }
@@ -292,11 +267,7 @@ body.aside-collapsed .aside-tab{
 
 <main>
   <div class="board-wrap">
-    <!-- モードバッジ -->
-    <div id="modeBadge">編集/移動</div>
-    <!-- ステータスバー -->
-    <div id="statusBar">(x: — cm, y: — cm) | Snap: —</div>
-
+    <!-- ※モードバッジ/ステータスバー削除済み -->
     <svg id="board" class="board" aria-label="draw-board"></svg>
     <canvas id="drawCanvas" class="draw"></canvas>
     <canvas id="cursorCanvas" class="cursor-layer"></canvas>
@@ -341,7 +312,7 @@ body.aside-collapsed .aside-tab{
         <button data-add="trap" title="台形（3パターンからランダム）を追加">⏃ 台形</button>
         <button data-add="para" title="平行四辺形を追加">▱ 平行四辺形</button>
         <button data-add="rh" title="ひし形を追加">◇ ひし形</button>
-		<button id="deleteShape" title="選択図形を削除">✖ 削除</button>
+        <!-- 重複していた削除ボタンは「図形編集」側だけに残す -->
       </div>
 
       <div class="group">
@@ -432,9 +403,7 @@ body.aside-collapsed .aside-tab{
     notePanel:document.getElementById('notePanel'),
     noteHdrColor:document.getElementById('noteHdrColor'),
     noteHdrSize:document.getElementById('noteHdrSize'),
-    // UI表示
-    modeBadge:document.getElementById('modeBadge'),
-    statusBar:document.getElementById('statusBar'),
+    // UI表示（バッジ/ステータスは削除済み）
     themeToggle:document.getElementById('themeToggle'),
     asideTab:document.getElementById('asideTab')
   };
@@ -517,12 +486,11 @@ body.aside-collapsed .aside-tab{
 
   // ========= ユーティリティ =========
   function pt(e){
-    // ターゲット要素基準
     const tgt = (e.currentTarget && e.currentTarget.getBoundingClientRect) ? e.currentTarget : board;
     const bb = tgt.getBoundingClientRect();
     return { x: e.clientX - bb.left, y: e.clientY - bb.top };
   }
-  // ★ board 固定基準（foreignObject内でもズレない）
+  // board 固定基準（foreignObject内でもズレない）
   function ptBoard(e){
     const bb = board.getBoundingClientRect();
     return { x: e.clientX - bb.left, y: e.clientY - bb.top };
@@ -571,7 +539,8 @@ body.aside-collapsed .aside-tab{
     const pts=candidates();
     const gx=Math.round((x-off)/g)*g + off, gy=Math.round((y-off)/g)*g + off; pts.push([gx,gy]);
     let best=null, bestd=state.snapTol+1;
-    for(const c of pts){ const d=dist(x,y,c[0],c[1]); if(d<bestd){ bestd=d; best={x:c[0],y:c[1]}; } }
+    for(const c of pts){ const d=dist(x,y,c[0],c[1]); if(d<bestd){ bestd=d; best={x:c[0],y:c[1]}; }
+    }
     return bestd<=state.snapTol?best:null;
   }
   function snapPointWithProjection(x,y){
@@ -590,34 +559,31 @@ body.aside-collapsed .aside-tab{
     if(m===dLeft) return {x:0,y:y,d:m,axis:'v',value:0};
     return {x:W,y:y,d:m,axis:'v',value:W};
   }
-	// ADD（追記）: 近い頂点があれば、その頂点がグリッドに“だけ”吸着するように移動量(dx,dy)を微修正
+
+  // 近い頂点があれば、その頂点がグリッドに“だけ”吸着するように移動量(dx,dy)を微修正
   function snapDeltaForMove(dx, dy, initPts){
     const off = state.gridOffset || 0;
-	 const g   = state.gridPx;
-  	 const tol = state.snapTol || 16;
-
-      let bestDx = dx, bestDy = dy;
-      let bestDist = tol + 1;
-
+    const g   = state.gridPx;
+    const tol = state.snapTol || 16;
+    let bestDx = dx, bestDy = dy;
+    let bestDist = tol + 1;
     for (const [x0,y0] of initPts) {
       const x = x0 + dx;
       const y = y0 + dy;
-
-    const gx = Math.round((x - off)/g)*g + off;
-    const gy = Math.round((y - off)/g)*g + off;
-
-    const fixX = Math.abs(x - gx) <= tol ? gx - x : 0;
-    const fixY = Math.abs(y - gy) <= tol ? gy - y : 0;
-
-    const d = Math.hypot(fixX, fixY);
-    if (d > 0 && d < bestDist) {
-      bestDist = d;
-      bestDx = dx + fixX;
-      bestDy = dy + fixY;
+      const gx = Math.round((x - off)/g)*g + off;
+      const gy = Math.round((y - off)/g)*g + off;
+      const fixX = Math.abs(x - gx) <= tol ? gx - x : 0;
+      const fixY = Math.abs(y - gy) <= tol ? gy - y : 0;
+      const d = Math.hypot(fixX, fixY);
+      if (d > 0 && d < bestDist) {
+        bestDist = d;
+        bestDx = dx + fixX;
+        bestDy = dy + fixY;
+      }
     }
-   }
     return {dx: bestDx, dy: bestDy};
-	}
+  }
+
   // ========= 図形生成 =========
   function gridPoint(n, m){
     const off = state.gridOffset || 0;
@@ -639,29 +605,21 @@ body.aside-collapsed .aside-tab{
       }
     }
     if(type==='para') pts=[[cx,cy],[cx+3*g,cy],[cx+3.6*g,cy+2*g],[cx+0.6*g,cy+2*g]];
-    // ひし形は必ずグリッド線上に配置。
-	// 1cm方眼なら対角線を 2cm / 4cm に厳密化。
-	// 3cm方眼などではグリッド整合を優先し、2g / 4g とする。
-	if(type==='rh'){
-  	  const g   = state.gridPx;
-	  const off = state.gridOffset || 0;
-  	  const cmPerGrid = g / pxPerCm;
-
-  	// 短径・長径（px）。1cmグリッドなら 2cm/4cm、それ以外は 2g/4g。
-  	  const short = Math.abs(cmPerGrid - 1) < 1e-3 ? 2 * pxPerCm : 2 * g; // 短い対角線
-  	  const long  = Math.abs(cmPerGrid - 1) < 1e-3 ? 4 * pxPerCm : 4 * g; // 長い対角線
-
-  	// 中心はグリッド交点上（off + n*g, off + m*g）
-  	  const cxg = off + 3 * g;
-     const cyg = off + 2 * g;
-
-   // ダイヤ（短径が縦、長径が横）
-     const top    = [cxg,            cyg - short/2];
-     const right  = [cxg + long/2,   cyg];
-     const bottom = [cxg,            cyg + short/2];
-     const left   = [cxg - long/2,   cyg];
-     pts = [top, right, bottom, left];
-   }
+    // ひし形はグリッド整合
+    if(type==='rh'){
+      const g = state.gridPx;
+      const off = state.gridOffset || 0;
+      const cmPerGrid = g / pxPerCm;
+      const short = Math.abs(cmPerGrid - 1) < 1e-3 ? 2 * pxPerCm : 2 * g;
+      const long  = Math.abs(cmPerGrid - 1) < 1e-3 ? 4 * pxPerCm : 4 * g;
+      const cxg = off + 3 * g;
+      const cyg = off + 2 * g;
+      const top    = [cxg,            cyg - short/2];
+      const right  = [cxg + long/2,   cyg];
+      const bottom = [cxg,            cyg + short/2];
+      const left   = [cxg - long/2,   cyg];
+      pts = [top, right, bottom, left];
+    }
 
     const sh={id:uid(), type, points:pts, fill:ui.color.value, stroke:ui.color.value};
     state.shapes.push(sh);
@@ -711,14 +669,14 @@ body.aside-collapsed .aside-tab{
       textLayer.appendChild(fo);
 
       div.addEventListener('pointerdown',(e)=>{
-  			e.stopPropagation();
-  			state.selNoteId=n.id;
-  			updateNoteHeaderPanel();
-  			const startPt = ptBoard(e);   // ★ board 基準で固定
-  			state.dragging={mode:'notePending', note:n, start:startPt, ox:n.x, oy:n.y};
-  			try{board.setPointerCapture(e.pointerId);}catch(_){}
-		});
-		
+        e.stopPropagation();
+        state.selNoteId=n.id;
+        updateNoteHeaderPanel();
+        const startPt = ptBoard(e);
+        state.dragging={mode:'notePending', note:n, start:startPt, ox:n.x, oy:n.y};
+        try{board.setPointerCapture(e.pointerId);}catch(_){}
+      });
+
       div.addEventListener('input', ()=>{ n.html=div.innerHTML; });
       div.addEventListener('blur', ()=>{ n.html=div.innerHTML; pushHistory(); });
 
@@ -768,13 +726,12 @@ body.aside-collapsed .aside-tab{
     renderNotes();
     updateBadges();
     updateNoteHeaderPanel();
-    updateModeBadge();
     setCanvasInteractivity();
     redrawCanvas();
     redrawCursorOverlay();
   }
 
-  // ========= 直線分割（始点固定＆グリッド吸着） =========
+  // ========= 直線分割 =========
   function splitSnapOnce(p){
     const tol=state.snapTol;
     for(const sh of state.shapes){
@@ -822,7 +779,7 @@ body.aside-collapsed .aside-tab{
     return {pt:{x:p.x,y:p.y}, lock:null};
   }
 
-  // ★ 始点ピン（SVG）
+  // 始点ピン（SVG）
   function updateSplitPin(a){
     const hl=document.getElementById('handlesLayer');
     if(!hl) return;
@@ -853,7 +810,6 @@ body.aside-collapsed .aside-tab{
     const btn = ui.toolbar.querySelector(`button[data-tool="${name}"]`);
     if (btn) btn.classList.add('active');
     setCanvasInteractivity();
-    updateModeBadge();
     redrawCursorOverlay();
   }
   function selectShape(sh){ state.sel=sh; state.selNoteId=null; if(sh) ui.color.value=sh.fill; render(); }
@@ -946,7 +902,7 @@ body.aside-collapsed .aside-tab{
 
   drawCanvas.addEventListener('pointermove', (e)=>{
     const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
-    if(!state.dragging) { updateStatusFromEvent(e); return; }
+    if(!state.dragging) { return; }
     if(state.dragging.mode==='draw'){
       e.preventDefault();
       addStrokePoint(p);
@@ -956,7 +912,6 @@ body.aside-collapsed .aside-tab{
       addErasePoint(p);
       redrawCanvas();
     }
-    updateStatusFromEvent(e);
   }, {passive:false});
 
   drawCanvas.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
@@ -965,39 +920,32 @@ body.aside-collapsed .aside-tab{
   // ====== board 側 pointermove（図形/分割/付箋） ======
   board.addEventListener('pointermove', (e)=>{
     const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
-    if(!state.dragging) { updateStatusFromEvent(e); return; }
+    if(!state.dragging) { return; }
     const W=board.clientWidth, H=board.clientHeight;
 
     if(state.dragging.mode==='move'){
-  		const {sh, initPts, anchorStart, anchorOffset} = state.dragging;
-
-  		// まずは素の移動量（指の移動＋アンカー補正）
-  		const baseDx = (p.x + anchorOffset.ox) - anchorStart[0];
-  		const baseDy = (p.y + anchorOffset.oy) - anchorStart[1];
-
-  		// ★ 各頂点のうち最も“吸着に近い”頂点に合わせて、移動量を微修正
-  		const {dx, dy} = snapDeltaForMove(baseDx, baseDy, initPts);
-
-  		// 適用
-  		const moved = initPts.map(([x0,y0]) => [x0 + dx, y0 + dy]);
-  				sh.points = clampToBoard(moved, W, H);
-  				render();
-		}else if(state.dragging.mode==='vertex'){
+      const {sh, initPts, anchorStart, anchorOffset} = state.dragging;
+      const baseDx = (p.x + anchorOffset.ox) - anchorStart[0];
+      const baseDy = (p.y + anchorOffset.oy) - anchorStart[1];
+      const {dx, dy} = snapDeltaForMove(baseDx, baseDy, initPts);
+      const moved = initPts.map(([x0,y0]) => [x0 + dx, y0 + dy]);
+      sh.points = clampToBoard(moved, W, H);
+      render();
+    }else if(state.dragging.mode==='vertex'){
       const {sh,vidx}=state.dragging;
       const g = state.gridPx, off = state.gridOffset || 0;
-		// ★ 軽い吸着処理
-		const gxRound = Math.round((p.x - off) / g) * g + off;
-		const gyRound = Math.round((p.y - off) / g) * g + off;
-		const gx = Math.abs(p.x - gxRound) <= (state.snapTol || 16) ? gxRound : p.x;
-		const gy = Math.abs(p.y - gyRound) <= (state.snapTol || 16) ? gyRound : p.y;
-		const pts = sh.points.slice(); pts[vidx] = [gx, gy];
+      const gxRound = Math.round((p.x - off) / g) * g + off;
+      const gyRound = Math.round((p.y - off) / g) * g + off;
+      const gx = Math.abs(p.x - gxRound) <= (state.snapTol || 16) ? gxRound : p.x;
+      const gy = Math.abs(p.y - gyRound) <= (state.snapTol || 16) ? gyRound : p.y;
+      const pts = sh.points.slice(); pts[vidx] = [gx, gy];
       sh.points=clampToBoard(pts, W, H); render();
     }else if(state.dragging.mode==='bbox'){
       const {sh,corner,initBB,initPts}=state.dragging;
       resizeByBBoxSnap(sh, corner, initBB, initPts, {x:p.x, y:p.y});
       sh.points=clampToBoard(sh.points, W, H); render();
     }else if(state.dragging.mode==='notePending'){
-      const {note,start,ox,oy}=state.dragging;
+      const {note,start}=state.dragging;
       if (Math.hypot(p.x - start.x, p.y - start.y) > 3) state.dragging.mode='noteMove';
     }else if(state.dragging.mode==='noteMove'){
       const {note,start,ox,oy}=state.dragging;
@@ -1016,16 +964,9 @@ body.aside-collapsed .aside-tab{
       if(state.dragging.lock==null && snap.lock) state.dragging.lock=snap.lock;
       drawSplitPreview(state.dragging.a, state.dragging.b);
     }
-    updateStatusFromEvent(e);
   }, {passive:false});
 
   // 終了処理（共通）
-  board.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
-  board.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
-  window.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
-  window.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
-  window.addEventListener('blur', onPointerUpOrCancel);
-
   function onPointerUpOrCancel(e){
     if(!state.dragging) return;
     const m=state.dragging.mode;
@@ -1037,23 +978,27 @@ body.aside-collapsed .aside-tab{
     state.dragging=null;
     redrawCursorOverlay();
   }
+  board.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
+  board.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
+  window.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
+  window.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
+  window.addEventListener('blur', onPointerUpOrCancel);
 
   // bbox リサイズ
   function resizeByBBoxSnap(sh, corner, initBB, initPts, curPt){
-  const g   = state.gridPx;
-  const off = state.gridOffset || 0;
-  const tol = state.snapTol || 16; // ★ スナップ許容距離(px)
+    const g   = state.gridPx;
+    const off = state.gridOffset || 0;
+    const tol = state.snapTol || 16;
 
     let L = initBB.x;
     let T = initBB.y;
     let R = initBB.x + initBB.w;
     let B = initBB.y + initBB.h;
 
-    // ★ グリッドに近ければ吸着、遠ければ自由
-	 const gxRound = Math.round((curPt.x - off) / g) * g + off;
-	 const gyRound = Math.round((curPt.y - off) / g) * g + off;
-	 const gx = Math.abs(curPt.x - gxRound) <= tol ? gxRound : curPt.x;
-	 const gy = Math.abs(curPt.y - gyRound) <= tol ? gyRound : curPt.y;
+    const gxRound = Math.round((curPt.x - off) / g) * g + off;
+    const gyRound = Math.round((curPt.y - off) / g) * g + off;
+    const gx = Math.abs(curPt.x - gxRound) <= tol ? gxRound : curPt.x;
+    const gy = Math.abs(curPt.y - gyRound) <= tol ? gyRound : curPt.y;
 
     if (corner.includes('e')) R = gx;
     if (corner.includes('w')) L = gx;
@@ -1105,7 +1050,7 @@ body.aside-collapsed .aside-tab{
     const W=drawCanvas.width/state.dpr, H=drawCanvas.height/state.dpr;
     ctx.clearRect(0,0,W,H);
 
-    // 1) すべての描画ストロークを描く
+    // 1) すべての描画ストローク
     for(const s of state.drawings){
       ctx.beginPath(); ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
       const pts=s.pts; if(!pts.length) continue;
@@ -1114,7 +1059,7 @@ body.aside-collapsed .aside-tab{
       ctx.stroke();
     }
 
-    // 2) すべての消去マスクを適用（destination-out）
+    // 2) すべての消去マスク
     for(const e of state.eraseStrokes){
       ctx.save();
       ctx.globalCompositeOperation='destination-out';
@@ -1127,7 +1072,7 @@ body.aside-collapsed .aside-tab{
       ctx.restore();
     }
 
-    // 3) ドラッグ中のペン or 消去マスクプレビュー
+    // 3) ドラッグ中のプレビュー
     if(state.dragging && state.dragging.mode==='draw' && state.dragging.stroke){
       const s=state.dragging.stroke;
       ctx.beginPath(); ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
@@ -1331,49 +1276,6 @@ body.aside-collapsed .aside-tab{
     n.font=ui.noteHdrSize.value; pushHistory(); render();
   });
 
-  function updateModeBadge(){
-    const m = state.tool;
-    let txt = '編集/移動';
-    if(m==='draw'){ txt = `ペン`; }
-    else if(m==='erase'){
-      const label = (state.eraserMode==='pixel'?'ピクセル': state.eraserMode==='object'?'オブジェクト':'全消し');
-      txt = `消しゴム（${label}）`;
-    }
-    else if(m==='splitLine'){ txt = `分割（吸着${state.splitGridSnap?'ON':'OFF'}）`; }
-    else if(m==='text'){ txt = 'ふせん配置'; }
-    ui.modeBadge.textContent = txt;
-  }
-
-  function updateStatus(x,y, snapLabel){
-    ui.statusBar.textContent = `(x: ${fmtLen(x)} cm, y: ${fmtLen(y)} cm) | Snap: ${snapLabel||'—'}`;
-  }
-  function classifySnap(x,y){
-    const tol=state.snapTol, g=state.gridPx, off=state.gridOffset||0;
-    const segs=[]; const mids=[];
-    for(const sh of state.shapes){
-      const n=sh.points.length;
-      for(let i=0;i<n;i++){
-        const a=sh.points[i], b=sh.points[(i+1)%n];
-        if(dist(x,y,a[0],a[1])<=tol) return 'Vertex';
-        mids.push([(a[0]+b[0])/2,(a[1]+b[1])/2]);
-        segs.push([a,b]);
-      }
-    }
-    for(const m of mids){ if(dist(x,y,m[0],m[1])<=tol) return 'Midpoint'; }
-    for(const s of segs){ const pr=projectPointToSeg({x,y}, s[0], s[1]); if(pr && pr.d<=tol) return 'Edge'; }
-    const gx=Math.round((x-off)/g)*g + off, gy=Math.round((y-off)/g)*g + off;
-    const dx=Math.abs(x-gx), dy=Math.abs(y-gy);
-    if(Math.hypot(dx,dy)<=tol) return 'GridPt';
-    if(dx<=tol || dy<=tol) return 'GridLine';
-    const frame=nearestFrame(x,y); if(frame && frame.d<=tol) return 'Frame';
-    return 'Free';
-  }
-  function updateStatusFromEvent(e){
-    const p = (e.target===drawCanvas || e.target===board) ? pt(e) : null;
-    if(!p){ return; }
-    updateStatus(p.x, p.y, classifySnap(p.x,p.y));
-  }
-
   // ========= 履歴 =========
   function snapshot(){ return JSON.stringify({shapes:state.shapes, notes:state.notes, drawings:state.drawings, eraseStrokes: state.eraseStrokes}); }
   function restore(json){
@@ -1412,7 +1314,7 @@ body.aside-collapsed .aside-tab{
   ui.gridSize.addEventListener('change', ()=>{
     const cm=parseInt(ui.gridSize.value,10)||3; state.gridPx=pxPerCm*cm; drawGrid(); render(); redrawCursorOverlay();
   });
-  ui.splitGridSnap.addEventListener('change', ()=> { state.splitGridSnap=ui.splitGridSnap.checked; updateModeBadge(); });
+  ui.splitGridSnap.addEventListener('change', ()=> { state.splitGridSnap=ui.splitGridSnap.checked; /* バッジ削除済みなので表示更新なし */ });
   ui.vertexEdit.addEventListener('change', ()=>{ state.vertexEdit=ui.vertexEdit.checked; render(); });
 
   ui.color.addEventListener('input', ()=>{ if(state.sel){ state.sel.fill=ui.color.value; state.sel.stroke=ui.color.value; pushHistory(); render(); } });
@@ -1427,8 +1329,8 @@ body.aside-collapsed .aside-tab{
   ui.deleteShape.addEventListener('click', ()=>{
     if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
   });
-  ui.penColor.addEventListener('change', ()=> { state.penColor=ui.penColor.value; updateModeBadge(); setCanvasInteractivity(); render(); });
-  ui.eraserMode.addEventListener('change', ()=> { state.eraserMode=ui.eraserMode.value; updateModeBadge(); redrawCursorOverlay(); });
+  ui.penColor.addEventListener('change', ()=> { state.penColor=ui.penColor.value; setCanvasInteractivity(); render(); });
+  ui.eraserMode.addEventListener('change', ()=> { state.eraserMode=ui.eraserMode.value; redrawCursorOverlay(); });
 
   function rotateSel(deg){ if(!state.sel) return; const c=centroid(state.sel.points); const r=deg*Math.PI/180;
     state.sel.points=state.sel.points.map(([x,y])=>{const dx=x-c.x, dy=y-c.y; return [c.x+dx*Math.cos(r)-dy*Math.sin(r), c.y+dx*Math.sin(r)+dy*Math.cos(r)];});
@@ -1551,5 +1453,3 @@ body.aside-collapsed .aside-tab{
 </script>
 </body>
 </html>
-
-
