@@ -323,7 +323,7 @@
 
 <main>
   <div class="board-wrap">
-    <svg id="board" class="board" aria-label="draw-board"></svg>
+    <svg id="board" class="board" aria-label="draw-board" xmlns="http://www.w3.org/2000/svg"></svg>
     <canvas id="drawCanvas" class="draw"></canvas>
     <canvas id="cursorCanvas" class="cursor-layer"></canvas>
 
@@ -490,7 +490,7 @@
 
   	if (wrap) wrap.style.height = avail + 'px';
 	}
-  function setSvgSizeByClient(){
+  	function setSvgSizeByClient(){
   	// SVG自身ではなく親（.board-wrap）の実サイズを基準にする
   	const host = board.parentElement || board;
   	const r = host.getBoundingClientRect();
@@ -499,9 +499,14 @@
   	const w = Math.max(1, Math.floor(r.width));
   	const h = Math.max(1, Math.floor(r.height));
 
-  	// SVGとキャンバスの実ピクセルサイズを同期
+  	// SVGの実ピクセルサイズを同期
   	board.setAttribute('width', w);
   	board.setAttribute('height', h);
+
+  	// ★ 追加：内部ビューポートも同期（Safari初回描画の安定化）
+  	board.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+  	// キャンバスも同じサイズに
   	setupCanvasDPR(drawCanvas, ctx, w, h);
   	setupCanvasDPR(cursorCanvas, cctx, w, h);
 
