@@ -1552,12 +1552,12 @@
   	}
 
   	// 6) 再描画
-		requestAnimationFrame(() => {
+		setTimeout(() => {
   		drawGrid();
   		render();
   		redrawCanvas();
   		redrawCursorOverlay();
-		});
+		}, 100);
  }  
   ui.themeToggle.addEventListener('click', ()=>{
     const cur = document.documentElement.getAttribute('data-theme') || 'light';
@@ -1605,56 +1605,69 @@
 
   // ========= 起動 =========
   function boot(){
-    // iPadのダブルタップズーム/長押しメニュー/選択開始を抑止（付箋内は許可）
-    (function(){
-      if (window.__iosTouchPatched) return;
-      window.__iosTouchPatched = true;
-      const inNote = (el)=> !!(el && (el.classList?.contains('note') || el.closest?.('.note')));
+  	// iPadのダブルタップズーム/長押しメニュー/選択開始を抑止（付箋内は許可）
+  	(function(){
+    	if (window.__iosTouchPatched) return;
+    	window.__iosTouchPatched = true;
+    	const inNote = (el)=> !!(el && (el.classList?.contains('note') || el.closest?.('.note')));
 
-      document.addEventListener('dblclick', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
-      let lastTouchEnd = 0;
-      document.addEventListener('touchend', (e)=>{
-        if(inNote(e.target)) return;
-        const now = Date.now();
-        if (now - lastTouchEnd <= 350) e.preventDefault();
-        lastTouchEnd = now;
-      }, {capture:true, passive:false});
-      document.addEventListener('gesturestart', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
-      document.addEventListener('contextmenu', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
-      document.addEventListener('selectstart', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
-    })();
+    	document.addEventListener('dblclick', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
+    	let lastTouchEnd = 0;
+    	document.addEventListener('touchend', (e)=>{
+      	if(inNote(e.target)) return;
+      	const now = Date.now();
+      	if (now - lastTouchEnd <= 350) e.preventDefault();
+      	lastTouchEnd = now;
+    	}, {capture:true, passive:false});
+    	document.addEventListener('gesturestart', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
+    	document.addEventListener('contextmenu', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
+    	document.addEventListener('selectstart', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
+  	})();
 
-    // タッチ端末ではスナップ閾値を少し緩める
-    try{
-      if (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) {
-        state.snapTol = Math.max(state.snapTol, 20);
-      }
-    }catch(_){}
+  	// タッチ端末ではスナップ閾値を少し緩める
+  	try{
+    	if (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) {
+      	state.snapTol = Math.max(state.snapTol, 20);
+    	}
+  	}catch(_){}
 
-    // viewport 監視
-    window.addEventListener('resize', onViewportChange, {passive:true});
-    window.addEventListener('orientationchange', onViewportChange, {passive:true});
-    try{
-      if (window.visualViewport) {
-        visualViewport.addEventListener('resize', onViewportChange, {passive:true});
-        visualViewport.addEventListener('scroll', onViewportChange, {passive:true});
-      }
-    }catch(_){}
+  	// viewport 監視
+  	window.addEventListener('resize', onViewportChange, {passive:true});
+  	window.addEventListener('orientationchange', onViewportChange, {passive:true});
+  	try{
+    	if (window.visualViewport) {
+      	visualViewport.addEventListener('resize', onViewportChange, {passive:true});
+      	visualViewport.addEventListener('scroll', onViewportChange, {passive:true});
+    	}
+  	}catch(_){}
 
-    ensureLayout();
-    const tick=()=>{
-      const r=board.getBoundingClientRect();
-      if(r.width<2 || r.height<2){ requestAnimationFrame(tick); return; }
-      drawGrid(); render(); redrawCursorOverlay();
-      const wrap=document.querySelector('.board-wrap');
-      if(window.ResizeObserver && wrap){
-        const ro=new ResizeObserver(()=>{ ensureLayout(); drawGrid(); render(); redrawCursorOverlay(); });
-        ro.observe(wrap);
-      }
-    };
-    requestAnimationFrame(tick);
-  }
-  window.addEventListener('load', boot);
+  	ensureLayout();
+  	const tick=()=>{
+    	const r=board.getBoundingClientRect();
+    	if(r.width<2 || r.height<2){ requestAnimationFrame(tick); return; }
+    	drawGrid(); render(); redrawCursorOverlay();
+    	const wrap=document.querySelector('.board-wrap');
+    	if(window.ResizeObserver && wrap){
+      	const ro=new ResizeObserver(()=>{
+        	ensureLayout();
+        	drawGrid();
+        	render();
+        	redrawCursorOverlay();
+      	});
+      	ro.observe(wrap);
+    	}
+  	};
+  	requestAnimationFrame(tick);
+
+  	// 初期ロード時にもレイアウトを安定化
+  	setTimeout(()=>{
+    	ensureLayout();
+    	drawGrid();
+    	render();
+    	redrawCursorOverlay();
+  	}, 500);
+	}
+	window.addEventListener('load', boot);
 </script>
 </body>
 </html>
