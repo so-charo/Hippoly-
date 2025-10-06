@@ -272,6 +272,10 @@
     main {
       overflow: hidden;
     }
+    /* Safari/iOS 向け: hidden の option を確実に隠す */
+		#penColor option[hidden]{
+  	display: none !important;
+		}
   </style>
 </head>
 <body>
@@ -1443,19 +1447,45 @@
     { value: '#a8ff00', label: '黄緑' },
   ];
   function showPenOptionsForTheme(theme){
-    const prev = (ui.penColor.value || '').toLowerCase();
-    while (ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
-    const list = (theme === 'dark') ? DARK_PENS : LIGHT_PENS;
-    for (const {value, label} of list){
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = label;
-      ui.penColor.appendChild(opt);
-    }
-    const hasPrev = list.some(x => x.value.toLowerCase() === prev);
-    ui.penColor.value = hasPrev ? prev : list[0].value;
-  }
+  	// 直前のペン色（state優先）
+  	const prev = (state.penColor || ui.penColor.value || '').toLowerCase();
 
+  	// テーマに応じた対応色へマップ（例：ライト→ダークなら 黒→白）
+  	const mapped = (theme === 'dark'
+    	? (DARK_PEN_MAP[prev]  || prev)
+    	: (LIGHT_PEN_MAP[prev] || prev)
+  	).toLowerCase();
+
+  	// 一旦選択肢を空にしてから、該当テーマのリストで再構築
+  	while (ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
+  	const list = (theme === 'dark') ? DARK_PENS : LIGHT_PENS;
+  	for (const {value, label} of list){
+    	const opt = document.createElement('option');
+    	opt.value = value;
+    	opt.textContent = label;
+    	ui.penColor.appendChild(opt);
+  	}
+
+  	// マップ後の色があればそれを選択、なければ先頭
+  	const hasMapped = list.some(x => x.value.toLowerCase() === mapped);
+  	ui.penColor.value = hasMapped ? mapped : list[0].value;
+
+  	// state と同期
+  	state.penColor = ui.penColor.value;
+	}
+	// テーマごとの選択肢（表示ラベル）
+	const LIGHT_PENS = [
+  	{ value:'#1f2937', label:'黒' },
+  	{ value:'#ef4444', label:'赤' },
+  	{ value:'#2563eb', label:'青' },
+  	{ value:'#16a34a', label:'緑' },
+	];
+	const DARK_PENS = [
+  	{ value:'#ffffff', label:'白' },
+  	{ value:'#ff6b00', label:'オレンジ' },
+  	{ value:'#33ddff', label:'水色' },
+  	{ value:'#a8ff00', label:'黄緑' },
+	];
   // ======== テーマ連動：色マップ & 既存線再配色 ========
   const DARK_PEN_MAP = {
     '#1f2937':'#ffffff',
