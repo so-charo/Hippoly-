@@ -1551,12 +1551,13 @@
     	if (state.sel){ state.sel.fill = '#2563eb'; state.sel.stroke = '#2563eb'; }
   	}
 
-  	// 6) 再描画（キャンバスも必ず）
-  	drawGrid();
-  	render();
-  	redrawCanvas();
-  	redrawCursorOverlay();
-	}
+  	// 6) 再描画
+		requestAnimationFrame(() => {
+  		drawGrid();
+  		render();
+  		redrawCanvas();
+  		redrawCursorOverlay();
+		});
   
   ui.themeToggle.addEventListener('click', ()=>{
     const cur = document.documentElement.getAttribute('data-theme') || 'light';
