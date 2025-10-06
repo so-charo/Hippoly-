@@ -138,8 +138,8 @@ body.aside-collapsed aside > *:not(.aside-tab){
   position: absolute;
   left: -26px;           /* はみ出して見える位置 */
   top: 12px;
-  width: 22px;
-  height: 38px;
+  width: 26px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,31 +158,12 @@ body.aside-collapsed aside > *:not(.aside-tab){
 body.aside-collapsed .aside-tab{
   pointer-events:auto;
 }
-    /* サイドバー突起タブ */
-		.aside-tab {
-  		position: absolute;
-  		left: -26px;       /* ★ 少し外に出す。-18→-26 */
-  		top: 12px;
-  		width: 22px;
-  		height: 38px;
-  		display: flex;
-  		align-items: center;
-  		justify-content: center;
-  		background: var(--btn-bg);
-  		border: 1px solid var(--btn-border);
-  		border-radius: 8px 0 0 8px;
-  		cursor: pointer;
-  		box-shadow: var(--btn-hover-shadow);
-  		user-select: none;
-  		touch-action: manipulation;
-  		z-index: 9999;     /* ★ どんな要素よりも前面に */
-		}
-    
-		.board-wrap{
-  		order:1; background:var(--panel-bg); color:var(--text);
-  		border-radius:14px; padding:8px; box-shadow: var(--panel-shadow);
-  		position:relative; min-height:420px; overflow:hidden;
-		}
+	  
+	.board-wrap{
+  	order:1; background:var(--panel-bg); color:var(--text);
+  	border-radius:14px; padding:8px; box-shadow: var(--panel-shadow);
+  	position:relative; min-height:420px; overflow:hidden;
+	}
     
     .panel-title{font-size:14px; color:var(--hint); margin:2px 0 8px;}
     .toolbar{display:grid; gap:8px;}
@@ -1569,3 +1550,4 @@ body.aside-collapsed .aside-tab{
 </script>
 </body>
 </html>
+
