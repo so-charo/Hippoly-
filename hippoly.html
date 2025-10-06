@@ -1468,8 +1468,45 @@
   	{ value: '#a8ff00', label: '黄緑' },
 	];
 
-	// ここを置き換え
 	function showPenOptionsForTheme(theme){
+    // テーマ間の色対応表
+		const DARK_PEN_MAP = {
+  		'#1f2937':'#ffffff', // 黒→白
+  		'#ef4444':'#ff6b00', // 赤→蛍光オレンジ
+  		'#2563eb':'#33ddff', // 青→蛍光水色
+  		'#16a34a':'#a8ff00'  // 緑→蛍光黄緑
+		};
+		const LIGHT_PEN_MAP = {
+  		'#ffffff':'#1f2937', // 白→黒
+  		'#ff6b00':'#ef4444', // 蛍光オレンジ→赤
+  		'#33ddff':'#2563eb', // 蛍光水色→青
+  		'#a8ff00':'#16a34a'  // 蛍光黄緑→緑
+		};
+
+		// 既に描いた線の色を一括でテーマ色へ置換
+		function recolorDrawActionsForTheme(theme){
+  		const map = (theme === 'dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
+  		for (const act of state.actions){
+    		if (act.type !== 'draw') continue; // ← typeで判定
+    		const c = (act.color || '').toLowerCase();
+    		if (map[c]) act.color = map[c];
+  		}
+		}
+
+		// 現在選択中のペン色もテーマに合わせて置換＋セレクトの値を安全に更新
+		function remapCurrentPenColor(theme){
+  		const map = (theme === 'dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
+
+  		// 現在値をテーマ色にマップ
+  		const cur = (state.penColor || '').toLowerCase();
+  		if (map[cur]) state.penColor = map[cur];
+
+  		// セレクト内の可視オプションの中に現在値が無ければ先頭へフォールバック
+  		const visible = Array.from(ui.penColor.options);
+  		const hasSame = visible.some(o => o.value.toLowerCase() === state.penColor.toLowerCase());
+  		ui.penColor.value = hasSame ? state.penColor : (visible[0]?.value || state.penColor);
+		}
+    
   	// 1) 以前の選択値を保持（復元できるなら復元する）
   	const prev = (ui.penColor.value || '').toLowerCase();
 
