@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <!-- ダブルタップ拡大を無効化 -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-  <title>図形ボード（iPad対応・グリッド完全吸着）</title>
+  <title>Hippoly!</title>
   <style>
     /* ========== テーマ（ライト/ダーク） ========== */
     :root {
@@ -271,7 +271,7 @@ body.aside-collapsed .aside-tab{
     <label class="toggle" title="読み込み（保存したJSONを選択）">📂 読み込み<input id="import" type="file" accept="application/json" style="display:none"></label>
 
     <!-- テーマトグル -->
-    <button id="themeToggle" title="テーマ切替（ライト/ダーク）">🌙 ダーク</button>
+    <button id="themeToggle" title="テーマ切替（ライト/ダーク）">🌙</button>
 
     <!-- 付箋選択時のみ表示するヘッダパネル -->
     <div id="notePanel" title="付箋の見た目を変更">
@@ -310,11 +310,11 @@ body.aside-collapsed .aside-tab{
   </div>
 
   <aside>
-    <div class="aside-tab" id="asideTab" title="折りたたむ/戻す">◀</div>
+    <div class="aside-tab" id="asideTab" title="折りたたむ/戻す">▶</div>
     <div class="panel-title">ツール</div>
     <div class="toolbar" id="toolbar">
       <div>
-        <button data-tool="edit" class="active" title="編集/移動（選択・移動・リサイズなど）"><span class="icon">🧭</span>編集/移動</button>
+        <button data-tool="edit" class="active" title="編集/移動（選択・移動・リサイズなど）"><span class="icon">✋</span>移動</button>
         <button data-tool="text" title="付箋を1枚配置（配置後は自動で編集モードに戻ります）"><span class="icon">📝</span>ふせん</button>
         <div class="group">
           <div class="panel-title">手書き</div>
@@ -335,12 +335,13 @@ body.aside-collapsed .aside-tab{
       </div>
 
       <div class="group">
-        <div class="panel-title">図形の追加</div>
+        <div class="panel-title">図形</div>
         <button data-add="rect" title="長方形を追加">▭ 長方形</button>
         <button data-add="tri" title="三角形（ランダム）を追加">△ 三角形</button>
         <button data-add="trap" title="台形（3パターンからランダム）を追加">⏃ 台形</button>
         <button data-add="para" title="平行四辺形を追加">▱ 平行四辺形</button>
         <button data-add="rh" title="ひし形を追加">◇ ひし形</button>
+		<button id="deleteShape" title="選択図形を削除">✖ 削除</button>
       </div>
 
       <div class="group">
@@ -1468,10 +1469,10 @@ body.aside-collapsed .aside-tab{
   ui.asideTab.addEventListener('click', ()=>{
     if (document.body.classList.contains('aside-collapsed')){
       document.body.classList.remove('aside-collapsed');
-      ui.asideTab.textContent='◀';
+      ui.asideTab.textContent='▶';
     }else{
       document.body.classList.add('aside-collapsed');
-      ui.asideTab.textContent='▶';
+      ui.asideTab.textContent='◀';
     }
     setTimeout(()=>{ drawGrid(); render(); }, 10);
   });
@@ -1550,4 +1551,5 @@ body.aside-collapsed .aside-tab{
 </script>
 </body>
 </html>
+
 
