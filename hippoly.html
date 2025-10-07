@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
   <title>Hippoly!</title>
   <style>
-    /* ========== テーマ（ライト/ダーク） ========== */
     :root {
       /* 基本 */
       --page-bg:#f7fafc;
@@ -68,7 +67,27 @@
       --badge-text:#dbeafe;
       --hint:#94a3b8;
     }
+		header {
+  		display: flex;
+  		align-items: center;
+  		justify-content: center; /* 全体を中央寄せ */
+  		gap: 16px;
+  		position: relative;
+		}
 
+		header h1 {
+  		position: absolute;
+  		left: 12px;               /* Hippoly! を左固定 */
+  		margin: 0;
+  		font-size: 1.4rem;
+		}
+
+	.header-right {
+  	display: flex;
+  	gap: 8px;
+  	justify-content: center;  /* 中央に */
+  	align-items: center;
+	}
     /* iPad長押しの選択・コールアウトを全要素で抑止（付箋は後で解除） */
     * {
       -webkit-user-select: none;
