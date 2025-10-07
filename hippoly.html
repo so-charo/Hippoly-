@@ -264,6 +264,9 @@
       gap:8px;
       grid-auto-rows: min-content; /* 内容の高さで詰める（Safari対策） */
     }
+    .draw-row, .erase-row{
+  		display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:6px;
+}		}
     /* 付箋パネル出現時にヘッダが下がらないように固定高さ */
     header .row {
       align-items: center;
@@ -345,20 +348,29 @@
         <button data-tool="edit" class="active" title="編集/移動（選択・移動・リサイズなど）"><span class="icon">✋</span>移動</button>
         <button data-tool="text" title="付箋を1枚配置（配置後は自動で編集モードに戻ります）"><span class="icon">📝</span>ふせん</button>
         <div class="group">
-          <div class="panel-title">手書き</div>
-          <button data-tool="draw" title="ペン（キャンバスに自由線を描画）"><span class="icon">🖊️</span>ペン</button>
+  				<div class="panel-title">手書き</div>
 
-          <!-- テーマで動的に中身を埋める -->
-          <select id="penColor" title="ペン色"></select>
+  				<div class="draw-row">
+    				<button data-tool="draw" title="ペン（キャンバスに自由線を描画）"><span class="icon">🖊️</span>ペン</button>
+    				<select id="penColor" title="色変え"></select>
+  				</div>
 
-          <select id="eraserMode" title="消しゴム">
-            <option value="pixel">ピクセル</option>
-            <option value="object">オブジェクト</option>
-            <option value="clear">全消し</option>
-          </select>
-          <button data-tool="erase" title="消しゴム（ピクセル/オブジェクト/全消し）"><span class="icon">🗑</span>消しゴム</button>
-        </div>
-      </div>
+  				<div class="erase-row">
+    				<button data-tool="erase" title="消しゴム"><span class="icon">🗑</span>消しゴム</button>
+    				<select id="eraserSize" title="消しゴムのサイズ選択">
+      				<option value="8">細</option>
+      				<option value="14" selected>中</option>
+      				<option value="24">太</option>
+    				</select>
+  				</div>
+
+  				<!-- 既存のモード切替を残したい場合はここに置く（任意） -->
+  				<select id="eraserMode" title="消しゴムの種類">
+    				<option value="pixel" selected>ピクセル</option>
+    				<option value="object">オブジェクト</option>
+    				<option value="clear">全消し</option>
+  				</select>
+				</div>
 
       <div class="group">
         <div class="panel-title">図形</div>
@@ -410,7 +422,8 @@
   const ctx=drawCanvas.getContext('2d');
   const cctx=cursorCanvas.getContext('2d'); // カーソルオーバーレイ
   const pxPerCm=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--grid-cm'))||37.7952755906;
-
+	const THEME_SHAPE_COLOR = { light:'#2563eb', dark:'#facc15' };
+	function getTheme(){ return document.documentElement.getAttribute('data-theme') || 'light'; }
   function el(name, attrs={}){ const n=document.createElementNS(svgNS,name); for(const k in attrs) n.setAttribute(k, attrs[k]); return n; }
   function uid(){ return 's'+Math.random().toString(36).slice(2,9); }
 
@@ -433,6 +446,7 @@
     future:[],
     penColor:'#1f2937',
     eraserMode:'pixel',
+    eraserSize: 14,
     splitPreview:null,
     splitGridSnap:false,
     pointerCaptured:false,
@@ -705,7 +719,7 @@
       pts = [top, right, bottom, left];
     }
 
-    const sh={id:uid(), type, points:pts, fill:ui.color.value, stroke:ui.color.value};
+    const sh={id:uid(), type, points:pts, fill:ui.color.value, stroke:ui.color.value, userColored: false};
     state.shapes.push(sh);
     selectShape(sh);
     pushHistory(); render();
@@ -1227,11 +1241,11 @@
       redrawCanvas(); pushHistory(); return;
     }
     if(m==='pixel'){
-      state.dragging={mode:'erasePixel', eraser:{pts:[[p.x,p.y]], radius:14}};
-      try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
-      redrawCanvas();
-      return;
-    }
+  		state.dragging = { mode:'erasePixel', eraser:{ pts:[[p.x,p.y]], radius: state.eraserSize } };
+  		try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
+  		redrawCanvas();
+  		return;
+		}
   }
   function eraseNearestDrawAction(p){
     let bestd=1e9, idx=-1;
@@ -1457,7 +1471,7 @@
   ui.splitGridSnap.addEventListener('change', ()=> { state.splitGridSnap=ui.splitGridSnap.checked; });
   ui.vertexEdit.addEventListener('change', ()=>{ state.vertexEdit=ui.vertexEdit.checked; render(); });
 
-  ui.color.addEventListener('input', ()=>{ if(state.sel){ state.sel.fill=ui.color.value; state.sel.stroke=ui.color.value; pushHistory(); render(); } });
+  ui.color.addEventListener('input', ()=>{ if(state.sel){ state.sel.fill=ui.color.value; state.sel.stroke=ui.color.value; state.sel.userColored = true; pushHistory(); render(); } });
   ui.lockSize.addEventListener('change', ()=> state.lockSize=ui.lockSize.checked );
   ui.dup.addEventListener('click', ()=>{ if(!state.sel) return; const c=JSON.parse(JSON.stringify(state.sel)); c.id=uid(); c.points=c.points.map(p=>[p[0]+20,p[1]+20]); state.shapes.push(c); selectShape(c); pushHistory(); });
   ui.front.addEventListener('click', ()=>{ if(!state.sel) return; const i=state.shapes.findIndex(s=>s.id===state.sel.id); state.shapes.push(...state.shapes.splice(i,1)); pushHistory(); render(); });
@@ -1467,8 +1481,15 @@
   ui.deleteShape.addEventListener('click', ()=>{
     if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
   });
-  ui.penColor.addEventListener('change', ()=> { state.penColor=ui.penColor.value; setCanvasInteractivity(); render(); });
+  ui.penColor.addEventListener('change', ()=> { state.penColor=ui.penColor.value; setTool('draw'); render(); });
   ui.eraserMode.addEventListener('change', ()=> { state.eraserMode=ui.eraserMode.value; redrawCursorOverlay(); });
+  
+  const eraserSizeSel = document.getElementById('eraserSize');
+	eraserSizeSel.addEventListener('change', ()=>{
+  	state.eraserSize = parseInt(eraserSizeSel.value,10) || 14;
+  	setTool('erase');              // 自動で消しゴムに
+  	redrawCursorOverlay();
+	});
 
   function rotateSel(deg){ if(!state.sel) return; const c=centroid(state.sel.points); const r=deg*Math.PI/180;
     state.sel.points=state.sel.points.map(([x,y])=>{const dx=x-c.x, dy=y-c.y; return [c.x+dx*Math.cos(r)-dy*Math.sin(r), c.y+dx*Math.sin(r)+dy*Math.cos(r)];});
@@ -1579,15 +1600,18 @@
   	// 3) 既に描いた線の色も一括でマップ
   	recolorDrawActionsForTheme(theme);
 
-  	// 4) 図形の既定色（選択中は即反映）
-  	if (theme==='dark'){
-    	ui.color.value = '#facc15';
-    	if (state.sel){ state.sel.fill = '#facc15'; state.sel.stroke = '#facc15'; }
-  	}else{
-    	ui.color.value = '#2563eb';
-    	if (state.sel){ state.sel.fill = '#2563eb'; state.sel.stroke = '#2563eb'; }
-  	}
-
+  	// 4) 図形の既定色（選択中だけでなく未手動の全図形を更新）
+		const newColor = THEME_SHAPE_COLOR[theme];
+		for(const sh of state.shapes){
+  		if(!sh.userColored){
+    		sh.fill = newColor;
+    		sh.stroke = newColor;
+  		}
+		}
+		// UIの既定色も更新（選択中があれば即反映）
+		ui.color.value = newColor;
+		if (state.sel){ state.sel.fill = newColor; state.sel.stroke = newColor; }
+    
   	// 5) 最後に再描画（キャンバス含む）
   	drawGrid();
   	render();
@@ -1630,16 +1654,16 @@
     const p = state.pointerPos;
 
     if(state.tool==='erase'){
-      cctx.save();
-      cctx.beginPath();
-      const r = 14/2; // ピクセル消しの半径（lineWidth=14）
-      cctx.arc(p.x, p.y, r, 0, Math.PI*2);
-      cctx.fillStyle='rgba(180,180,180,0.2)';
-      cctx.strokeStyle='rgba(120,120,120,0.6)';
-      cctx.lineWidth=1;
-      cctx.fill(); cctx.stroke();
-      cctx.restore();
-    }
+  		cctx.save();
+  		cctx.beginPath();
+  		const r = (state.eraserSize || 14)/2;  // サイズ反映
+  		cctx.arc(p.x, p.y, r, 0, Math.PI*2);
+  		cctx.fillStyle='rgba(180,180,180,0.2)';
+  		cctx.strokeStyle='rgba(120,120,120,0.6)';
+  		cctx.lineWidth=1;
+  		cctx.fill(); cctx.stroke();
+  		cctx.restore();
+		}
   }
 
   // ========= 起動 =========
