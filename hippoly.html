@@ -41,6 +41,62 @@
       /* サイドバー */
       --aside-width:320px;
     }
+		/* ===== ツールバーB（左） ===== */
+		main{
+  		display:grid;
+  		grid-template-columns: 260px 1fr var(--aside-width);  /* ← 左B / ボード / 既存右ツール */
+		}
+		body.asideB-collapsed main{ grid-template-columns: 0 1fr var(--aside-width); }
+		body.aside-collapsed main{ grid-template-columns: 260px 1fr 0; }
+		body.swap-sidebars main{ grid-template-columns: var(--aside-width) 1fr 260px; } /* 位置入替 */
+
+		.asideB{
+  		order:0; background:var(--panel-bg); color:var(--text);
+  		border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
+  		overflow:hidden; position:relative;
+  		transition: width .15s ease, opacity .15s ease;
+		}
+		body.asideB-collapsed .asideB{ width:0; padding:0; border:none; opacity:1; pointer-events:none; }
+		body.asideB-collapsed .asideB > *:not(.asideB-tab){ display:none; }
+
+		.asideB-tab{
+  		position:absolute; right:-26px; top:12px; width:26px; height:44px;
+  		display:flex; align-items:center; justify-content:center;
+  		background:var(--btn-bg); border:1px solid var(--btn-border); border-radius:0 8px 8px 0;
+  		cursor:pointer; box-shadow:var(--btn-hover-shadow); z-index:9999; touch-action:manipulation;
+		}
+		body.asideB-collapsed .asideB-tab{ pointer-events:auto; }
+
+		/* サムネの縦並び */
+		#thumbList{
+  		display:flex; flex-direction:column; gap:8px; height:calc(100% - 110px); overflow:auto;
+  		border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;
+		}
+		.thumb{
+  		position:relative; border:1px solid var(--btn-border); border-radius:8px; background:#fff;
+  		overflow:hidden; cursor:grab;
+		}
+		.thumb img{ display:block; width:100%; height:auto; }
+		.thumb .cap{
+  		position:absolute; left:6px; top:6px; background:rgba(0,0,0,.5); color:#fff; font-size:12px;
+  		padding:2px 6px; border-radius:6px;
+		}
+		.thumb.dragging{ opacity:.6; }
+
+		/* フルスクリーンビューア */
+		#lightbox{
+  		position:fixed; inset:0; display:none; background:rgba(0,0,0,.8); z-index:99999;
+  		align-items:center; justify-content:center;
+		}
+		#lightbox.show{ display:flex; }
+		#lightbox img{ max-width:96vw; max-height:92vh; border-radius:12px; }
+		.lb-nav{
+  		position:absolute; top:50%; transform:translateY(-50%);
+  		width:48px; height:48px; display:flex; align-items:center; justify-content:center;
+  		background:rgba(255,255,255,.15); border-radius:50%; color:#fff; font-size:28px; user-select:none;
+		}
+		.lb-prev{ left:16px; } .lb-next{ right:16px; }
+		.lb-close{ position:absolute; right:16px; top:16px; background:#fff; border-radius:8px; padding:6px 10px; }
 
     /* ダークテーマ */
     [data-theme="dark"] {
@@ -327,6 +383,7 @@
     <button id="export" title="保存（JSONとして保存）">💾 保存</button>
     <label class="toggle" title="読み込み（保存したJSONを選択）">📂 読み込み<input id="import" type="file" accept="application/json" style="display:none"></label>
     <button id="themeToggle" title="テーマ切替（ライト/ダーク）">🌙</button>
+    <button id="swapSidebars" title="左右のツールバーを入れ替え">↔️</button>
 
     <div id="notePanel" title="付箋の見た目を変更">
       <strong>付箋:</strong>
@@ -346,6 +403,16 @@
 </header>
 
 <main>
+  <!-- ▼ ツールバーB（左） -->
+	<aside class="asideB">
+  	<div class="asideB-tab" id="asideBTab" title="開閉">◀</div>
+  	<div class="panel-title">スクショ</div>
+  	<div style="display:flex; gap:6px; flex-wrap:wrap;">
+    	<button id="shot" title="今見えてる範囲を画像化">📸 スナップ</button>
+    	<button id="saveAll" title="並んだ画像をまとめて保存">⬇ すべて保存</button>
+  	</div>
+  	<div id="thumbList" aria-label="snapshots"></div>
+	</aside>
   <div class="board-wrap">
     <svg id="board" class="board" aria-label="draw-board"></svg>
     <canvas id="drawCanvas" class="draw"></canvas>
@@ -428,6 +495,12 @@
       </div>
     </div>
   </aside>
+  	<div id="lightbox">
+  		<button class="lb-close" id="lbClose">閉じる</button>
+  		<div class="lb-nav lb-prev" id="lbPrev">‹</div>
+  		<img id="lbImg" alt="preview"/>
+  		<div class="lb-nav lb-next" id="lbNext">›</div>
+		</div>
 </main>
 
 <script>
@@ -474,6 +547,145 @@
     actions: [], // {type:'draw'|'erase', ...}
 		drawingPointerId: null,
   };
+  // ▼ ツールバーB：状態
+	state.snaps = []; // {id, dataURL, created:number}
+
+	const uiB = {
+  	tab: document.getElementById('asideBTab'),
+  	list: document.getElementById('thumbList'),
+  	shot: document.getElementById('shot'),
+  	saveAll: document.getElementById('saveAll'),
+  	swap: document.getElementById('swapSidebars'),
+  	lb: document.getElementById('lightbox'),
+  	lbImg: document.getElementById('lbImg'),
+  	lbPrev: document.getElementById('lbPrev'),
+  	lbNext: document.getElementById('lbNext'),
+  	lbClose: document.getElementById('lbClose')
+	};
+	let lbIndex = 0;
+  
+  async function captureViewportPNG(){
+  	// board(SVG)を画像化
+  	const svgEl = board;
+  	const {width:W, height:H} = svgEl.getBoundingClientRect();
+  	// SVG文字列
+  	const xml = new XMLSerializer().serializeToString(svgEl);
+  	const svgBlob = new Blob([xml], {type: 'image/svg+xml'});
+  	const svgURL = URL.createObjectURL(svgBlob);
+  	const img = await new Promise(res=>{
+    	const im = new Image();
+    	im.onload = ()=>res(im);
+    	im.src = svgURL;
+  	});
+
+  	// オフスクリーンCanvasに合成（SVG + 手描きキャンバスを重ねる）
+  	const c = document.createElement('canvas');
+  	c.width = Math.ceil(W); c.height = Math.ceil(H);
+  	const g = c.getContext('2d');
+  	g.fillStyle = getComputedStyle(document.body).getPropertyValue('--panel-bg') || '#fff';
+  	g.fillRect(0,0,c.width,c.height);
+  	g.drawImage(img, 0, 0, c.width, c.height);               // SVG層
+  	g.drawImage(drawCanvas, 0, 0, c.width, c.height);         // 手描き層
+  	// （必要なら cursorCanvas は除外）
+  	URL.revokeObjectURL(svgURL);
+  	return c.toDataURL('image/png');
+	}
+ 
+  function addSnap(dataURL){
+  	const id = 'snap_'+Date.now()+Math.random().toString(36).slice(2,6);
+  	state.snaps.push({id, dataURL, created: Date.now()});
+  	renderSnaps();
+	}
+	function renderSnaps(){
+  	uiB.list.innerHTML = '';
+  	state.snaps.forEach((s, idx)=>{
+    	const box = document.createElement('div');
+    	box.className = 'thumb'; box.draggable = true; box.dataset.id = s.id;
+
+    	const cap = document.createElement('div');
+    	cap.className = 'cap'; cap.textContent = (idx+1);
+
+    	const img = document.createElement('img');
+    	img.src = s.dataURL; img.alt = 'snapshot '+(idx+1);
+    	img.addEventListener('click', ()=> openLightbox(idx));
+
+    	// DnD 並べ替え
+    	box.addEventListener('dragstart', e=>{ box.classList.add('dragging'); e.dataTransfer.setData('text/plain', s.id); });
+    	box.addEventListener('dragend', ()=> box.classList.remove('dragging'));
+    	box.addEventListener('dragover', e=>{
+      	e.preventDefault();
+      	const draggingId = e.dataTransfer.getData('text/plain');
+      	if(!draggingId || draggingId===s.id) return;
+      	const from = state.snaps.findIndex(x=>x.id===draggingId);
+      	const to = idx;
+      	if(from>=0 && to>=0 && from!==to){
+        	const [m] = state.snaps.splice(from,1);
+        	state.snaps.splice(to,0,m);
+        	renderSnaps();
+      	}
+    	});
+
+    	box.appendChild(cap); box.appendChild(img);
+    	uiB.list.appendChild(box);
+  	});
+	}
+
+	async function saveAllSnaps(){
+  	// ブラウザでは「カメラロールへ直接保存」はできないため、
+  	// 1枚ずつPNGをダウンロードさせます（iOS Safariは写真へ保存に回せます）
+  	for(let i=0;i<state.snaps.length;i++){
+    	const a = document.createElement('a');
+    	a.href = state.snaps[i].dataURL;
+    	a.download = `hippoly_${String(i+1).padStart(2,'0')}.png`;
+    	document.body.appendChild(a);
+    	a.click();
+    	a.remove();
+    	await new Promise(r=>setTimeout(r, 120)); // 連打回避のため少し間隔
+  	}
+	}
+  
+  function openLightbox(index){
+  	if(!state.snaps.length) return;
+  	lbIndex = Math.max(0, Math.min(index, state.snaps.length-1));
+  	uiB.lbImg.src = state.snaps[lbIndex].dataURL;
+  	uiB.lb.classList.add('show');
+	}
+	function closeLightbox(){ uiB.lb.classList.remove('show'); }
+	function lbNext(){ if(!state.snaps.length) return; lbIndex = (lbIndex+1)%state.snaps.length; uiB.lbImg.src = state.snaps[lbIndex].dataURL; }
+	function lbPrev(){ if(!state.snaps.length) return; lbIndex = (lbIndex-1+state.snaps.length)%state.snaps.length; uiB.lbImg.src = state.snaps[lbIndex].dataURL; }
+
+	// スワイプ
+	(function(){
+  	let sx=0, sy=0;
+  	uiB.lb?.addEventListener('touchstart', e=>{ const t=e.touches[0]; sx=t.clientX; sy=t.clientY; }, {passive:true});
+  	uiB.lb?.addEventListener('touchend', e=>{
+    	const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy;
+    	if(Math.abs(dx)>60 && Math.abs(dy)<80){ dx<0 ? lbNext() : lbPrev(); }
+  	}, {passive:true});
+	})();
+  
+  uiB.shot.addEventListener('click', async ()=>{
+  	const url = await captureViewportPNG();
+  	addSnap(url);
+	});
+	uiB.saveAll.addEventListener('click', saveAllSnaps);
+	uiB.tab.addEventListener('click', ()=>{
+  	if(document.body.classList.contains('asideB-collapsed')){
+    	document.body.classList.remove('asideB-collapsed'); uiB.tab.textContent='◀';
+  	}else{
+    	document.body.classList.add('asideB-collapsed'); uiB.tab.textContent='▶';
+  	}
+	});
+	document.getElementById('swapSidebars').addEventListener('click', ()=>{
+  	document.body.classList.toggle('swap-sidebars');
+	});
+
+	// Lightbox
+	uiB.lbClose.addEventListener('click', closeLightbox);
+	uiB.lbNext.addEventListener('click', lbNext);
+	uiB.lbPrev.addEventListener('click', lbPrev);
+	uiB.lb.addEventListener('click', (e)=>{ if(e.target===uiB.lb) closeLightbox(); }); // 余白クリックで閉じる
+   
 	let suppressPenAutoSelect = false; // プログラム起因のchangeではペンに切り替えない
   const ui={
     selType:document.getElementById('selType'), w:document.getElementById('w'), h:document.getElementById('h'), vh:document.getElementById('vh'),
@@ -591,8 +803,6 @@
   function bbox(pts){ const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]); const x=Math.min(...xs), y=Math.min(...ys), w=Math.max(...xs)-x, h=Math.max(...ys)-y; return {x,y,w,h}; }
   function centroid(pts){ const s=pts.reduce((a,p)=>({x:a.x+p[0],y:a.y+p[1]}),{x:0,y:0}); return {x:s.x/pts.length,y:s.y/pts.length}; }
   function dist(x1,y1,x2,y2){ const dx=x1-x2, dy=y1-y2; return Math.hypot(dx,dy); }
-
-  /* ▼回転用ユーティリティ（追加） */
   function rotatePointsAround(pts, cx, cy, rad){
     const cos = Math.cos(rad), sin = Math.sin(rad);
     return pts.map(([x,y])=>{
@@ -958,8 +1168,6 @@
     const isVHandle   = target.classList && target.classList.contains('handle');
     const isBBoxHandle= target.classList && target.classList.contains('bbox-handle');
     const isRotHandle = target.classList && target.classList.contains('rot-handle');
-		
-    /* ▼回転ハンドル開始 */
     if (isRotHandle && state.sel){
       const c = centroid(state.sel.points);
       const a0 = Math.atan2(p.y - c.y, p.x - c.x);
@@ -1007,8 +1215,6 @@
     if(id){
       const sh=state.shapes.find(s=>s.id===id);
       selectShape(sh);
-
-      // 近い頂点をアンカーに
       let anchorIdx = 0, best = 1e9;
       sh.points.forEach((q,i)=>{
         const d = Math.hypot(q[0]-p.x, q[1]-p.y);
