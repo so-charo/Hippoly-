@@ -68,26 +68,27 @@
       --hint:#94a3b8;
     }
 		header {
+  		position: relative;
   		display: flex;
   		align-items: center;
-  		justify-content: center; /* 全体を中央寄せ */
-  		gap: 16px;
-  		position: relative;
+  		justify-content: center;
+  		padding: 6px 12px;
 		}
 
-		header h1 {
+		header .title {
   		position: absolute;
-  		left: 12px;               /* Hippoly! を左固定 */
-  		margin: 0;
-  		font-size: 1.4rem;
+  		left: 12px;
+  		font-weight: bold;
+  		font-size: 1.2rem;
 		}
 
-	.header-right {
-  	display: flex;
-  	gap: 8px;
-  	justify-content: center;  /* 中央に */
-  	align-items: center;
-	}
+		.header-center {
+  		display: flex;
+  		gap: 8px;
+  		align-items: center;
+  		justify-content: center;
+  		flex-wrap: wrap;
+		}
     /* iPad長押しの選択・コールアウトを全要素で抑止（付箋は後で解除） */
     * {
       -webkit-user-select: none;
@@ -285,7 +286,7 @@
     }
     .draw-row, .erase-row{
   		display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:6px;
-}		}
+		}
     /* 付箋パネル出現時にヘッダが下がらないように固定高さ */
     header .row {
       align-items: center;
@@ -313,14 +314,13 @@
 <header>
   <div class="row">
     <div class="title">🦛Hippoly!</div>
-
+		<div class="header-center">
     <label title="方眼のサイズを切り替え（1/3cm）">方眼：
       <select id="gridSize" title="1/3cm 方眼">
         <option value="1">1cm</option>
         <option value="3" selected>3cm</option>
       </select>
     </label>
-
     <button id="undo" title="戻る（Undo）">↶ 戻る</button>
     <button id="redo" title="進む（Redo）">↷ 進む</button>
     <button id="reset" title="リセット（画面を再読み込み）">⟲ リセット</button>
@@ -328,7 +328,6 @@
     <label class="toggle" title="読み込み（保存したJSONを選択）">📂 読み込み<input id="import" type="file" accept="application/json" style="display:none"></label>
     <button id="themeToggle" title="テーマ切替（ライト/ダーク）">🌙</button>
 
-    <!-- 付箋選択時のみ表示するヘッダパネル -->
     <div id="notePanel" title="付箋の見た目を変更">
       <strong>付箋:</strong>
       <select id="noteHdrColor" title="付箋の色">
@@ -341,6 +340,7 @@
         <option value="m" selected>13pt</option>
         <option value="l">18pt</option>
       </select>
+    </div>
     </div>
   </div>
 </header>
