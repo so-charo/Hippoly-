@@ -740,6 +740,9 @@
     state.shapes.push(sh);
     selectShape(sh);
     pushHistory(); render();
+    // --- 図形生成後に移動ツールへ自動復帰 ---
+    state.tool = 'move';
+    updateToolUI();
   }
 
   // ========= 付箋 =========
@@ -948,6 +951,9 @@
   // ====== board 側 pointerdown ======
   board.addEventListener('pointerdown', (e)=>{
     if(state.tool==='draw' || state.tool==='erase') return;
+    // 既に他のペンストローク中なら無視（マルチタッチ防止）
+    if (state.drawingPointerId && e.pointerId !== state.drawingPointerId) return;
+    state.drawingPointerId = e.pointerId;
     const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
 
     const target=e.target;
@@ -1128,6 +1134,9 @@
     if(m==='erasePixel'){ finishEraseStroke(); pushHistory(); redrawCanvas(); }
     if(m==='split'){ finishSplit(); pushHistory(); }
     if(state.pointerCaptured){ try{ drawCanvas.releasePointerCapture(e.pointerId); }catch(_){ } state.pointerCaptured=false; }
+    if (state.drawingPointerId === e.pointerId) {
+    	state.drawingPointerId = null;
+  	}
     state.dragging=null;
     redrawCursorOverlay();
   }
