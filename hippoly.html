@@ -357,19 +357,17 @@
 
   				<div class="erase-row">
     				<button data-tool="erase" title="消しゴム"><span class="icon">🗑</span>消しゴム</button>
+            <select id="eraserMode" title="消しゴムの種類">
+    					<option value="pixel" selected>ピクセル</option>
+    					<option value="object">オブジェクト</option>
+    					<option value="clear">全消し</option>
+  					</select>
     				<select id="eraserSize" title="消しゴムのサイズ選択">
       				<option value="8">細</option>
       				<option value="14" selected>中</option>
       				<option value="24">太</option>
     				</select>
   				</div>
-
-  				<!-- 既存のモード切替を残したい場合はここに置く（任意） -->
-  				<select id="eraserMode" title="消しゴムの種類">
-    				<option value="pixel" selected>ピクセル</option>
-    				<option value="object">オブジェクト</option>
-    				<option value="clear">全消し</option>
-  				</select>
 				</div>
 
       <div class="group">
@@ -1482,7 +1480,12 @@
     if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
   });
   ui.penColor.addEventListener('change', ()=> { state.penColor=ui.penColor.value; setTool('draw'); render(); });
-  ui.eraserMode.addEventListener('change', ()=> { state.eraserMode=ui.eraserMode.value; redrawCursorOverlay(); });
+  ui.eraserMode.addEventListener('change', ()=>{
+  	state.eraserMode = ui.eraserMode.value;
+  	updateEraserSizeVisibility();
+  	setTool('erase');
+  	redrawCursorOverlay();
+	});
   
   const eraserSizeSel = document.getElementById('eraserSize');
 	eraserSizeSel.addEventListener('change', ()=>{
@@ -1490,7 +1493,11 @@
   	setTool('erase');              // 自動で消しゴムに
   	redrawCursorOverlay();
 	});
-
+	function updateEraserSizeVisibility(){
+  	const sizeSel = document.getElementById('eraserSize');
+  	if(!sizeSel) return;
+  	sizeSel.style.display = (ui.eraserMode.value === 'pixel') ? '' : 'none';
+	}
   function rotateSel(deg){ if(!state.sel) return; const c=centroid(state.sel.points); const r=deg*Math.PI/180;
     state.sel.points=state.sel.points.map(([x,y])=>{const dx=x-c.x, dy=y-c.y; return [c.x+dx*Math.cos(r)-dy*Math.sin(r), c.y+dx*Math.sin(r)+dy*Math.cos(r)];});
     pushHistory(); render();
@@ -1717,6 +1724,7 @@
     };
     requestAnimationFrame(tick);
   }
+  updateEraserSizeVisibility();
   window.addEventListener('load', boot);
 </script>
 </body>
