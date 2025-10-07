@@ -739,10 +739,10 @@
 
     const sh={id:uid(), type, points:pts, fill:ui.color.value, stroke:ui.color.value, userColored: false};
     state.shapes.push(sh);
-    selectShape(sh);
-    pushHistory(); render();
-    // --- 図形生成後に移動ツールへ自動復帰 ---
-    state.tool = 'edit';
+		selectShape(sh);       // いったん選択
+		pushHistory();
+		setTool('edit');       // ★これが重要（代入ではなく関数を呼ぶ）
+		render();
   }
 
   // ========= 付箋 =========
