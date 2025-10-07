@@ -473,7 +473,7 @@
     splitPinEl:null,
     actions: [], // {type:'draw'|'erase', ...}
   };
-
+	let suppressPenAutoSelect = false; // プログラム起因のchangeではペンに切り替えない
   const ui={
     selType:document.getElementById('selType'), w:document.getElementById('w'), h:document.getElementById('h'), vh:document.getElementById('vh'),
     wLabel:document.getElementById('wLabel'), hLabel:document.getElementById('hLabel'),
@@ -741,8 +741,7 @@
     selectShape(sh);
     pushHistory(); render();
     // --- 図形生成後に移動ツールへ自動復帰 ---
-    state.tool = 'move';
-    updateToolUI();
+    state.tool = 'edit';
   }
 
   // ========= 付箋 =========
