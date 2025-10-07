@@ -385,8 +385,6 @@
           <button id="dup" title="選択図形をコピー">⧉ コピー</button>
           <button id="front" title="前面へ">⤴ 手前へ</button>
           <button id="back" title="背面へ">⤵ 奥へ</button>
-          <button id="rotL" title="反時計回りに回転">↺ 回転</button>
-          <button id="rotR" title="時計回りに回転">↻ 回転</button>
           <button id="flipH" title="左右反転">⇔ 反転</button>
           <button id="flipV" title="上下反転">⇕ 反転</button>
         </div>
@@ -450,7 +448,7 @@
     wLabel:document.getElementById('wLabel'), hLabel:document.getElementById('hLabel'),
     color:document.getElementById('color'), lockSize:document.getElementById('lockSize'),
     dup:document.getElementById('dup'), front:document.getElementById('front'), back:document.getElementById('back'),
-    rotL:document.getElementById('rotL'), rotR:document.getElementById('rotR'), flipH:document.getElementById('flipH'), flipV:document.getElementById('flipV'),
+    flipH:document.getElementById('flipH'), flipV:document.getElementById('flipV'),
     deleteShape:document.getElementById('deleteShape'),
     toolbar:document.getElementById('toolbar'), undo:document.getElementById('undo'), redo:document.getElementById('redo'),
     exportBtn:document.getElementById('export'), importInput:document.getElementById('import'),
@@ -822,7 +820,6 @@
           rot.dataset.id = sh.id;
           rot.dataset.rot = '1';
           handles.appendChild(rot);
-          /* ▲回転ハンドル（追加ここまで） */
         }
       }
     }
@@ -927,19 +924,8 @@
     const isVHandle   = target.classList && target.classList.contains('handle');
     const isBBoxHandle= target.classList && target.classList.contains('bbox-handle');
     const isRotHandle = target.classList && target.classList.contains('rot-handle');
-
-    if(state.tool==='text'){
-      addNote(p.x, p.y);
-      return;
-    }
-    if(state.tool==='splitLine'){
-      const s=splitSnapOnce(p);
-      state.dragging={mode:'split', a:s.pt, b:s.pt, lock:s.lock, anchor:s.anchor};
-      drawSplitPreview(state.dragging.a, state.dragging.b);
-      return;
-    }
-
-    /* ▼回転ハンドル開始（追加） */
+		
+    /* ▼回転ハンドル開始 */
     if (isRotHandle && state.sel){
       const c = centroid(state.sel.points);
       const a0 = Math.atan2(p.y - c.y, p.x - c.x);
@@ -952,7 +938,16 @@
       };
       return;
     }
-    /* ▲回転ハンドル開始（追加ここまで） */
+    if(state.tool==='text'){
+      addNote(p.x, p.y);
+      return;
+    }
+    if(state.tool==='splitLine'){
+      const s=splitSnapOnce(p);
+      state.dragging={mode:'split', a:s.pt, b:s.pt, lock:s.lock, anchor:s.anchor};
+      drawSplitPreview(state.dragging.a, state.dragging.b);
+      return;
+    }
 
     if(state.sel && !state.vertexEdit && isBBoxHandle){
       if(state.lockSize) return;
@@ -1077,16 +1072,14 @@
       note.h = Math.max(40, oh + (p.y-start.y));
       renderNotes();
     }else if(state.dragging.mode==='rotateFree'){
-      /* ▼回転中の更新（追加） */
       const {sh, center, startAngle, initPts} = state.dragging;
       let ang = Math.atan2(p.y - center.y, p.x - center.x) - startAngle;
       if (e.shiftKey){
-        const step = 15 * Math.PI/180;
+        const step = (event.shiftKey ? 30 : 15) * Math.PI/180;
         ang = Math.round(ang / step) * step;
       }
       sh.points = rotatePointsAround(initPts, center.x, center.y, ang);
       render();
-      /* ▲回転中の更新（追加ここまで） */
     }else if(state.dragging.mode==='split'){
       const isShift=!!e.shiftKey;
       const snap=splitSnapMove(p, state.dragging.lock, state.dragging.anchor, isShift);
@@ -1470,8 +1463,6 @@
   ui.dup.addEventListener('click', ()=>{ if(!state.sel) return; const c=JSON.parse(JSON.stringify(state.sel)); c.id=uid(); c.points=c.points.map(p=>[p[0]+20,p[1]+20]); state.shapes.push(c); selectShape(c); pushHistory(); });
   ui.front.addEventListener('click', ()=>{ if(!state.sel) return; const i=state.shapes.findIndex(s=>s.id===state.sel.id); state.shapes.push(...state.shapes.splice(i,1)); pushHistory(); render(); });
   ui.back.addEventListener('click', ()=>{ if(!state.sel) return; const i=state.shapes.findIndex(s=>s.id===state.sel.id); state.shapes.unshift(...state.shapes.splice(i,1)); pushHistory(); render(); });
-  ui.rotL.addEventListener('click', ()=> rotateSel(-15));
-  ui.rotR.addEventListener('click', ()=> rotateSel(15));
   ui.flipH.addEventListener('click', ()=> flipSel(true,false));
   ui.flipV.addEventListener('click', ()=> flipSel(false,true));
   ui.deleteShape.addEventListener('click', ()=>{
