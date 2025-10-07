@@ -472,6 +472,7 @@
     splitStart:null,
     splitPinEl:null,
     actions: [], // {type:'draw'|'erase', ...}
+		drawingPointerId: null,
   };
 	let suppressPenAutoSelect = false; // プログラム起因のchangeではペンに切り替えない
   const ui={
@@ -950,9 +951,6 @@
   // ====== board 側 pointerdown ======
   board.addEventListener('pointerdown', (e)=>{
     if(state.tool==='draw' || state.tool==='erase') return;
-    // 既に他のペンストローク中なら無視（マルチタッチ防止）
-    if (state.drawingPointerId && e.pointerId !== state.drawingPointerId) return;
-    state.drawingPointerId = e.pointerId;
     const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
 
     const target=e.target;
@@ -1038,6 +1036,9 @@
     state.pointerPos = p; redrawCursorOverlay();
     if (state.tool==='draw'){
       e.preventDefault();
+      // すでに別指で描画中なら無視
+     	if (state.drawingPointerId !== null && state.drawingPointerId !== e.pointerId) return;
+     	state.drawingPointerId = e.pointerId
       state.dragging={mode:'draw', stroke:{id:uid(), color: state.penColor, pts:[[p.x,p.y]]}};
       try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
       redrawCanvas();
@@ -1506,7 +1507,11 @@
   ui.deleteShape.addEventListener('click', ()=>{
     if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
   });
-  ui.penColor.addEventListener('change', ()=> { state.penColor=ui.penColor.value; setTool('draw'); render(); });
+	ui.penColor.addEventListener('change', ()=> {
+	 state.penColor = ui.penColor.value;
+	 if (!suppressPenAutoSelect) setTool('draw'); // ユーザー操作のときだけ
+	 render();
+	});
   ui.eraserMode.addEventListener('change', ()=>{
   	state.eraserMode = ui.eraserMode.value;
   	updateEraserSizeVisibility();
@@ -1624,13 +1629,16 @@
   	document.documentElement.setAttribute('data-theme', theme);
   	ui.themeToggle.textContent = (theme === 'dark') ? '☀️' : '🌙';
   	localStorage.setItem('board-theme', theme);
-
+    
+	 	// ペン自動選択の抑止（テーマ適用中）
+	  suppressPenAutoSelect = true;
   	// 1) まず選択肢の可視/不可視を切替
   	showPenOptionsForTheme(theme);
 
   	// 2) 現在のペン色をテーマ側の色へ置換（不可視なら可視の先頭にフォールバック）
   	remapCurrentPenColor(theme);
-
+		suppressPenAutoSelect = false;
+    
   	// 3) 既に描いた線の色も一括でマップ
   	recolorDrawActionsForTheme(theme);
 
@@ -1753,6 +1761,7 @@
   }
   updateEraserSizeVisibility();
   window.addEventListener('load', boot);
+  window.addEventListener('load', ()=> setTool('edit'));
 </script>
 </body>
 </html>
