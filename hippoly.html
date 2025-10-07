@@ -1072,15 +1072,14 @@
       note.h = Math.max(40, oh + (p.y-start.y));
       renderNotes();
     }else if(state.dragging.mode==='rotateFree'){
-      const {sh, center, startAngle, initPts} = state.dragging;
-      let ang = Math.atan2(p.y - center.y, p.x - center.x) - startAngle;
-      if (e.shiftKey){
-        const step = (event.shiftKey ? 30 : 15) * Math.PI/180;
-        ang = Math.round(ang / step) * step;
-      }
-      sh.points = rotatePointsAround(initPts, center.x, center.y, ang);
-      render();
-    }else if(state.dragging.mode==='split'){
+  		const { sh, center, startAngle, initPts } = state.dragging;
+  		let ang = Math.atan2(p.y - center.y, p.x - center.x) - startAngle;
+  		// 常時スナップ：通常15°、Shift中は30°
+  		const step = (e.shiftKey ? 30 : 15) * Math.PI / 180;
+  		ang = Math.round(ang / step) * step;
+  		sh.points = rotatePointsAround(initPts, center.x, center.y, ang);
+  		render();
+		}else if(state.dragging.mode==='split'){
       const isShift=!!e.shiftKey;
       const snap=splitSnapMove(p, state.dragging.lock, state.dragging.anchor, isShift);
       state.dragging.b=snap.pt;
