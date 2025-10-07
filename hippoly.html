@@ -1,3 +1,39 @@
+以下のコードを、条件通りに、機能を損なうことなく修正して。
+全文をhtmlコードで一気に出力して。
+
+○条件
+🔹デザイン・サイズ
+	•	全体フォントサイズ：11pt
+	•	左ツールバー（スクショ欄）
+	•	幅：220px（右ツールバーより狭い）
+	•	サムネ画像：小サイズ（高さ約100px）
+	•	タイトル文字やボタンも11ptに縮小
+	•	右ツールバー（ツール類）：幅は現行320pxを維持
+
+🔹UI操作
+　　・左ツールバーは起動時は格納した状態にする
+	•	左ツールバーにも右側と同様の出っ張りタブ（◀ / ▶）
+	•	右ツールバーを閉じても
+	•	グリッド・左ツールバーは消えない
+	•	ボード領域が自動で拡張
+	•	左右入れ替えボタン：
+	•	左右のツールバーを位置入替
+	•	格納状態も維持（不具合修正）
+	•	左ツールバーを格納してもボードが広がる
+
+🔹構成変更
+	•	「スナップ」ボタン → ヘッダ中央に移動（📸アイコン＋ラベル）
+	•	「すべて保存」ボタン → 左ツールバー下部に固定配置
+
+🔹サムネ表示エリア
+	•	各サムネの右上に削除ボタン（🗑️／赤ゴミ箱）
+	•	ドラッグ＆ドロップで順序入れ替え（DnD安定化）
+
+🔹その他
+	•	全体の文字サイズ・余白を11ptに調整（ボタン・パネル・バッジなど含む）
+	•	グリッドの再描画挙動を調整（格納・入れ替え時に常にリサイズ）
+○条件以上
+
 <!DOCTYPE html>
 <html lang="ja" data-theme="light">
 <head>
@@ -40,7 +76,82 @@
 
       /* サイドバー */
       --aside-width:320px;
+      --fs-base: 11pt;          /* 全体の基本フォントサイズ */
+  		--asideB-width: 220px;    /* 左ツールバーの幅（指定：220px） */
+  		--asideB-cur: var(--asideB-width); /* 左の現在幅（折りたたみで0に） */
+  		--asideR-cur: var(--aside-width);  /* 右の現在幅（折りたたみで0に） */
     }
+		/* ===== 3カラム統合：左B / ボード / 右 ===== */
+		/* ※各サイドの「現在幅」変数(--asideB-cur / --asideR-cur)を使うことで、
+   		折りたたみや入れ替えに関係なくボードは自動拡張します。 */
+		main{
+  		display:grid;
+  		gap:12px; padding:12px; overflow:hidden;
+  		grid-template-columns: var(--asideB-cur) 1fr var(--asideR-cur);
+  		transition: grid-template-columns .15s ease;
+		}
+		body.swap-sidebars main{
+  		grid-template-columns: var(--asideR-cur) 1fr var(--asideB-cur);
+		}
+
+		/* どの列に置くかを明示（入れ替え時はカラム番号を逆転） */
+		.asideB    { grid-column: 1; }
+		.board-wrap{ grid-column: 2; }
+		aside      { grid-column: 3; }
+		body.swap-sidebars .asideB { grid-column: 3; }
+		body.swap-sidebars aside   { grid-column: 1; }
+
+		/* 折りたたみで「現在幅」を0に */
+		body.asideB-collapsed{ --asideB-cur: 0px; }
+		body.aside-collapsed{  --asideR-cur: 0px; }
+
+		.asideB{
+  		order:0; background:var(--panel-bg); color:var(--text);
+  		border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
+  		overflow:hidden; position:relative;
+  		transition: width .15s ease, opacity .15s ease;
+		}
+		body.asideB-collapsed .asideB{ width:0; padding:0; border:none; opacity:1; pointer-events:none; }
+		body.asideB-collapsed .asideB > *:not(.asideB-tab){ display:none; }
+
+		.asideB-tab{
+  		position:absolute; right:-26px; top:12px; width:26px; height:44px;
+  		display:flex; align-items:center; justify-content:center;
+  		background:var(--btn-bg); border:1px solid var(--btn-border); border-radius:0 8px 8px 0;
+  		cursor:pointer; box-shadow:var(--btn-hover-shadow); z-index:9999; touch-action:manipulation;
+		}
+		body.asideB-collapsed .asideB-tab{ pointer-events:auto; }
+
+		/* サムネの縦並び */
+		#thumbList{
+  		display:flex; flex-direction:column; gap:8px; height:calc(100% - 110px); overflow:auto;
+  		border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;
+		}
+		.thumb{
+  		position:relative; border:1px solid var(--btn-border); border-radius:8px; background:#fff;
+  		overflow:hidden; cursor:grab;
+		}
+		.thumb img{ display:block; width:100%; height:auto; }
+		.thumb .cap{
+  		position:absolute; left:6px; top:6px; background:rgba(0,0,0,.5); color:#fff; font-size:12px;
+  		padding:2px 6px; border-radius:6px;
+		}
+		.thumb.dragging{ opacity:.6; }
+
+		/* フルスクリーンビューア */
+		#lightbox{
+  		position:fixed; inset:0; display:none; background:rgba(0,0,0,.8); z-index:99999;
+  		align-items:center; justify-content:center;
+		}
+		#lightbox.show{ display:flex; }
+		#lightbox img{ max-width:96vw; max-height:92vh; border-radius:12px; }
+		.lb-nav{
+  		position:absolute; top:50%; transform:translateY(-50%);
+  		width:48px; height:48px; display:flex; align-items:center; justify-content:center;
+  		background:rgba(255,255,255,.15); border-radius:50%; color:#fff; font-size:28px; user-select:none;
+		}
+		.lb-prev{ left:16px; } .lb-next{ right:16px; }
+		.lb-close{ position:absolute; right:16px; top:16px; background:#fff; border-radius:8px; padding:6px 10px; }
 
     /* ダークテーマ */
     [data-theme="dark"] {
@@ -75,12 +186,7 @@
   		padding: 6px 12px;
 		}
 
-		header .title {
-  		position: absolute;
-  		left: 12px;
-  		font-weight: bold;
-  		font-size: 1.2rem;
-		}
+		header .title { position:absolute; left:12px; font-weight:700; font-size:var(--fs-base); }
 
 		.header-center {
   		display: flex;
@@ -104,10 +210,11 @@
 
     html, body { height: 100%; overflow: hidden; }
     body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
-      background:var(--page-bg); color:var(--text); display:grid; grid-template-rows:auto 1fr;
-      overscroll-behavior: none;
-    }
+  		margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+  		font-size:var(--fs-base);
+  		background:var(--page-bg); color:var(--text); display:grid; grid-template-rows:auto 1fr;
+  		overscroll-behavior: none;
+		}
     header{
       background:var(--panel-bg); color:var(--text);
       padding:10px 12px; box-shadow:0 2px 10px rgba(0,0,0,.06); position:sticky; top:0; z-index:10;
@@ -115,23 +222,16 @@
     header .row{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
     header .title{font-weight:700;}
     select, input[type="color"], button, label.toggle{
-      border:1px solid var(--btn-border); background:var(--btn-bg); color:var(--text);
-      border-radius:10px; padding:10px 12px; font-size:14px;
-      transition: box-shadow .12s ease, background .12s ease, transform .04s ease;
-    }
+  		border:1px solid var(--btn-border); background:var(--btn-bg); color:var(--text);
+  		border-radius:10px; padding:6px 8px; font-size:var(--fs-base);
+  		transition: box-shadow .12s ease, background .12s ease, transform .04s ease;
+		}
     button{cursor:pointer;}
     button:hover{ box-shadow: var(--btn-hover-shadow); }
     button:active{ transform: translateY(0.5px); }
     button:focus-visible{ outline: 2px solid var(--btn-focus); outline-offset: 2px; }
     button:disabled{opacity:.5; cursor:not-allowed;}
     .active{background:var(--btn-active)!important; color:#fff; }
-
-    main{
-      display:grid; grid-template-columns:1fr var(--aside-width); gap:12px; padding:12px;
-      transition: grid-template-columns .15s ease;
-      overflow:hidden;
-    }
-    body.aside-collapsed main{ grid-template-columns: 1fr 0px; }
 
     /* ========== aside（ここ重要） ========== */
     aside{
@@ -178,11 +278,41 @@
       position:relative; min-height:420px; overflow:hidden;
     }
 
-    .panel-title{font-size:14px; color:var(--hint); margin:2px 0 8px;}
+    .panel-title{font-size:var(--fs-base); color:var(--hint); margin:2px 0 8px;}
     .toolbar{display:grid; gap:8px;}
     .group{border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;}
 
     .board{width:100%; height:100%; border-radius:12px; display:block; background:#0b0b0b08; touch-action:none;}
+		/* 左ツールバーの文字サイズも11ptへ（念のため） */
+		.asideB, .asideB *{ font-size: var(--fs-base); }
+
+		/* サムネは小サイズ（高さ約100px） */
+		.thumb img{
+  		width:100%;
+  		height:100px; /* 指定：小サイズ */
+  		object-fit:cover;
+		}
+
+		/* サムネ右上の削除ボタン（赤ゴミ箱） */
+		.thumb .del{
+  		position:absolute; right:6px; top:6px;
+  		border:1px solid var(--btn-border);
+  		background:rgba(255,255,255,0.95);
+  		color:#b91c1c; border-radius:6px;
+  		padding:2px 6px; font-size:var(--fs-base);
+  		cursor:pointer;
+		}
+
+		/* 「すべて保存」を左ツールバーの下部に固定配置 */
+		.asideB .save-all-wrap{
+  		position:absolute; left:12px; right:12px; bottom:12px;
+		}
+		.asideB .save-all-wrap button{ width:100%; }
+
+		/* 下部固定分、サムネ領域の高さを確保 */
+		#thumbList{
+  		height: calc(100% - 150px); /* タイトル+余白+固定ボタン分の目安 */
+		}
 
     /* 描画キャンバス & カーソルオーバーレイ */
     canvas.draw, canvas.cursor-layer{
@@ -198,7 +328,7 @@
     .handle{fill:#fff; stroke:var(--accent); stroke-width:2; cursor:pointer;}
     .bbox-handle{fill:#fff; stroke:#64748b; stroke-width:2; cursor:nwse-resize;}
 
-    /* ▼回転ハンドル（追加） */
+    /* ▼回転ハンドル */
     .rot-stem{ stroke:#94a3b8; stroke-width:2; }
     .rot-handle{
       fill:var(--btn-bg);
@@ -209,11 +339,10 @@
     .rot-handle:active{ cursor:grabbing; }
 
     .badgebar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;}
-    .badge{
-      background:var(--badge-bg); color:var(--badge-text);
-      border:1px solid var(--badge-border); border-radius:10px; padding:6px 10px; font-size:13px;
-    }
-    .hint{color:var(--hint); font-size:12px; display:none;} /* ヒント非表示 */
+    .badge{ background:var(--badge-bg); color:var(--badge-text);
+  		border:1px solid var(--badge-border); border-radius:10px; padding:6px 10px; font-size:var(--fs-base);
+		}
+		.hint{color:var(--hint); font-size:var(--fs-base); display:none;}
 
     /* 付箋 */
     .note-wrap{ position:relative; width:100%; height:100%; overflow:visible; }
@@ -321,12 +450,14 @@
         <option value="3" selected>3cm</option>
       </select>
     </label>
-    <button id="undo" title="戻る（Undo）">↶ 戻る</button>
-    <button id="redo" title="進む（Redo）">↷ 進む</button>
+    <button id="undo" title="戻る（Undo）">↶ もどる</button>
+    <button id="redo" title="進む（Redo）">↷ すすむ</button>
     <button id="reset" title="リセット（画面を再読み込み）">⟲ リセット</button>
     <button id="export" title="保存（JSONとして保存）">💾 保存</button>
     <label class="toggle" title="読み込み（保存したJSONを選択）">📂 読み込み<input id="import" type="file" accept="application/json" style="display:none"></label>
     <button id="themeToggle" title="テーマ切替（ライト/ダーク）">🌙</button>
+    <button id="swapSidebars" title="左右のツールバーを入れ替え">↔️</button>
+    <button id="shot" title="今見えてる範囲を画像化">📸 スナップ</button>
 
     <div id="notePanel" title="付箋の見た目を変更">
       <strong>付箋:</strong>
@@ -346,6 +477,15 @@
 </header>
 
 <main>
+  <!-- ▼ ツールバーB（左） -->
+	<aside class="asideB">
+  	<div class="asideB-tab" id="asideBTab" title="開閉">◀</div>
+  	<div class="panel-title">スクショ</div>
+  	<div id="thumbList" aria-label="snapshots"></div>
+		<div class="save-all-wrap">
+  		<button id="saveAll" title="並んだ画像をまとめて保存">⬇ すべて保存</button>
+		</div>
+	</aside>
   <div class="board-wrap">
     <svg id="board" class="board" aria-label="draw-board"></svg>
     <canvas id="drawCanvas" class="draw"></canvas>
@@ -406,7 +546,7 @@
             <input type="checkbox" id="vertexEdit"/> 頂点編集
           </label>
           <label class="toggle">
-            <input type="checkbox" id="lockSize"/> 固定
+            <input type="checkbox" id="lockSize"/> サイズ固定
           </label>
           <label class="color-pick">色 <input type="color" id="color" value="#2563eb"/></label>
         </div>
@@ -428,6 +568,12 @@
       </div>
     </div>
   </aside>
+  	<div id="lightbox">
+  		<button class="lb-close" id="lbClose">閉じる</button>
+  		<div class="lb-nav lb-prev" id="lbPrev">‹</div>
+  		<img id="lbImg" alt="preview"/>
+  		<div class="lb-nav lb-next" id="lbNext">›</div>
+		</div>
 </main>
 
 <script>
@@ -474,6 +620,165 @@
     actions: [], // {type:'draw'|'erase', ...}
 		drawingPointerId: null,
   };
+  // ▼ ツールバーB：状態
+	state.snaps = []; // {id, dataURL, created:number}
+
+	const uiB = {
+  	tab: document.getElementById('asideBTab'),
+  	list: document.getElementById('thumbList'),
+  	shot: document.getElementById('shot'),
+  	saveAll: document.getElementById('saveAll'),
+  	swap: document.getElementById('swapSidebars'),
+  	lb: document.getElementById('lightbox'),
+  	lbImg: document.getElementById('lbImg'),
+  	lbPrev: document.getElementById('lbPrev'),
+  	lbNext: document.getElementById('lbNext'),
+  	lbClose: document.getElementById('lbClose')
+	};
+	let lbIndex = 0;
+  
+  async function captureViewportPNG(){
+  	// board(SVG)を画像化
+  	const svgEl = board;
+  	const {width:W, height:H} = svgEl.getBoundingClientRect();
+  	// SVG文字列
+  	const xml = new XMLSerializer().serializeToString(svgEl);
+  	const svgBlob = new Blob([xml], {type: 'image/svg+xml'});
+  	const svgURL = URL.createObjectURL(svgBlob);
+  	const img = await new Promise(res=>{
+    	const im = new Image();
+    	im.onload = ()=>res(im);
+    	im.src = svgURL;
+  	});
+
+  	// オフスクリーンCanvasに合成（SVG + 手描きキャンバスを重ねる）
+  	const c = document.createElement('canvas');
+  	c.width = Math.ceil(W); c.height = Math.ceil(H);
+  	const g = c.getContext('2d');
+  	g.fillStyle = getComputedStyle(document.body).getPropertyValue('--panel-bg') || '#fff';
+  	g.fillRect(0,0,c.width,c.height);
+  	g.drawImage(img, 0, 0, c.width, c.height);               // SVG層
+  	g.drawImage(drawCanvas, 0, 0, c.width, c.height);         // 手描き層
+  	// （必要なら cursorCanvas は除外）
+  	URL.revokeObjectURL(svgURL);
+  	return c.toDataURL('image/png');
+	}
+ 
+  function addSnap(dataURL){
+  	const id = 'snap_'+Date.now()+Math.random().toString(36).slice(2,6);
+  	state.snaps.push({id, dataURL, created: Date.now()});
+  	renderSnaps();
+	}
+	function renderSnaps(){
+  	uiB.list.innerHTML = '';
+  	state.snaps.forEach((s, idx)=>{
+    	const box = document.createElement('div');
+    	box.className = 'thumb';
+    	box.draggable = true;
+    	box.dataset.id = s.id;
+
+    	const cap = document.createElement('div');
+    	cap.className = 'cap';
+    	cap.textContent = (idx+1);
+
+    	const img = document.createElement('img');
+    	img.src = s.dataURL; img.alt = 'snapshot '+(idx+1);
+    	img.addEventListener('click', ()=> openLightbox(idx));
+
+    	box.appendChild(cap);
+    	box.appendChild(img);
+    	uiB.list.appendChild(box);
+
+    	box.addEventListener('dragstart', ()=>{
+      	box.classList.add('dragging');
+    	});
+    	box.addEventListener('dragend', ()=>{
+      	box.classList.remove('dragging');
+    	});
+  	});
+
+  	uiB.list.addEventListener('dragover', (e)=>{
+    	e.preventDefault();
+    	const dragging = uiB.list.querySelector('.dragging');
+    	const els = [...uiB.list.querySelectorAll('.thumb:not(.dragging)')];
+    	let afterElement = null;
+    	let closest = Number.NEGATIVE_INFINITY;
+
+    	for (const el of els){
+      	const box = el.getBoundingClientRect();
+      	const offset = e.clientY - (box.top + box.height/2);
+      	if(offset < 0 && offset > closest){
+        	closest = offset; afterElement = el;
+      	}
+    	}
+    	if(afterElement==null){
+      	uiB.list.appendChild(dragging);
+    	}else{
+      	uiB.list.insertBefore(dragging, afterElement);
+    	}
+
+    	const ids = [...uiB.list.querySelectorAll('.thumb')].map(x=>x.dataset.id);
+    	state.snaps = ids.map(id => state.snaps.find(s => s.id === id));
+    	renderSnaps();
+  	});
+	}
+
+	async function saveAllSnaps(){
+  	// ブラウザでは「カメラロールへ直接保存」はできないため、
+  	// 1枚ずつPNGをダウンロードさせます（iOS Safariは写真へ保存に回せます）
+  	for(let i=0;i<state.snaps.length;i++){
+    	const a = document.createElement('a');
+    	a.href = state.snaps[i].dataURL;
+    	a.download = `hippoly_${String(i+1).padStart(2,'0')}.png`;
+    	document.body.appendChild(a);
+    	a.click();
+    	a.remove();
+    	await new Promise(r=>setTimeout(r, 120)); // 連打回避のため少し間隔
+  	}
+	}
+  
+  function openLightbox(index){
+  	if(!state.snaps.length) return;
+  	lbIndex = Math.max(0, Math.min(index, state.snaps.length-1));
+  	uiB.lbImg.src = state.snaps[lbIndex].dataURL;
+  	uiB.lb.classList.add('show');
+	}
+	function closeLightbox(){ uiB.lb.classList.remove('show'); }
+	function lbNext(){ if(!state.snaps.length) return; lbIndex = (lbIndex+1)%state.snaps.length; uiB.lbImg.src = state.snaps[lbIndex].dataURL; }
+	function lbPrev(){ if(!state.snaps.length) return; lbIndex = (lbIndex-1+state.snaps.length)%state.snaps.length; uiB.lbImg.src = state.snaps[lbIndex].dataURL; }
+
+	// スワイプ
+	(function(){
+  	let sx=0, sy=0;
+  	uiB.lb?.addEventListener('touchstart', e=>{ const t=e.touches[0]; sx=t.clientX; sy=t.clientY; }, {passive:true});
+  	uiB.lb?.addEventListener('touchend', e=>{
+    	const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy;
+    	if(Math.abs(dx)>60 && Math.abs(dy)<80){ dx<0 ? lbNext() : lbPrev(); }
+  	}, {passive:true});
+	})();
+  
+  uiB.shot.addEventListener('click', async ()=>{
+  	const url = await captureViewportPNG();
+  	addSnap(url);
+	});
+	uiB.saveAll.addEventListener('click', saveAllSnaps);
+	uiB.tab.addEventListener('click', ()=>{
+  	const collapsed = document.body.classList.toggle('asideB-collapsed');
+  	uiB.tab.textContent = collapsed ? '▶' : '◀';
+  	scheduleRelayout();
+	});
+	document.getElementById('swapSidebars').addEventListener('click', ()=>{
+  	document.body.classList.toggle('swap-sidebars');
+  	// 折りたたみ状態はクラスで保持しているので、そのまま維持されます
+  	scheduleRelayout();
+	});
+
+	// Lightbox
+	uiB.lbClose.addEventListener('click', closeLightbox);
+	uiB.lbNext.addEventListener('click', lbNext);
+	uiB.lbPrev.addEventListener('click', lbPrev);
+	uiB.lb.addEventListener('click', (e)=>{ if(e.target===uiB.lb) closeLightbox(); }); // 余白クリックで閉じる
+   
 	let suppressPenAutoSelect = false; // プログラム起因のchangeではペンに切り替えない
   const ui={
     selType:document.getElementById('selType'), w:document.getElementById('w'), h:document.getElementById('h'), vh:document.getElementById('vh'),
@@ -508,6 +813,15 @@
     const avail = Math.max(420, Math.floor(vv) - hHeader - 24 - 1);
     if (wrap) wrap.style.height = avail + 'px';
   }
+  function scheduleRelayout(){
+  	requestAnimationFrame(()=>{
+    	ensureLayout();
+    	drawGrid();
+    	render();
+    	redrawCanvas();
+    	redrawCursorOverlay();
+  	});
+	}
   function setSvgSizeByClient(){
     const r=board.getBoundingClientRect();
     const w=Math.max(1, Math.floor(r.width));
@@ -591,8 +905,6 @@
   function bbox(pts){ const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]); const x=Math.min(...xs), y=Math.min(...ys), w=Math.max(...xs)-x, h=Math.max(...ys)-y; return {x,y,w,h}; }
   function centroid(pts){ const s=pts.reduce((a,p)=>({x:a.x+p[0],y:a.y+p[1]}),{x:0,y:0}); return {x:s.x/pts.length,y:s.y/pts.length}; }
   function dist(x1,y1,x2,y2){ const dx=x1-x2, dy=y1-y2; return Math.hypot(dx,dy); }
-
-  /* ▼回転用ユーティリティ（追加） */
   function rotatePointsAround(pts, cx, cy, rad){
     const cos = Math.cos(rad), sin = Math.sin(rad);
     return pts.map(([x,y])=>{
@@ -958,8 +1270,6 @@
     const isVHandle   = target.classList && target.classList.contains('handle');
     const isBBoxHandle= target.classList && target.classList.contains('bbox-handle');
     const isRotHandle = target.classList && target.classList.contains('rot-handle');
-		
-    /* ▼回転ハンドル開始 */
     if (isRotHandle && state.sel){
       const c = centroid(state.sel.points);
       const a0 = Math.atan2(p.y - c.y, p.x - c.x);
@@ -1007,8 +1317,6 @@
     if(id){
       const sh=state.shapes.find(s=>s.id===id);
       selectShape(sh);
-
-      // 近い頂点をアンカーに
       let anchorIdx = 0, best = 1e9;
       sh.points.forEach((q,i)=>{
         const d = Math.hypot(q[0]-p.x, q[1]-p.y);
@@ -1679,15 +1987,10 @@
 
   // ========== サイドバー折りたたみ（突起タブ） ==========
   ui.asideTab.addEventListener('click', ()=>{
-    if (document.body.classList.contains('aside-collapsed')){
-      document.body.classList.remove('aside-collapsed');
-      ui.asideTab.textContent='▶';
-    }else{
-      document.body.classList.add('aside-collapsed');
-      ui.asideTab.textContent='◀';
-    }
-    setTimeout(()=>{ drawGrid(); render(); }, 10);
-  });
+  	const collapsed = document.body.classList.toggle('aside-collapsed');
+  	ui.asideTab.textContent = collapsed ? '◀' : '▶';
+  	scheduleRelayout();
+	});
 
   // ========= カーソルオーバーレイ（消しゴムゴーストのみ） =========
   function redrawCursorOverlay(){
@@ -1710,6 +2013,8 @@
 
   // ========= 起動 =========
   function boot(){
+    // 起動時は左ツールバーを格納
+		document.body.classList.add('asideB-collapsed');
     // iPadのダブルタップズーム/長押しメニュー/選択開始を抑止（付箋内は許可）
     (function(){
       if (window.__iosTouchPatched) return;
