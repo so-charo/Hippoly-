@@ -38,9 +38,8 @@
       --badge-text:#1e3a8a;
       --hint:#6b7280;
 
-      /* サイドバー */
-      --aside-width:320px;
       --fs-base: 11pt;          /* 全体の基本フォントサイズ */
+      --aside-width:320px;			 /* 右ツールバーの幅（指定：320px） */
   		--asideB-width: 220px;    /* 左ツールバーの幅（指定：220px） */
   		--asideB-cur: var(--asideB-width); /* 左の現在幅（折りたたみで0に） */
   		--asideR-cur: var(--aside-width);  /* 右の現在幅（折りたたみで0に） */
@@ -58,33 +57,56 @@
   		grid-template-columns: var(--asideR-cur) 1fr var(--asideB-cur);
 		}
 
-		/* どの列に置くかを明示（入れ替え時はカラム番号を逆転） */
-		.asideB    { grid-column: 1; }
-		.board-wrap{ grid-column: 2; }
-		aside      { grid-column: 3; }
-		body.swap-sidebars .asideB { grid-column: 3; }
-		body.swap-sidebars aside   { grid-column: 1; }
+		/* ===== ここから置き換え ===== */
 
-		/* 折りたたみで「現在幅」を0に */
-		body.asideB-collapsed{ --asideB-cur: 0px; }
-		body.aside-collapsed{  --asideR-cur: 0px; }
+	/* 左ツールバー本体：タブがはみ出せるように */
+	.asideB{
+  	order:0; background:var(--panel-bg); color:var(--text);
+  	border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
+  	overflow:visible;                 /* ← hidden から visible に変更 */
+  	position:relative;
+  	transition: width .15s ease, opacity .15s ease;
+	}
 
-		.asideB{
-  		order:0; background:var(--panel-bg); color:var(--text);
-  		border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
-  		overflow:hidden; position:relative;
-  		transition: width .15s ease, opacity .15s ease;
-		}
-		body.asideB-collapsed .asideB{ width:0; padding:0; border:none; opacity:1; pointer-events:none; }
-		body.asideB-collapsed .asideB > *:not(.asideB-tab){ display:none; }
+	/* 折りたたみ時：pointer-events を消しておく（子タブが押せるように） */
+	body.asideB-collapsed .asideB{
+  	width:0; padding:0; border:none; opacity:1;
+  	/* pointer-events:none; ← 削除 */
+	}
+  
+	body.aside-collapsed aside{
+  	width:0; padding:0; border:none; opacity:1;
+  	/* pointer-events:none; ← 削除 */
+	}
+  
+	/* 折りたたみ時、中身はタブ以外非表示のままでOK */
+	body.asideB-collapsed .asideB > *:not(.asideB-tab){ display:none; }
 
-		.asideB-tab{
-  		position:absolute; right:-26px; top:12px; width:26px; height:44px;
-  		display:flex; align-items:center; justify-content:center;
-  		background:var(--btn-bg); border:1px solid var(--btn-border); border-radius:0 8px 8px 0;
-  		cursor:pointer; box-shadow:var(--btn-hover-shadow); z-index:9999; touch-action:manipulation;
-		}
-		body.asideB-collapsed .asideB-tab{ pointer-events:auto; }
+	/* タブ（通常は右に突き出す） */
+	.asideB-tab{
+  	position:absolute; right:-26px; top:12px; width:26px; height:44px;
+  	display:flex; align-items:center; justify-content:center;
+  	background:var(--btn-bg); border:1px solid var(--btn-border);
+  	border-radius:0 8px 8px 0;
+  	cursor:pointer; box-shadow:var(--btn-hover-shadow);
+  	z-index:9999; touch-action:manipulation;
+	}
+
+	/* ===== ここまで置き換え ===== */
+
+	/* 右側タブの既存 */
+	.aside-tab { left:-26px; /* …省略… */ border-radius:8px 0 0 8px; }
+	/* 入れ替え時は右に出す */
+	body.swap-sidebars .aside-tab{
+  	left:auto; right:-26px;
+  	border-radius:0 8px 8px 0;
+	}
+
+	/* ★ 1ブロックだけ新規追加（サイド入れ替え時は左に突き出す） */
+	body.swap-sidebars .asideB-tab{
+  	left:-26px; right:auto;
+  	border-radius:8px 0 0 8px;
+	}
 
 		/* サムネの縦並び */
 		#thumbList{
@@ -599,6 +621,22 @@
   	lbNext: document.getElementById('lbNext'),
   	lbClose: document.getElementById('lbClose')
 	};
+  function refreshSidebarTabIcons(){
+  	const swapped   = document.body.classList.contains('swap-sidebars');
+  	const leftCollapsed  = document.body.classList.contains('asideB-collapsed');
+  	const rightCollapsed = document.body.classList.contains('aside-collapsed');
+
+  	// 左ツールバー：左側にある時は「▶ で開く」、右側にある時は「◀ で開く」
+  	uiB.tab.textContent = (swapped
+    	? (leftCollapsed ? '◀' : '▶')
+    	: (leftCollapsed ? '▶' : '◀'));
+
+  	// 右ツールバー：左側に来たら「▶ で開く」、右側なら「◀ で開く」
+  	const rightTab = document.getElementById('asideTab');
+  	if (rightTab){
+    	rightTab.textContent = (swapped
+      	? (rightCollapsed ? '▶' : '◀')
+      	: (rightCollapsed ? '◀' : '▶'));
 	let lbIndex = 0;
   
   async function captureViewportPNG(){
@@ -727,14 +765,15 @@
 	});
 	uiB.saveAll.addEventListener('click', saveAllSnaps);
 	uiB.tab.addEventListener('click', ()=>{
+  	// asideB-collapsed を付け外し
   	const collapsed = document.body.classList.toggle('asideB-collapsed');
-  	uiB.tab.textContent = collapsed ? '▶' : '◀';
-  	scheduleRelayout();
+  	scheduleRelayout();           // ← レイアウト再計算
+  	refreshSidebarTabIcons();     // ← ★ 新しい関数で矢印の向きを自動で合わせる
 	});
 	document.getElementById('swapSidebars').addEventListener('click', ()=>{
   	document.body.classList.toggle('swap-sidebars');
-  	// 折りたたみ状態はクラスで保持しているので、そのまま維持されます
   	scheduleRelayout();
+  	refreshSidebarTabIcons(); // ← 追加
 	});
 
 	// Lightbox
@@ -1952,9 +1991,12 @@
   // ========== サイドバー折りたたみ（突起タブ） ==========
   ui.asideTab.addEventListener('click', ()=>{
   	const collapsed = document.body.classList.toggle('aside-collapsed');
-  	ui.asideTab.textContent = collapsed ? '◀' : '▶';
   	scheduleRelayout();
+  	refreshSidebarTabIcons(); // ← 追加
 	});
+
+	/* 起動時にも一度同期 */
+	window.addEventListener('load', refreshSidebarTabIcons);
 
   // ========= カーソルオーバーレイ（消しゴムゴーストのみ） =========
   function redrawCursorOverlay(){
