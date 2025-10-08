@@ -481,6 +481,20 @@
 		#penColor option[hidden]{
   	display: none !important;
 		}
+    
+    .draw-row select#penThickness {
+  		width: 60px;
+  		margin-left: 6px;
+		}
+		.line-check {
+  		margin-left: 8px;
+  		font-size: 10pt;
+		}
+		.line-check input {
+  		vertical-align: middle;
+  		margin-right: 3px;
+		}
+    
   </style>
 </head>
 <body>
@@ -556,6 +570,12 @@
   				<div class="draw-row">
     				<button data-tool="draw" title="ペン（キャンバスに自由線を描画）"><span class="icon">🖊️</span>ペン</button>
     				<select id="penColor" title="色変え"></select>
+            <select id="penThickness" title="太さを選択">
+    					<option value="1">細</option>
+    					<option value="2.25">太</option>
+  					</select>
+  					<label class="line-check">
+    					<input type="checkbox" id="penStraight">直線を引く</label>
   				</div>
 
   				<div class="erase-row">
@@ -1811,7 +1831,7 @@
         ctx.save();
         ctx.globalCompositeOperation='source-over';
         ctx.beginPath();
-        ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=act.color;
+        ctx.lineWidth=state.penThickness; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=act.color;
         const pts=act.pts; if(!pts || !pts.length){ ctx.restore(); continue; }
         ctx.moveTo(pts[0][0], pts[0][1]);
         for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
@@ -1834,7 +1854,7 @@
       const s=state.dragging.stroke;
       ctx.save();
       ctx.globalCompositeOperation='source-over';
-      ctx.beginPath(); ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
+      ctx.beginPath(); ctx.lineWidth=state.penThickness; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
       const pts=s.pts; if(pts.length){ ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
       ctx.restore();
     }
@@ -2173,6 +2193,22 @@
     	opt.textContent = label;
     	ui.penColor.appendChild(opt);
   	}
+    // 初期状態
+		state.penThickness = 1;
+		state.penStraight = false;
+
+		// UI参照
+		ui.penThickness = document.getElementById('penThickness');
+		ui.penStraight  = document.getElementById('penStraight');
+
+		// イベント設定
+		ui.penThickness.addEventListener('change', ()=>{
+  		state.penThickness = parseFloat(ui.penThickness.value);
+		});
+
+		ui.penStraight.addEventListener('change', ()=>{
+  		state.penStraight = ui.penStraight.checked;
+		});
 
   	// マップ後の色があればそれを選択、なければ先頭
   	const hasMapped = list.some(x => x.value.toLowerCase() === mapped);
@@ -2407,11 +2443,14 @@
         	text: `${files.length}枚の画像`
       	});
       	// 共有成功（ユーザーが保存先を選ぶ）: ここでやることは特に無し
-    	}catch(err){
-      	// ユーザーキャンセルなどは無視、その他はフォールバック
-      	console.warn('share canceled or failed:', err);
-      	await saveAllSnapsFallback(); // 下のフォールバックに切り替え
-    	}finally{
+    	} catch(err) {
+  			console.warn('share canceled or failed:', err);
+  			// キャンセル（AbortErrorなど）なら何もせずスルー
+  			if (err && err.name === 'AbortError') return;
+  			// 本当に失敗したときだけフォールバック
+  			if (err && err.message && /share/i.test(err.message)) return;
+  			// await saveAllSnapsFallback(); ← これを削除またはコメントアウト
+			} finally {
       	uiB.saveAll.disabled = false;
     	}
   	}else{
