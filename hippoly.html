@@ -278,7 +278,7 @@
       background:var(--panel-bg); color:var(--text);
       padding:10px 12px; box-shadow:0 2px 10px rgba(0,0,0,.06); position:sticky; top:0; z-index:10;
     }
-    header .row{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+    header .row{display:flex; flex-wrap:wrap; gap:10px; align-items:center;justify-content: space-between;}
     header .title{font-weight:700;}
     select, input[type="color"], button, label.toggle{
   		border:1px solid var(--btn-border); background:var(--btn-bg); color:var(--text);
@@ -561,14 +561,6 @@
     <button id="themeToggle" title="テーマ切替（ライト/ダーク）">🌙</button>
     <button id="swapSidebars" title="左右のツールバーを入れ替え">↔️</button>
     <button id="shot" title="今見えてる範囲を画像化">📸 スナップ</button>
-    <div class="save-load small right">
-  	<button id="export" title="保存（JSONとして保存）">💾 保存</button>
-  	<label class="toggle" title="読み込み（保存したJSONを選択）">
-    	📂 読み込み
-    	<input id="import" type="file" accept="application/json" style="display:none">
-  	</label>
-	</div>
-
     <div id="notePanel" title="付箋の見た目を変更">
       <strong>付箋:</strong>
       <select id="noteHdrColor" title="付箋の色">
@@ -583,6 +575,13 @@
       </select>
     </div>
     </div>
+     <div class="save-load small right">
+  		<button id="export" title="保存（JSONとして保存）">💾 保存</button>
+  		<label class="toggle" title="読み込み（保存したJSONを選択）">
+    		📂 読み込み
+    		<input id="import" type="file" accept="application/json" style="display:none">
+  		</label>
+		</div>
   </div>
 </header>
 
