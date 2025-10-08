@@ -2,6 +2,7 @@
 <html lang="ja" data-theme="light">
 <head>
   <meta charset="UTF-8" />
+  <!-- ダブルタップ拡大を無効化 -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
   <title>Hippoly!</title>
   <style>
@@ -44,6 +45,9 @@
   		--asideR-cur: var(--aside-width);  /* 右の現在幅（折りたたみで0に） */
     }
 		/* ===== 3カラム統合：左B / ボード / 右 ===== */
+		/* ※各サイドの「現在幅」変数(--asideB-cur / --asideR-cur)を使うことで、
+   		折りたたみや入れ替えに関係なくボードは自動拡張します。 */
+		/* 置き換え推奨（両方とも） */
 	main{
   	display:grid;
   	gap:12px; padding:12px; overflow:hidden;
@@ -67,6 +71,8 @@
 		body.swap-sidebars aside   { order: 0; }
     body.swap-sidebars .board-wrap{ order:1; } /* 念のため明示 */
 
+		/* ===== ここから置き換え ===== */
+
 	/* 左ツールバー本体：タブがはみ出せるように */
 	.asideB{
   	order:0; background:var(--panel-bg); color:var(--text);
@@ -84,7 +90,11 @@
   	opacity: 1;
   	pointer-events: none;
 	}
-	body.asideB-collapsed .asideB > .asideB-tab {pointer-events: auto;	}
+	body.asideB-collapsed .asideB > .asideB-tab {
+  	pointer-events: auto; /* ← タブだけ操作可能に */
+	}
+  
+	/* 折りたたみ時、中身はタブ以外非表示のままでOK */
 	body.asideB-collapsed .asideB > *:not(.asideB-tab){ display:none; }
 
 	/* タブ（通常は右に突き出す） */
@@ -96,15 +106,22 @@
   	cursor:pointer; box-shadow:var(--btn-hover-shadow);
   	z-index:9999; touch-action:manipulation;
 	}
-	body.aside-collapsed .asideB > .asideB-tab{pointer-events:auto;}
+  /* 右を畳んだときも、左タブ(.asideB-tab)はクリック可 */
+	body.aside-collapsed .asideB > .asideB-tab{
+  	pointer-events:auto;
+	}
 
-	.aside-tab { left:-26px;border-radius:8px 0 0 8px; }
+	/* ===== ここまで置き換え ===== */
+
+	/* 右側タブの既存 */
+	.aside-tab { left:-26px; /* …省略… */ border-radius:8px 0 0 8px; }
+	/* 入れ替え時は右に出す */
 	body.swap-sidebars .aside-tab{
   	left:auto; right:-26px;
   	border-radius:0 8px 8px 0;
 	}
 
-	/* サイド入れ替え時は左に突き出す */
+	/* ★ 1ブロックだけ新規追加（サイド入れ替え時は左に突き出す） */
 	body.swap-sidebars .asideB-tab{
   	left:-26px; right:auto;
   	border-radius:8px 0 0 8px;
@@ -123,14 +140,24 @@
   	border-top: 1px dashed var(--soft);
   	padding-top: 8px;
   	margin-top: 8px;
-  	-webkit-overflow-scrolling: touch;}
 
+  	/* iOSの慣性スクロール */
+  	-webkit-overflow-scrolling: touch;
+
+  	/* 任意（保留中）：必要になったら復活
+  	-webkit-user-select: none;
+  	user-select: none;
+  	*/
+	}
+	/* 画像のドラッグ抑止も保留するならコメントアウトのまま
+	#thumbList img { -webkit-user-drag: none; }
+	*/
 		/* サムネ1枚のコンテナ：並べ替えのためフレックスに */
 		.thumb{
   		position:relative;
-  		display:flex;
-  		align-items:stretch;
-  		gap:6px;
+  		display:flex;                 /* ← ここを追加(変更) */
+  		align-items:stretch;           /* ← 追加 */
+  		gap:6px;                      /* ← 追加 */
   		border:1px solid var(--btn-border);
   		border-radius:8px;
   		background:#fff;
@@ -143,7 +170,7 @@
   		display:flex; align-items:center; justify-content:center;
   		margin-left:6px; margin-right:2px;
   		user-select:none; -webkit-user-select:none;
-  		touch-action:none;
+  		touch-action:none;             /* ← 長押し不要で即ドラッグ */
   		cursor:grab;
   		color:#64748b;
 		}
@@ -151,13 +178,14 @@
 
 		/* 画像は横に伸縮、既存の高さは維持 */
 		.thumb img{
-  		flex:1 1 auto;
+  		flex:1 1 auto;                /* ← 追加 */
   		display:block;
   		min-width:0;
-  		height:100px;
+  		height:100px;                 /* 既存と同じ(小サイズ) */
   		object-fit:cover;
 		}
 
+		/* 並べ替え中の視覚効果 */
 		#thumbList.dragging .thumb.dragging{
   		opacity:.6;
   		transform:scale(0.98);
@@ -213,6 +241,7 @@
   		position: relative;
   		display: flex;
   		align-items: center;
+  		justify-content: center;
   		padding: 6px 12px;
 		}
 
@@ -225,7 +254,7 @@
   		justify-content: center;
   		flex-wrap: wrap;
 		}
-    /* iPad長押しの選択・コールアウト抑止 */
+    /* iPad長押しの選択・コールアウトを全要素で抑止（付箋は後で解除） */
     * {
       -webkit-user-select: none;
       user-select: none;
@@ -263,11 +292,11 @@
     button:disabled{opacity:.5; cursor:not-allowed;}
     .active{background:var(--btn-active)!important; color:#fff; }
 
-		/* ====== aside ===== */
+    /* ========== aside（ここ重要） ========== */
     aside{
       order:2; background:var(--panel-bg); color:var(--text); border-radius:14px;
       padding:12px; box-shadow: var(--panel-shadow);
-      overflow: visible;
+      overflow: visible;     /* タブがはみ出しても見えるように */
       position:relative;
       transition: width .15s ease, opacity .15s ease;
     }
@@ -309,6 +338,7 @@
     .group{border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;}
 
     .board{width:100%; height:100%; border-radius:12px; display:block; background:#0b0b0b08; touch-action:none;}
+		/* 左ツールバーの文字サイズも11ptへ（念のため） */
 		.asideB, .asideB *{ font-size: var(--fs-base); }
 
 		/* サムネ右上の削除ボタン（赤ゴミ箱） */
@@ -341,7 +371,7 @@
     .handle{fill:#fff; stroke:var(--accent); stroke-width:2; cursor:pointer;}
     .bbox-handle{fill:#fff; stroke:#64748b; stroke-width:2; cursor:nwse-resize;}
 
-    /* 回転ハンドル */
+    /* ▼回転ハンドル */
     .rot-stem{ stroke:#94a3b8; stroke-width:2; }
     .rot-handle{
       fill:var(--btn-bg);
@@ -389,6 +419,7 @@
     #notePanel{ display:none; gap:8px; align-items:center; padding:4px 6px; border:1px solid var(--btn-border); border-radius:10px; }
     /* ヘッダの行高さを安定させる */
     header .row{
+      min-height: 56px;        /* 端末差を吸収できる安全値 */
       align-items: center;
     }
 
@@ -442,8 +473,13 @@
     }
 
     /* 付箋パネルのせいで下に押されないよう、メインエリアの高さ確保 */
-    main {overflow: hidden;}
-		#penColor option[hidden]{display: none !important;}
+    main {
+      overflow: hidden;
+    }
+    /* Safari/iOS 向け: hidden の option を確実に隠す */
+		#penColor option[hidden]{
+  	display: none !important;
+		}
     
     .draw-row select#penThickness {
   		width: 60px;
@@ -460,15 +496,15 @@
     /* ========== ヘッダーの保存・読み込み右寄せ＆小型化 ========== */
 		.save-load.right {
   		display: flex;
-  		justify-content: flex-end; 
+  		justify-content: flex-end; /* 右端寄せ */
   		align-items: center;
   		gap: 6px;
-  		margin-left: auto; 
+  		margin-left: auto; /* ヘッダー全体で右端に押しやる */
 		}
 
 		.save-load.small button,
 		.save-load.small label {
-  		font-size: 10pt;
+  		font-size: 10pt;     /* 小さめ */
   		padding: 3px 6px;
   		border-radius: 6px;
   		background: var(--btn-bg);
@@ -504,7 +540,7 @@
 
 	header .row button:active,
 	header .row label.toggle:active {
-  	transform: scale(0.97);
+  	transform: scale(0.97);       /* ← 押した感フィードバック */
 	}  
   </style>
 </head>
@@ -539,13 +575,13 @@
       </select>
     </div>
     </div>
-    <div class="save-load small right">
+     <div class="save-load small right">
   		<button id="export" title="保存（JSONとして保存）">💾 保存</button>
   		<label class="toggle" title="読み込み（保存したJSONを選択）">
     		📂 読み込み
     		<input id="import" type="file" accept="application/json" style="display:none">
   		</label>
-  	</div>
+		</div>
   </div>
 </header>
 
