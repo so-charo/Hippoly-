@@ -541,7 +541,7 @@
   	<div class="panel-title">スクショ</div>
   	<div id="thumbList" aria-label="snapshots"></div>
 		<div class="save-all-wrap">
-  		<button id="saveAll" title="並んだ画像をまとめて保存">💾保存/シェア</button>
+  		<button id="saveAll" title="並んだ画像をまとめて保存">💾全ての画像を保存</button>
 		</div>
 	</aside>
   <div class="board-wrap">
@@ -1582,6 +1582,7 @@
   // ========= UI ヘルパ =========
   function setTool(name){
     state.tool = name;
+    if (name !== 'draw') state.lineAnchor = null;
     [...ui.toolbar.querySelectorAll('button')].forEach(x=>x.classList.remove('active'));
     const btn = ui.toolbar.querySelector(`button[data-tool="${name}"]`);
     if (btn) btn.classList.add('active');
@@ -1732,6 +1733,16 @@
 
   drawCanvas.addEventListener('pointermove', (e)=>{
     const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
+    
+    // ★ 追加：直線モードのプレビュー更新（アンカーがある時だけ）
+  	if (state.tool === 'draw' && state.penStraight && state.lineAnchor) {
+    	// ドラッグ中ではなく、プレビューだけ更新
+    	e.preventDefault();
+    	// pointerPos はもう更新済みなので、オーバーレイ再描画だけでOK
+    	// （スナップは redrawCursorOverlay 側で適用）
+    	return;
+  	}
+
     if(!state.dragging) { return; }
     if(state.dragging.mode==='draw'){
       e.preventDefault();
@@ -2408,6 +2419,31 @@
   	const W=cursorCanvas.width/state.dpr, H=cursorCanvas.height/state.dpr;
   	cctx.clearRect(0,0,W,H);
   	const p = state.pointerPos;
+    
+    // 直線プレビュー（アンカーがある時だけ）
+  	if (state.tool === 'draw' && state.penStraight && state.lineAnchor) {
+    	// 現在位置にスナップを適用（プレビューも正確に見せる）
+    	const s = snapPointWithProjection(p.x, p.y) || p;
+
+    	cctx.save();
+    	// アンカー点（始点）
+    	cctx.beginPath();
+    	cctx.arc(state.lineAnchor.x, state.lineAnchor.y, 3, 0, Math.PI*2);
+    	cctx.fillStyle = 'rgba(239,68,68,0.9)'; // 赤い点
+    	cctx.fill();
+
+    	// プレビュー線
+    	cctx.beginPath();
+    	cctx.moveTo(state.lineAnchor.x, state.lineAnchor.y);
+    	cctx.lineTo(s.x, s.y);
+    	cctx.lineWidth = state.penThickness || 1.5;
+    	cctx.setLineDash([6,4]);
+    	cctx.strokeStyle = 'rgba(239,68,68,0.9)';
+    	cctx.lineCap = 'round';
+    	cctx.lineJoin = 'round';
+    	cctx.stroke();
+    	cctx.restore();
+  	}
 
   	// 消しゴムのゴースト
   	if(state.tool==='erase'){
