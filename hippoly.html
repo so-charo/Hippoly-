@@ -571,8 +571,8 @@
     				<button data-tool="draw" title="ペン（キャンバスに自由線を描画）"><span class="icon">🖊️</span>ペン</button>
     				<select id="penColor" title="色変え"></select>
             <select id="penThickness" title="太さを選択">
-    					<option value="1">細</option>
-    					<option value="2.25">太</option>
+    					<option value="1.5">細</option>
+    					<option value="3.5">太</option>
   					</select>
   					<label class="line-check">
     					<input type="checkbox" id="penStraight">直線を引く</label>
@@ -683,6 +683,9 @@
     splitPinEl:null,
     actions: [], // {type:'draw'|'erase', ...}
 		drawingPointerId: null,
+    penThickness: 1.5,
+    penStraight: false,      // 直線モード（既にあればそのまま）
+  	lineAnchor: null,        // ★1点目を保持 {x,y} / 無ければ null
   };
   // ▼ ツールバーB：状態
 	state.snaps = []; // {id, dataURL, created:number}
@@ -1082,7 +1085,8 @@
     deleteShape:document.getElementById('deleteShape'),
     toolbar:document.getElementById('toolbar'), undo:document.getElementById('undo'), redo:document.getElementById('redo'),
     exportBtn:document.getElementById('export'), importInput:document.getElementById('import'),
-    penColor:document.getElementById('penColor'), eraserMode:document.getElementById('eraserMode'),
+    penColor:document.getElementById('penColor'), penThickness: document.getElementById('penThickness'),
+  	penStraight:  document.getElementById('penStraight'), eraserMode:document.getElementById('eraserMode'),
     gridSize:document.getElementById('gridSize'), splitGridSnap:document.getElementById('splitGridSnap'),
     vertexEdit:document.getElementById('vertexEdit'),
     resetBtn:document.getElementById('reset'),
@@ -1094,6 +1098,22 @@
     themeToggle:document.getElementById('themeToggle'),
     asideTab:document.getElementById('asideTab')
   };
+  
+	// 追加：UI参照
+	ui.penThickness = document.getElementById('penThickness');
+	ui.penStraight  = document.getElementById('penStraight');
+
+	// 追加：イベント
+	ui.penThickness.addEventListener('change', ()=>{
+  	state.penThickness = parseFloat(ui.penThickness.value) || 1;
+  	setTool('draw');        // ← 色変更と同じく自動でペンに
+  	render();
+	});
+	ui.penStraight.addEventListener('change', ()=>{
+  	state.penStraight = ui.penStraight.checked;
+  	setTool('draw');        // 直線ONにしたらペンに
+  	redrawCursorOverlay();
+	});
 
   // ========= レイアウト安定化 =========
   function ensureLayout(){
@@ -1299,7 +1319,24 @@
   function addShape(type){
     const g=state.gridPx, off=state.gridOffset||0, cx=off+g*2, cy=off+g*2; let pts=[];
     if(type==='rect') pts=[[cx,cy],[cx+3*g,cy],[cx+3*g,cy+2*g],[cx,cy+2*g]];
-    if(type==='tri')  pts=[[cx,cy],[cx+2*g,cy+g],[cx+g,cy+2*g]];
+    if(type==='tri'){
+  		// ★特注三角形：底辺 6cm、高さ 4cm
+  		// 「正三角形になる頂点」から x を 1cm 左にずらす
+  		const base   = 6 * pxPerCm;
+  		const height = 4 * pxPerCm;
+  		const dx     = -1 * pxPerCm;   // 頂点を左へ 1cm
+
+  		// 既存レイアウトに合わせて、基準位置は (cx, cy) まわり
+  		// ベース（底辺中心）を cx,cy に来るよう配置
+  		const x0 = cx - base/2;    // 底辺左端
+  		const y0 = cy + height/2;  // 底辺の y
+
+  		pts = [
+    		[x0,           y0],              // 底辺左
+    		[x0 + base,    y0],              // 底辺右
+    		[x0 + base/2 + dx, y0 - height]  // 頂点（左に1cmずらし）
+  		];
+		}
     if(type==='trap'){
       const v=Math.floor(Math.random()*3);
       if(v===0) pts=[[cx,cy],[cx+3*g,cy],[cx+2.5*g,cy+2*g],[cx+0.5*g,cy+2*g]];
@@ -1633,24 +1670,65 @@
 
   // ====== drawCanvas 側 pointer 入力（ペン/消しゴム） ======
   drawCanvas.addEventListener('pointerdown', (e)=>{
-    const p = pt(e);
-    state.pointerPos = p; redrawCursorOverlay();
-    if (state.tool==='draw'){
-      e.preventDefault();
-      // すでに別指で描画中なら無視
-     	if (state.drawingPointerId !== null && state.drawingPointerId !== e.pointerId) return;
-     	state.drawingPointerId = e.pointerId
-      state.dragging={mode:'draw', stroke:{id:uid(), color: state.penColor, pts:[[p.x,p.y]]}};
-      try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
-      redrawCanvas();
-      return;
-    }
-    if (state.tool==='erase'){
-      e.preventDefault();
-      handleEraserDown(e, p);
-      return;
-    }
-  }, {passive:false});
+  	const p0 = pt(e);
+  	state.pointerPos = p0; 
+  	redrawCursorOverlay();
+
+  	if (state.tool === 'draw'){
+    	e.preventDefault();
+
+    	// ★ 直線モード：タップ→タップで確定
+    	if (state.penStraight) {
+      	// スナップ（方眼/辺への射影も利用）
+      	const s = snapPointWithProjection(p0.x, p0.y) || p0;
+
+      	// まだアンカーが無ければセットして終了（この時点では描かない）
+      	if (!state.lineAnchor) {
+        	state.lineAnchor = { x: s.x, y: s.y };
+        	redrawCursorOverlay(); // プレビュー線を出す
+        	return;
+      	}
+
+      	// 2タップ目：アンカー→現在点で1本の線を確定して保存
+      	const a = state.lineAnchor;               // 始点
+      	const b = { x: s.x, y: s.y };            // 終点
+      	state.actions.push({
+        	type: 'draw',
+        	color: state.penColor,
+        	width: state.penThickness,
+        	pts: [[a.x, a.y], [b.x, b.y]]
+      	});
+      	state.lineAnchor = null;                  // アンカー解除
+      	pushHistory();
+      	redrawCanvas();
+      	redrawCursorOverlay();                    // プレビュー消し
+      	return;                                   // ← ドラッグ描画はしない
+    	}
+
+    	// ★ フリーハンド（従来どおり）
+    	// すでに別指で描画中なら無視
+    	if (state.drawingPointerId !== null && state.drawingPointerId !== e.pointerId) return;
+    	state.drawingPointerId = e.pointerId;
+    	state.dragging = {
+      	mode:'draw',
+      	stroke:{
+        	id: uid(),
+        	color: state.penColor,
+        	width: state.penThickness,   // この線の太さを固定保存
+        	pts: [[p0.x, p0.y]]
+      	}
+    	};
+    	try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
+    	redrawCanvas();
+    	return;
+  	}
+
+  	if (state.tool === 'erase'){
+    	e.preventDefault();
+    	handleEraserDown(e, p0);
+    	return;
+  	}
+	}, {passive:false});
 
   drawCanvas.addEventListener('pointermove', (e)=>{
     const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
@@ -1831,7 +1909,8 @@
         ctx.save();
         ctx.globalCompositeOperation='source-over';
         ctx.beginPath();
-        ctx.lineWidth=state.penThickness; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=act.color;
+        ctx.lineWidth = (act.width != null ? act.width : 2);
+        ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=act.color;
         const pts=act.pts; if(!pts || !pts.length){ ctx.restore(); continue; }
         ctx.moveTo(pts[0][0], pts[0][1]);
         for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
@@ -1854,7 +1933,8 @@
       const s=state.dragging.stroke;
       ctx.save();
       ctx.globalCompositeOperation='source-over';
-      ctx.beginPath(); ctx.lineWidth=state.penThickness; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
+      ctx.beginPath(); ctx.lineWidth=(s.width != null ? s.width : 2);       // ★ その場で保持してる太さを使う 
+			ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
       const pts=s.pts; if(pts.length){ ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
       ctx.restore();
     }
@@ -1870,7 +1950,7 @@
   function addStrokePoint(p){ state.dragging.stroke.pts.push([p.x,p.y]); }
   function finishStroke(){
     const s = state.dragging.stroke;
-    state.actions.push({type:'draw', color:s.color, pts:s.pts});
+    state.actions.push({type:'draw', color:s.color, width:s.width, pts:s.pts});
   }
 
   function handleEraserDown(e, p){
@@ -2123,11 +2203,30 @@
   ui.deleteShape.addEventListener('click', ()=>{
     if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
   });
+	// ========= ペン関係のイベント =========
+	// 色を変えたら自動でペンに切り替え
 	ui.penColor.addEventListener('change', ()=> {
-	 state.penColor = ui.penColor.value;
-	 if (!suppressPenAutoSelect) setTool('draw'); // ユーザー操作のときだけ
-	 render();
+  	state.penColor = ui.penColor.value;
+  	if (!suppressPenAutoSelect) setTool('draw'); // ユーザー操作のときだけ
+  	render();
 	});
+
+	// ペンの太さ変更：選択したら自動でペンに
+	ui.penThickness.addEventListener('change', ()=>{
+  	state.penThickness = parseFloat(ui.penThickness.value) || 1.5;
+  	setTool('draw');   // 自動でペンモードへ
+  	render();
+	});
+
+	// 「直線を引く」チェック：ONで直線モード、OFFで解除
+	ui.penStraight.addEventListener('change', ()=>{
+  	state.penStraight = ui.penStraight.checked;
+  	if (!state.penStraight) state.lineAnchor = null; // OFFならアンカー解除
+  	setTool('draw');   // 自動でペンモードへ
+  	redrawCursorOverlay();
+	});
+
+	// ========= 消しゴム関係 =========
   ui.eraserMode.addEventListener('change', ()=>{
   	state.eraserMode = ui.eraserMode.value;
   	updateEraserSizeVisibility();
@@ -2193,22 +2292,6 @@
     	opt.textContent = label;
     	ui.penColor.appendChild(opt);
   	}
-    // 初期状態
-		state.penThickness = 1;
-		state.penStraight = false;
-
-		// UI参照
-		ui.penThickness = document.getElementById('penThickness');
-		ui.penStraight  = document.getElementById('penStraight');
-
-		// イベント設定
-		ui.penThickness.addEventListener('change', ()=>{
-  		state.penThickness = parseFloat(ui.penThickness.value);
-		});
-
-		ui.penStraight.addEventListener('change', ()=>{
-  		state.penStraight = ui.penStraight.checked;
-		});
 
   	// マップ後の色があればそれを選択、なければ先頭
   	const hasMapped = list.some(x => x.value.toLowerCase() === mapped);
@@ -2322,22 +2405,42 @@
 
   // ========= カーソルオーバーレイ（消しゴムゴーストのみ） =========
   function redrawCursorOverlay(){
-    const W=cursorCanvas.width/state.dpr, H=cursorCanvas.height/state.dpr;
-    cctx.clearRect(0,0,W,H);
-    const p = state.pointerPos;
+  	const W=cursorCanvas.width/state.dpr, H=cursorCanvas.height/state.dpr;
+  	cctx.clearRect(0,0,W,H);
+  	const p = state.pointerPos;
 
-    if(state.tool==='erase'){
-  		cctx.save();
-  		cctx.beginPath();
-  		const r = (state.eraserSize || 14)/2;  // サイズ反映
-  		cctx.arc(p.x, p.y, r, 0, Math.PI*2);
-  		cctx.fillStyle='rgba(180,180,180,0.2)';
-  		cctx.strokeStyle='rgba(120,120,120,0.6)';
-  		cctx.lineWidth=1;
-  		cctx.fill(); cctx.stroke();
-  		cctx.restore();
-		}
-  }
+  	// 消しゴムのゴースト
+  	if(state.tool==='erase'){
+    	cctx.save();
+    	cctx.beginPath();
+    	const r = (state.eraserSize || 14)/2;
+    	cctx.arc(p.x, p.y, r, 0, Math.PI*2);
+    	cctx.fillStyle='rgba(180,180,180,0.2)';
+    	cctx.strokeStyle='rgba(120,120,120,0.6)';
+    	cctx.lineWidth=1;
+    	cctx.fill(); cctx.stroke();
+    	cctx.restore();
+    	return; // erase優先で表示
+  	}
+
+  	// ★ 直線プレビュー（アンカーがあるとき）
+  	if (state.tool==='draw' && state.penStraight && state.lineAnchor){
+    	// カーソル位置もスナップをかけて表示がカチッとするように
+    	const s = snapPointWithProjection(p.x, p.y) || p;
+
+    	cctx.save();
+    	cctx.beginPath();
+    	cctx.moveTo(state.lineAnchor.x, state.lineAnchor.y);
+    	cctx.lineTo(s.x, s.y);
+    	cctx.lineWidth = state.penThickness || 1.5;
+    	cctx.lineCap = 'round';
+    	cctx.lineJoin = 'round';
+    	cctx.strokeStyle = state.penColor || '#1f2937';
+    	cctx.globalAlpha = 0.9; // ほんの少しだけ薄めに
+    	cctx.stroke();
+    	cctx.restore();
+  	}
+	}
 
   // ========= 起動 =========
   function boot(){
