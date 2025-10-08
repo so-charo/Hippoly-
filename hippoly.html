@@ -152,11 +152,45 @@
 	/* 画像のドラッグ抑止も保留するならコメントアウトのまま
 	#thumbList img { -webkit-user-drag: none; }
 	*/
+		/* サムネ1枚のコンテナ：並べ替えのためフレックスに */
 		.thumb{
-  		position:relative; border:1px solid var(--btn-border); border-radius:8px; background:#fff;
-  		overflow:hidden; cursor:grab;
+  		position:relative;
+  		display:flex;                 /* ← ここを追加(変更) */
+  		align-items:stretch;           /* ← 追加 */
+  		gap:6px;                      /* ← 追加 */
+  		border:1px solid var(--btn-border);
+  		border-radius:8px;
+  		background:#fff;
+  		overflow:hidden;
 		}
-		.thumb img{ display:block; width:100%; height:auto; }
+
+		/* 並べ替え用ハンドル（≡） */
+		.thumb .grab{
+  		flex:0 0 22px;
+  		display:flex; align-items:center; justify-content:center;
+  		margin-left:6px; margin-right:2px;
+  		user-select:none; -webkit-user-select:none;
+  		touch-action:none;             /* ← 長押し不要で即ドラッグ */
+  		cursor:grab;
+  		color:#64748b;
+		}
+		.thumb.dragging .grab{ cursor:grabbing; }
+
+		/* 画像は横に伸縮、既存の高さは維持 */
+		.thumb img{
+  		flex:1 1 auto;                /* ← 追加 */
+  		display:block;
+  		min-width:0;
+  		height:100px;                 /* 既存と同じ(小サイズ) */
+  		object-fit:cover;
+		}
+
+		/* 並べ替え中の視覚効果 */
+		#thumbList.dragging .thumb.dragging{
+  		opacity:.6;
+  		transform:scale(0.98);
+			transition: transform .05s ease;
+		}
 		.thumb .cap{
   		position:absolute; left:6px; top:6px; background:rgba(0,0,0,.5); color:#fff; font-size:12px;
   		padding:2px 6px; border-radius:6px;
@@ -307,13 +341,6 @@
     .board{width:100%; height:100%; border-radius:12px; display:block; background:#0b0b0b08; touch-action:none;}
 		/* 左ツールバーの文字サイズも11ptへ（念のため） */
 		.asideB, .asideB *{ font-size: var(--fs-base); }
-
-		/* サムネは小サイズ（高さ約100px） */
-		.thumb img{
-  		width:100%;
-  		height:100px; /* 指定：小サイズ */
-  		object-fit:cover;
-		}
 
 		/* サムネ右上の削除ボタン（赤ゴミ箱） */
 		.thumb .del{
@@ -500,7 +527,7 @@
   	<div class="panel-title">スクショ</div>
   	<div id="thumbList" aria-label="snapshots"></div>
 		<div class="save-all-wrap">
-  		<button id="saveAll" title="並んだ画像をまとめて保存">⬇ すべて保存</button>
+  		<button id="saveAll" title="並んだ画像をまとめて保存">💾保存/シェア</button>
 		</div>
 	</aside>
   <div class="board-wrap">
@@ -683,13 +710,119 @@
   	
 	let lbIndex = 0;
   
-  async function captureViewportPNG(){
-  	// board(SVG)を画像化
+  // 追加：CSS変数を拾う
+	function cssVar(name, fallback='') {
+  	const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+  	return (v && v.trim()) || fallback;
+	}
+	// 追加：HTMLを素テキストへ（<br> → 改行）
+	function htmlToPlainText(html) {
+  	const div = document.createElement('div');
+  	div.innerHTML = html || '';
+  	// <br>を改行に変換
+  	div.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+  	return (div.textContent || '').replace(/\r\n/g, '\n');
+	}
+	// 追加：単純ワードラップ（キャンバスで文字幅計測）
+	function wrapLines(text, maxWidth, font) {
+  	const c = document.createElement('canvas');
+  	const g = c.getContext('2d');
+  	g.font = font;
+  	const words = text.split(/\s+/);
+  	const lines = [];
+  	let cur = '';
+  	const push = () => { lines.push(cur); cur=''; };
+
+  	for (let i=0;i<words.length;i++){
+    	const tryStr = cur ? (cur + ' ' + words[i]) : words[i];
+    	if (g.measureText(tryStr).width <= maxWidth) {
+      	cur = tryStr;
+    	} else {
+      	if (cur) push();
+      	// 単語自体が長すぎる場合は強制改行
+      	if (g.measureText(words[i]).width > maxWidth) {
+        	let chunk='', rest=words[i];
+        	while (g.measureText(rest).width > maxWidth) {
+          	let lo=1, hi=rest.length, cut=1;
+          	while (lo<=hi){
+            	const mid=(lo+hi)>>1;
+            	if (g.measureText(rest.slice(0,mid)).width <= maxWidth){ cut=mid; lo=mid+1; } else hi=mid-1;
+          	}
+          	lines.push(rest.slice(0,cut));
+          	rest = rest.slice(cut);
+        	}
+        	cur = rest;
+      	} else {
+        	cur = words[i];
+      	}
+    	}
+  	}
+  	if (cur) push();
+  	// 改行も処理
+  	return lines.map(l => l.split('\n')).flat();
+	}
+
+	// 置き換え：付箋をSVG化してから合成
+	async function captureViewportPNG(){
   	const svgEl = board;
   	const {width:W, height:H} = svgEl.getBoundingClientRect();
-  	// SVG文字列
-  	const xml = new XMLSerializer().serializeToString(svgEl);
-  	const svgBlob = new Blob([xml], {type: 'image/svg+xml'});
+
+  	// 既存レイヤから「方眼＋図形」だけをコピー、付箋は純SVGで描く
+  	const grid = document.getElementById('gridLayer')?.outerHTML || '';
+  	const shapes = document.getElementById('shapesLayer')?.outerHTML || '';
+
+  	// 付箋 → <rect> + <text> に変換してSVGを作る
+  	const notes = state.notes || [];
+  	const noteYellow = cssVar('--note-yellow', '#fffbe6');
+  	const noteBlue   = cssVar('--note-blue',   '#e6f3ff');
+  	const notePink   = cssVar('--note-pink',   '#ffeaf1');
+  	const btnBorder  = cssVar('--btn-border',  '#e5e7eb');
+  	const textColor  = cssVar('--text',        '#111827');
+
+  	// フォント倍率（付箋の s/m/l → px）
+  	const fontPx = (font)=> font==='s' ? 13 : (font==='l' ? 24 : 17); // 見栄え調整
+  	const noteFill = (c)=> c==='blue'?noteBlue : c==='pink'?notePink : noteYellow;
+
+  	// テキストの左右上下パディング
+  	const padX = 8, padY = 8, lineGap = 4;
+
+  	// ラップ済み<tspan>群を作る
+  	function noteTextSVG(n){
+    	const plain = htmlToPlainText(n.html||'');
+    	const fpx = fontPx(n.font);
+    	// 付箋の内側幅
+    	const innerW = Math.max(0, (n.w - padX*2));
+    	const lines = wrapLines(plain, innerW, `${fpx}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`);
+    	// 1行あたりの行高（ざっくり）
+    	const lh = Math.round(fpx * 1.25);
+    	let y = n.y + padY + fpx; // ベースライン位置
+    	const tspans = lines.map(l=>{
+      	const t = `<tspan x="${n.x + padX}" y="${y}">${String(l).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</tspan>`;
+      	y += lh + lineGap;
+      	return t;
+    	}).join('');
+    	return `<text fill="${textColor}" font-size="${fpx}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif">${tspans}</text>`;
+  	}
+
+  	const noteSVG = notes.map(n=>{
+    	const fill = noteFill(n.color);
+    	const border = btnBorder;
+    	const rx = 8;
+    	return [
+      	`<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${rx}" ry="${rx}" fill="${fill}" stroke="${border}" />`,
+      	noteTextSVG(n)
+    	].join('');
+  	}).join('');
+
+  	const safeSVG = `
+  	<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(W)}" height="${Math.ceil(H)}">
+    	<g id="gridLayer">${grid.replace(/^[\s\S]*?<g[^>]*?>|<\/g>\s*$/g,'')}</g>
+    	<g id="shapesLayer">${shapes.replace(/^[\s\S]*?<g[^>]*?>|<\/g>\s*$/g,'')}</g>
+    	<g id="notesLayer">${noteSVG}</g>
+  	</svg>`.trim();
+
+  	// 画像として読み込み
+  	const svgBlob = new Blob([safeSVG], {type: 'image/svg+xml'});
   	const svgURL = URL.createObjectURL(svgBlob);
   	const img = await new Promise(res=>{
     	const im = new Image();
@@ -697,28 +830,38 @@
     	im.src = svgURL;
   	});
 
-  	// オフスクリーンCanvasに合成（SVG + 手描きキャンバスを重ねる）
+  	// 最終合成（背景＋SVG＋手描き）
   	const c = document.createElement('canvas');
   	c.width = Math.ceil(W); c.height = Math.ceil(H);
   	const g = c.getContext('2d');
   	g.fillStyle = getComputedStyle(document.body).getPropertyValue('--panel-bg') || '#fff';
   	g.fillRect(0,0,c.width,c.height);
-  	g.drawImage(img, 0, 0, c.width, c.height);               // SVG層
-  	g.drawImage(drawCanvas, 0, 0, c.width, c.height);         // 手描き層
-  	// （必要なら cursorCanvas は除外）
+  	g.drawImage(img, 0, 0, c.width, c.height);       // (安全な)SVG
+  	g.drawImage(drawCanvas, 0, 0, c.width, c.height); // 手描き層
   	URL.revokeObjectURL(svgURL);
+
   	return c.toDataURL('image/png');
 	}
  
   function addSnap(dataURL){
+  	if (state.snaps.length >= 7) {
+    	alert('保存できるのは最大7枚までです。古いスナップを削除してください。');
+    	return;
+  	}
   	const id = 'snap_'+Date.now()+Math.random().toString(36).slice(2,6);
   	state.snaps.push({id, dataURL, created: Date.now()});
   	renderSnaps();
+
+  	// 7枚になったら撮影ボタンを止める（任意）
+  	if (state.snaps.length >= 7 && uiB.shot) uiB.shot.disabled = true;
+	}
+
+	// どこかで、削除時や並べ替え後に再評価（任意）
+	function reevaluateShotButton(){
+  	if (!uiB.shot) return;
+  	uiB.shot.disabled = state.snaps.length >= 7;
 	}
   
-  // ★ 1) 先頭のほう（uiB定義の直後など）に追加
-	let snapsDragBound = false;
-
 	// ★ 2) ユーティリティ：サムネの番号付け直し（再レンダ無し）
 	function renumberThumbCaptions() {
   	const thumbs = uiB.list.querySelectorAll('.thumb');
@@ -740,8 +883,13 @@
   	state.snaps.forEach((s, idx) => {
     	const box = document.createElement('div');
     	box.className = 'thumb';
-    	box.draggable = true;
     	box.dataset.id = s.id;
+
+    	// ← 追加：ドラッグ専用ハンドル
+    	const grab = document.createElement('div');
+    	grab.className = 'grab';
+    	grab.title = 'ドラッグで並べ替え';
+    	grab.textContent = '≡';
 
     	const cap = document.createElement('div');
     	cap.className = 'cap';
@@ -750,94 +898,109 @@
     	const img = document.createElement('img');
     	img.src = s.dataURL;
     	img.alt = 'snapshot ' + (idx + 1);
-      
-      // 削除ボタンを追加
-			const del = document.createElement('button');
-			del.className = 'del';
-			del.textContent = '🗑';
-			del.title = 'この画像を削除';
-      del.setAttribute('aria-label', 'このスナップを削除');
-			del.addEventListener('click', (e)=>{
-  			e.stopPropagation(); // ← 画像クリックイベントと衝突しないように
-  			state.snaps = state.snaps.filter(x => x.id !== s.id); // ← 該当サムネを削除
-  			renderSnaps(); // ← 再描画してリスト更新
-			});
 
-    	// ★ 並べ替え後でも正しいものを開けるように、idベースで開く
+    	const del = document.createElement('button');
+    	del.className = 'del';
+    	del.textContent = '🗑';
+    	del.title = 'この画像を削除';
+    	del.setAttribute('aria-label', 'このスナップを削除');
+    	del.addEventListener('click', (e)=>{
+      	e.stopPropagation();
+      	state.snaps = state.snaps.filter(x => x.id !== s.id);
+      	renderSnaps();
+        reevaluateShotButton();
+    	});
+
+    	// クリックでプレビュー（並べ替え中は発火しない）
     	img.addEventListener('click', () => openLightboxById(s.id));
 
+    	box.appendChild(grab);
     	box.appendChild(cap);
     	box.appendChild(img);
-      box.appendChild(del); // ← 最後にボタンをDOMに追加
+    	box.appendChild(del);
     	uiB.list.appendChild(box);
 
-    	// DnDの見た目用
-    	box.addEventListener('dragstart', (ev) => {
-      	box.classList.add('dragging');
-      	// iOS/Safari対策：何かしらのデータを積む必要あり
-      	try { ev.dataTransfer?.setData('text/plain', box.dataset.id || ''); } catch(_){}
-      	if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
-    	});
-    	box.addEventListener('dragend', () => {
-      	box.classList.remove('dragging');
-    	});
+    	// ← 追加：タップ直後に並べ替え開始（pointer版）
+    	attachDirectReorder(grab, box);
   	});
 
-  	// ★ dragover は一度だけバインド
-  	if (!snapsDragBound) {
-    	uiB.list.addEventListener('dragover', (e) => {
-      	e.preventDefault();
+  	renumberThumbCaptions();
+    reevaluateShotButton();
+	}
+	/* DOM順から state.snaps を再構成 */
+	function syncSnapsFromDOM(){
+  	const ids = [...uiB.list.querySelectorAll('.thumb')].map(x => x.dataset.id);
+  	state.snaps = ids.map(id => state.snaps.find(s => s.id === id));
+	}
 
-      	const dragging = uiB.list.querySelector('.thumb.dragging');
-      	if (!dragging) return;
+	/* ハンドル押下で“即ドラッグ”を有効化 */
+	function attachDirectReorder(handleEl, rowEl){
+  	let dragging = false;
+  	let pointerId = null;
 
-      	const others = [...uiB.list.querySelectorAll('.thumb:not(.dragging)')];
-      	let afterElement = null;
-      	let closest = Number.NEGATIVE_INFINITY;
+  	const onPointerMove = (e) => {
+    	if (!dragging) return;
+    	e.preventDefault();
 
-      	for (const el of others) {
-        	const r = el.getBoundingClientRect();
-        	const offset = e.clientY - (r.top + r.height / 2);
-        	if (offset < 0 && offset > closest) {
-          	closest = offset;
-          	afterElement = el;
-        	}
-      	}
+    	const y = e.clientY;
+    	const after = getAfterElement(uiB.list, y);
+    	if (after == null) uiB.list.appendChild(rowEl);
+    	else uiB.list.insertBefore(rowEl, after);
 
-      	if (afterElement == null) {
-        	uiB.list.appendChild(dragging);
-      	} else {
-        	uiB.list.insertBefore(dragging, afterElement);
-      	}
+    	// 端でオートスクロール
+    	const r = uiB.list.getBoundingClientRect();
+    	const margin = 24;
+    	if (y < r.top + margin) uiB.list.scrollTop -= 12;
+    	else if (y > r.bottom - margin) uiB.list.scrollTop += 12;
+  	};
 
-      	// ★ DOM順から state.snaps を再構成（再レンダしない）
-      	const ids = [...uiB.list.querySelectorAll('.thumb')].map(x => x.dataset.id);
-      	state.snaps = ids.map(id => state.snaps.find(s => s.id === id));
+  	const onPointerUpOrCancel = (e) => {
+    	if (e.pointerId !== pointerId) return;
+    	try { handleEl.releasePointerCapture(pointerId); } catch(_){}
+    	pointerId = null;
 
-      	// ★ 番号だけ更新（軽い）
+    	if (dragging) {
+      	dragging = false;
+      	uiB.list.classList.remove('dragging');
+      	rowEl.classList.remove('dragging');
+      	syncSnapsFromDOM();
       	renumberThumbCaptions();
-    	}, { passive: false });
+    	}
 
-    	// 一部ブラウザの既定挙動抑止（意図せぬ開きなどを防ぐ）
-    	uiB.list.addEventListener('drop', (e) => e.preventDefault());
-    	snapsDragBound = true;
-  	}
+    	window.removeEventListener('pointermove', onPointerMove, {passive:false});
+    	window.removeEventListener('pointerup', onPointerUpOrCancel, {passive:false});
+    	window.removeEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
+  	};
+
+  	handleEl.addEventListener('pointerdown', (e) => {
+    	e.preventDefault(); // ← 長押し不要で即ドラッグ
+    	pointerId = e.pointerId;
+    	try { handleEl.setPointerCapture(pointerId); } catch(_){}
+
+    	dragging = true;
+    	uiB.list.classList.add('dragging');
+    	rowEl.classList.add('dragging');
+
+    	window.addEventListener('pointermove', onPointerMove, {passive:false});
+    	window.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
+    	window.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
+  	}, {passive:false});
 	}
 
-	async function saveAllSnaps(){
-  	// ブラウザでは「カメラロールへ直接保存」はできないため、
-  	// 1枚ずつPNGをダウンロードさせます（iOS Safariは写真へ保存に回せます）
-  	for(let i=0;i<state.snaps.length;i++){
-    	const a = document.createElement('a');
-    	a.href = state.snaps[i].dataURL;
-    	a.download = `hippoly_${String(i+1).padStart(2,'0')}.png`;
-    	document.body.appendChild(a);
-    	a.click();
-    	a.remove();
-    	await new Promise(r=>setTimeout(r, 120)); // 連打回避のため少し間隔
+	/* 現在のY位置の直後に来る要素を返す */
+	function getAfterElement(container, y){
+  	const els = [...container.querySelectorAll('.thumb:not(.dragging)')];
+  	let closest = {offset: Number.NEGATIVE_INFINITY, node: null};
+  	for (const el of els){
+    	const box = el.getBoundingClientRect();
+    	const offset = y - (box.top + box.height/2);
+    	if (offset < 0 && offset > closest.offset){
+      	closest = {offset, node: el};
+    	}
   	}
+  	return closest.node;
 	}
-  
+
   function openLightbox(index){
   	if(!state.snaps.length) return;
   	lbIndex = Math.max(0, Math.min(index, state.snaps.length-1));
@@ -862,7 +1025,7 @@
   	const url = await captureViewportPNG();
   	addSnap(url);
 	});
-	uiB.saveAll.addEventListener('click', saveAllSnaps);
+	uiB.saveAll.addEventListener('click', shareAllSnaps);
 	uiB.tab.addEventListener('click', ()=>{
   	// asideB-collapsed を付け外し
   	const collapsed = document.body.classList.toggle('asideB-collapsed');
@@ -1545,19 +1708,35 @@
 
   // 終了処理（共通）
   function onPointerUpOrCancel(e){
-    if(!state.dragging) return;
-    const m=state.dragging.mode;
-    if(m==='move' || m==='vertex' || m==='bbox' || m==='noteMove' || m==='noteResize' || m==='rotateFree'){ pushHistory(); }
-    if(m==='draw'){ finishStroke(); pushHistory(); redrawCanvas(); }
-    if(m==='erasePixel'){ finishEraseStroke(); pushHistory(); redrawCanvas(); }
-    if(m==='split'){ finishSplit(); pushHistory(); }
-    if(state.pointerCaptured){ try{ drawCanvas.releasePointerCapture(e.pointerId); }catch(_){ } state.pointerCaptured=false; }
-    if (state.drawingPointerId === e.pointerId) {
+  	if(!state.dragging) return;
+  	const m = state.dragging.mode;
+
+  	if(m==='move' || m==='vertex' || m==='bbox' || m==='noteMove' || m==='noteResize' || m==='rotateFree'){ 
+    	pushHistory(); 
+  	}
+  	if(m==='draw'){ 
+    	finishStroke(); pushHistory(); redrawCanvas(); 
+  	}
+  	if(m==='erasePixel'){ 
+    	finishEraseStroke(); pushHistory(); redrawCanvas(); 
+  	}
+  	if(m==='split'){ 
+    	finishSplit(); pushHistory(); 
+  	}
+
+  	// ★ drawCanvas と board の両方に対してキャプチャ解放を試す
+  	try { drawCanvas.releasePointerCapture(e.pointerId); } catch(_) {}
+  	try { board.releasePointerCapture(e.pointerId); } catch(_) {}
+
+  	state.pointerCaptured = false;
+
+  	if (state.drawingPointerId === e.pointerId) {
     	state.drawingPointerId = null;
   	}
-    state.dragging=null;
-    redrawCursorOverlay();
-  }
+
+  	state.dragging = null;
+  	redrawCursorOverlay();
+	}
   board.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
   board.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
   window.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
@@ -2183,6 +2362,90 @@
   updateEraserSizeVisibility();
   window.addEventListener('load', boot);
   window.addEventListener('load', ()=> setTool('edit'));
+  
+  function dataURLtoFile(dataURL, filename){
+  	const arr = dataURL.split(',');
+  	const mime = arr[0].match(/:(.*?);/)[1] || 'image/png';
+  	const bstr = atob(arr[1]);
+  	let n = bstr.length;
+  	const u8 = new Uint8Array(n);
+  	while(n--) u8[n] = bstr.charCodeAt(n);
+  	return new File([u8], filename, { type: mime });
+	}
+
+	async function shareAllSnaps(){
+  	// 0) 存在チェック & 上限
+  	if (state.snaps.length === 0){
+    	alert('共有できるスナップがありません。');
+    	return;
+  	}
+  	if (state.snaps.length > 7){
+    	alert('共有できるのは最大7枚までです。');
+    	return;
+  	}
+
+  	// 1) dataURL → File に変換
+  	const files = state.snaps.map((s, i) =>
+    	dataURLtoFile(s.dataURL, `hippoly_${String(i+1).padStart(2,'0')}.png`)
+  	);
+
+  	// 2) Web Share（Level 2 / files対応）判定
+  	let canShareFiles = false;
+		try {
+  		canShareFiles = !!(navigator.canShare && navigator.canShare({ files }));
+		} catch(_) {
+  		canShareFiles = false;
+		}
+
+  	if (canShareFiles){
+    	// 共有ボタン連打防止
+    	uiB.saveAll.disabled = true;
+    	try{
+      	await navigator.share({
+        	files,
+        	title: 'Hippoly スナップ',
+        	text: `${files.length}枚の画像`
+      	});
+      	// 共有成功（ユーザーが保存先を選ぶ）: ここでやることは特に無し
+    	}catch(err){
+      	// ユーザーキャンセルなどは無視、その他はフォールバック
+      	console.warn('share canceled or failed:', err);
+      	await saveAllSnapsFallback(); // 下のフォールバックに切り替え
+    	}finally{
+      	uiB.saveAll.disabled = false;
+    	}
+  	}else{
+    	// 共有に非対応 -> 従来の1枚ずつDLへ
+    	await saveAllSnapsFallback();
+  	}
+	}
+
+	// 従来の“1枚ずつダウンロード”版（フォールバック用）
+	async function saveAllSnapsFallback(){
+  	if (state.snaps.length === 0){
+    	alert('保存できるスナップはありません。');
+    	return;
+  	}
+  	if (state.snaps.length > 7){
+    	alert('保存できるのは最大7枚までです。');
+    	return;
+  	}
+  	uiB.saveAll.disabled = true;
+  	try{
+    	for(let i=0;i<state.snaps.length;i++){
+      	const a = document.createElement('a');
+      	a.href = state.snaps[i].dataURL;
+      	a.download = `hippoly_${String(i+1).padStart(2,'0')}.png`;
+      	document.body.appendChild(a);
+      	a.click();
+      	a.remove();
+      	await new Promise(r=>setTimeout(r, 120));
+    	}
+  	}finally{
+    	uiB.saveAll.disabled = false;
+  	}
+	}
+  
 </script>
 </body>
 </html>
