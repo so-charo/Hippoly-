@@ -1355,22 +1355,25 @@
   function addShape(type){
     const g=state.gridPx, off=state.gridOffset||0, cx=off+g*2, cy=off+g*2; let pts=[];
     if(type==='rect') pts=[[cx,cy],[cx+3*g,cy],[cx+3*g,cy+2*g],[cx,cy+2*g]];
-    if(type==='tri'){
+    if (type === 'tri') {
   		// ★グリッド依存の特注三角形：底辺6マス・高さ4マス
-  		// 正三角形の頂点を左に1マスずらす
+  		// 正三角形の頂点を左へ1マスずらす
+  		const grid   = state.gridPx;
+  		const base   = 6 * grid;     // 底辺=6マス
+  		const height = 4 * grid;     // 高さ=4マス
+  		const dx     = -1 * grid;    // 頂点を左に1マス
 
-  		const grid = state.gridPx;       // 1マスあたりのピクセル数（例：1cmグリッド=pxPerCm, 3cmグリッド=3*pxPerCm）
-  		const base   = 6 * grid;         // 底辺＝6マス
-  		const height = 4 * grid;         // 高さ＝4マス
-  		const dx     = -1 * grid;        // 頂点を左へ1マス
+  		// ▼ 生成位置のオフセット：今の位置から 右に2マス、下に1マス
+  		const cx2 = cx + 2 * grid;
+  		const cy2 = cy + 1 * grid;
 
-  		// 基準位置は (cx, cy) まわり
-  		const x0 = cx - base/2;          // 底辺左端
-  		const y0 = cy + height/2;        // 底辺のy
+  		// 図形の配置（底辺の中心を cx2, cy2 に置く）
+  		const x0 = cx2 - base / 2;       // 底辺左
+  		const y0 = cy2 + height / 2;     // 底辺の y
 
   		pts = [
-    		[x0, y0],                      // 底辺左
-    		[x0 + base, y0],               // 底辺右
+    		[x0,            y0],           // 底辺左
+    		[x0 + base,     y0],           // 底辺右
     		[x0 + base/2 + dx, y0 - height]// 頂点（左に1マスずらし）
   		];
 		}
