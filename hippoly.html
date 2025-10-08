@@ -1356,21 +1356,22 @@
     const g=state.gridPx, off=state.gridOffset||0, cx=off+g*2, cy=off+g*2; let pts=[];
     if(type==='rect') pts=[[cx,cy],[cx+3*g,cy],[cx+3*g,cy+2*g],[cx,cy+2*g]];
     if(type==='tri'){
-  		// ★特注三角形：底辺 6cm、高さ 4cm
-  		// 「正三角形になる頂点」から x を 1cm 左にずらす
-  		const base   = 6 * pxPerCm;
-  		const height = 4 * pxPerCm;
-  		const dx     = -1 * pxPerCm;   // 頂点を左へ 1cm
+  		// ★グリッド依存の特注三角形：底辺6マス・高さ4マス
+  		// 正三角形の頂点を左に1マスずらす
 
-  		// 既存レイアウトに合わせて、基準位置は (cx, cy) まわり
-  		// ベース（底辺中心）を cx,cy に来るよう配置
-  		const x0 = cx - base/2;    // 底辺左端
-  		const y0 = cy + height/2;  // 底辺の y
+  		const grid = state.gridPx;       // 1マスあたりのピクセル数（例：1cmグリッド=pxPerCm, 3cmグリッド=3*pxPerCm）
+  		const base   = 6 * grid;         // 底辺＝6マス
+  		const height = 4 * grid;         // 高さ＝4マス
+  		const dx     = -1 * grid;        // 頂点を左へ1マス
+
+  		// 基準位置は (cx, cy) まわり
+  		const x0 = cx - base/2;          // 底辺左端
+  		const y0 = cy + height/2;        // 底辺のy
 
   		pts = [
-    		[x0,           y0],              // 底辺左
-    		[x0 + base,    y0],              // 底辺右
-    		[x0 + base/2 + dx, y0 - height]  // 頂点（左に1cmずらし）
+    		[x0, y0],                      // 底辺左
+    		[x0 + base, y0],               // 底辺右
+    		[x0 + base/2 + dx, y0 - height]// 頂点（左に1マスずらし）
   		];
 		}
     if(type==='trap'){
