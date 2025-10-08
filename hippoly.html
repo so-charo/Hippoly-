@@ -48,22 +48,11 @@
 		/* ※各サイドの「現在幅」変数(--asideB-cur / --asideR-cur)を使うことで、
    		折りたたみや入れ替えに関係なくボードは自動拡張します。 */
 		/* 置き換え推奨（両方とも） */
-	main {
-  	display: grid;
-  	gap: 12px;
-  	padding: 12px;
-  	overflow: hidden;
-  	/* 各カラムに最小幅を設定して、中央が潰れないようにする */
-  	grid-template-columns:
-    	minmax(0, var(--asideB-cur))
-    	minmax(1px, 1fr)
-    	minmax(0, var(--asideR-cur));
+	main{
+  	display:grid;
+  	gap:12px; padding:12px; overflow:hidden;
+  	grid-template-columns: var(--asideB-cur) minmax(0,1fr) var(--asideR-cur);
   	transition: grid-template-columns .15s ease;
-	}
-
-	/* 3カラムの中身も縮小可能にする */
-	.asideB, aside, .board-wrap {
-  	min-width: 0;
 	}
   /* 折りたたみ時は実カラム幅を 0 にする（グリッドがその分伸びる） */
 	body.asideB-collapsed { --asideB-cur: 0px; }
@@ -465,12 +454,6 @@
 		#penColor option[hidden]{
   	display: none !important;
 		}
-    /* 画面が狭いとき（例：幅368px以下）に右サイドを自動で畳む */
-	@media (max-width: 368px) {
-  	:root {
-    	--asideR-cur: 0px; /* ← 右サイド幅をゼロにしてボードを広げる */
-  	}
-	}
   </style>
 </head>
 <body>
@@ -940,7 +923,6 @@
     const avail = Math.max(420, Math.floor(vv) - hHeader - 24 - 1);
     if (wrap) wrap.style.height = avail + 'px';
   }
-  .board-wrap{ min-width:0; }
   function scheduleRelayout(){
   	requestAnimationFrame(()=>{
     	ensureLayout();
