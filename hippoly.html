@@ -83,9 +83,15 @@
 	}
 
 	/* 折りたたみ時：pointer-events を消しておく（子タブが押せるように） */
-	body.asideB-collapsed .asideB{
-  	width:0; padding:0; border:none; opacity:1;
-  	/* pointer-events:none; ← 削除 */
+	body.asideB-collapsed .asideB {
+  	width: 0;
+  	padding: 0;
+  	border: none;
+  	opacity: 1;
+  	pointer-events: none;
+	}
+	body.asideB-collapsed .asideB > .asideB-tab {
+  	pointer-events: auto; /* ← タブだけ操作可能に */
 	}
   
 	body.aside-collapsed aside{
@@ -866,11 +872,19 @@
   	const collapsed = document.body.classList.toggle('asideB-collapsed');
   	scheduleRelayout();           // ← レイアウト再計算
   	refreshSidebarTabIcons();     // ← ★ 新しい関数で矢印の向きを自動で合わせる
+		drawGrid();
+  	render();
+  	redrawCanvas();
+  	redrawCursorOverlay();
 	});
 	document.getElementById('swapSidebars').addEventListener('click', ()=>{
   	document.body.classList.toggle('swap-sidebars');
   	scheduleRelayout();
-  	refreshSidebarTabIcons(); // ← 追加
+  	refreshSidebarTabIcons();
+    drawGrid();
+  	render();
+  	redrawCanvas();
+  	redrawCursorOverlay();
 	});
 
 	// Lightbox
@@ -2088,7 +2102,11 @@
   ui.asideTab.addEventListener('click', ()=>{
   	const collapsed = document.body.classList.toggle('aside-collapsed');
   	scheduleRelayout();
-  	refreshSidebarTabIcons(); //
+  	refreshSidebarTabIcons();
+    drawGrid();
+  	render();
+  	redrawCanvas();
+  	redrawCursorOverlay();
 	});
 
   // ========= カーソルオーバーレイ（消しゴムゴーストのみ） =========
