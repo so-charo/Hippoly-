@@ -122,11 +122,31 @@
   	border-radius:8px 0 0 8px;
 	}
 
-		/* サムネの縦並び */
-		#thumbList{
-  		display:flex; flex-direction:column; gap:8px; height:calc(100% - 110px); overflow:auto;
-  		border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;
-		}
+	/* サムネリスト（左ツールバー） */
+	#thumbList {
+  	display: flex;
+  	flex-direction: column;
+  	gap: 8px;
+
+  	/* タイトル行＋余白＋下部の「すべて保存」ボタン分を差し引き */
+  	height: calc(100% - 150px);
+
+  	overflow: auto;
+  	border-top: 1px dashed var(--soft);
+  	padding-top: 8px;
+  	margin-top: 8px;
+
+  	/* iOSの慣性スクロール */
+  	-webkit-overflow-scrolling: touch;
+
+  	/* 任意（保留中）：必要になったら復活
+  	-webkit-user-select: none;
+  	user-select: none;
+  	*/
+	}
+	/* 画像のドラッグ抑止も保留するならコメントアウトのまま
+	#thumbList img { -webkit-user-drag: none; }
+	*/
 		.thumb{
   		position:relative; border:1px solid var(--btn-border); border-radius:8px; background:#fff;
   		overflow:hidden; cursor:grab;
@@ -308,11 +328,6 @@
   		position:absolute; left:12px; right:12px; bottom:12px;
 		}
 		.asideB .save-all-wrap button{ width:100%; }
-
-		/* 下部固定分、サムネ領域の高さを確保 */
-		#thumbList{
-  		height: calc(100% - 150px); /* タイトル+余白+固定ボタン分の目安 */
-		}
 
     /* 描画キャンバス & カーソルオーバーレイ */
     canvas.draw, canvas.cursor-layer{
@@ -698,9 +713,29 @@
   	state.snaps.push({id, dataURL, created: Date.now()});
   	renderSnaps();
 	}
+  
+  // ★ 1) 先頭のほう（uiB定義の直後など）に追加
+	let snapsDragBound = false;
+
+	// ★ 2) ユーティリティ：サムネの番号付け直し（再レンダ無し）
+	function renumberThumbCaptions() {
+  	const thumbs = uiB.list.querySelectorAll('.thumb');
+  	thumbs.forEach((el, i) => {
+    	const cap = el.querySelector('.cap');
+    	if (cap) cap.textContent = String(i + 1);
+  	});
+	}
+
+	// ★ 3) idからライトボックスを開く（クリック時の“インデックスずれ”を回避）
+	function openLightboxById(id) {
+  	const idx = state.snaps.findIndex(s => s.id === id);
+  	if (idx >= 0) openLightbox(idx);
+	}
+  
 	function renderSnaps(){
   	uiB.list.innerHTML = '';
-  	state.snaps.forEach((s, idx)=>{
+
+  	state.snaps.forEach((s, idx) => {
     	const box = document.createElement('div');
     	box.className = 'thumb';
     	box.draggable = true;
@@ -708,48 +743,83 @@
 
     	const cap = document.createElement('div');
     	cap.className = 'cap';
-    	cap.textContent = (idx+1);
+    	cap.textContent = (idx + 1);
 
     	const img = document.createElement('img');
-    	img.src = s.dataURL; img.alt = 'snapshot '+(idx+1);
-    	img.addEventListener('click', ()=> openLightbox(idx));
+    	img.src = s.dataURL;
+    	img.alt = 'snapshot ' + (idx + 1);
+      
+      // 削除ボタンを追加
+			const del = document.createElement('button');
+			del.className = 'del';
+			del.textContent = '🗑';
+			del.title = 'この画像を削除';
+      del.setAttribute('aria-label', 'このスナップを削除');
+			del.addEventListener('click', (e)=>{
+  			e.stopPropagation(); // ← 画像クリックイベントと衝突しないように
+  			state.snaps = state.snaps.filter(x => x.id !== s.id); // ← 該当サムネを削除
+  			renderSnaps(); // ← 再描画してリスト更新
+			});
+
+    	// ★ 並べ替え後でも正しいものを開けるように、idベースで開く
+    	img.addEventListener('click', () => openLightboxById(s.id));
 
     	box.appendChild(cap);
     	box.appendChild(img);
+      box.appendChild(del); // ← 最後にボタンをDOMに追加
     	uiB.list.appendChild(box);
 
-    	box.addEventListener('dragstart', ()=>{
+    	// DnDの見た目用
+    	box.addEventListener('dragstart', (ev) => {
       	box.classList.add('dragging');
+      	// iOS/Safari対策：何かしらのデータを積む必要あり
+      	try { ev.dataTransfer?.setData('text/plain', box.dataset.id || ''); } catch(_){}
+      	if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
     	});
-    	box.addEventListener('dragend', ()=>{
+    	box.addEventListener('dragend', () => {
       	box.classList.remove('dragging');
     	});
   	});
 
-  	uiB.list.addEventListener('dragover', (e)=>{
-    	e.preventDefault();
-    	const dragging = uiB.list.querySelector('.dragging');
-    	const els = [...uiB.list.querySelectorAll('.thumb:not(.dragging)')];
-    	let afterElement = null;
-    	let closest = Number.NEGATIVE_INFINITY;
+  	// ★ dragover は一度だけバインド
+  	if (!snapsDragBound) {
+    	uiB.list.addEventListener('dragover', (e) => {
+      	e.preventDefault();
 
-    	for (const el of els){
-      	const box = el.getBoundingClientRect();
-      	const offset = e.clientY - (box.top + box.height/2);
-      	if(offset < 0 && offset > closest){
-        	closest = offset; afterElement = el;
+      	const dragging = uiB.list.querySelector('.thumb.dragging');
+      	if (!dragging) return;
+
+      	const others = [...uiB.list.querySelectorAll('.thumb:not(.dragging)')];
+      	let afterElement = null;
+      	let closest = Number.NEGATIVE_INFINITY;
+
+      	for (const el of others) {
+        	const r = el.getBoundingClientRect();
+        	const offset = e.clientY - (r.top + r.height / 2);
+        	if (offset < 0 && offset > closest) {
+          	closest = offset;
+          	afterElement = el;
+        	}
       	}
-    	}
-    	if(afterElement==null){
-      	uiB.list.appendChild(dragging);
-    	}else{
-      	uiB.list.insertBefore(dragging, afterElement);
-    	}
 
-    	const ids = [...uiB.list.querySelectorAll('.thumb')].map(x=>x.dataset.id);
-    	state.snaps = ids.map(id => state.snaps.find(s => s.id === id));
-    	renderSnaps();
-  	});
+      	if (afterElement == null) {
+        	uiB.list.appendChild(dragging);
+      	} else {
+        	uiB.list.insertBefore(dragging, afterElement);
+      	}
+
+      	// ★ DOM順から state.snaps を再構成（再レンダしない）
+      	const ids = [...uiB.list.querySelectorAll('.thumb')].map(x => x.dataset.id);
+      	state.snaps = ids.map(id => state.snaps.find(s => s.id === id));
+
+      	// ★ 番号だけ更新（軽い）
+      	renumberThumbCaptions();
+    	}, { passive: false });
+
+    	// 一部ブラウザの既定挙動抑止（意図せぬ開きなどを防ぐ）
+    	uiB.list.addEventListener('drop', (e) => e.preventDefault());
+    	snapsDragBound = true;
+  	}
 	}
 
 	async function saveAllSnaps(){
@@ -1814,7 +1884,6 @@
     const blob=new Blob([data],{type:'application/json'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='board.json'; a.click(); URL.revokeObjectURL(a.href);
   });
-  document.querySelector('label.toggle').addEventListener('click', ()=> ui.importInput.click());
   ui.importInput.addEventListener('change', async (e)=>{
     const f=e.target.files[0]; if(!f) return; const tx=await f.text(); restore(tx); pushHistory();
   });
