@@ -123,7 +123,7 @@
   	border-top: 1px dashed var(--soft);
   	padding-top: 8px;
   	margin-top: 8px;
-  	-webkit-overflow-scrolling: touch;
+  	-webkit-overflow-scrolling: touch;}
 
 		/* サムネ1枚のコンテナ：並べ替えのためフレックスに */
 		.thumb{
@@ -213,7 +213,6 @@
   		position: relative;
   		display: flex;
   		align-items: center;
-  		justify-content: center;
   		padding: 6px 12px;
 		}
 
@@ -264,7 +263,7 @@
     button:disabled{opacity:.5; cursor:not-allowed;}
     .active{background:var(--btn-active)!important; color:#fff; }
 
-    /* ======aside=====
+		/* ====== aside ===== */
     aside{
       order:2; background:var(--panel-bg); color:var(--text); border-radius:14px;
       padding:12px; box-shadow: var(--panel-shadow);
@@ -390,7 +389,6 @@
     #notePanel{ display:none; gap:8px; align-items:center; padding:4px 6px; border:1px solid var(--btn-border); border-radius:10px; }
     /* ヘッダの行高さを安定させる */
     header .row{
-      min-height: 56px;        /* 端末差を吸収できる安全値 */
       align-items: center;
     }
 
