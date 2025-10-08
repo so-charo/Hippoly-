@@ -38,7 +38,7 @@
       --badge-text:#1e3a8a;
       --hint:#6b7280;
 
-      --fs-base: 12pt;          /* 全体の基本フォントサイズ */
+      --fs-base: 11pt;          /* 全体の基本フォントサイズ */
       --aside-width:320px;			 /* 右ツールバーの幅（指定：320px） */
   		--asideB-width: 220px;    /* 左ツールバーの幅（指定：220px） */
   		--asideB-cur: var(--asideB-width); /* 左の現在幅（折りたたみで0に） */
@@ -47,20 +47,31 @@
 		/* ===== 3カラム統合：左B / ボード / 右 ===== */
 		/* ※各サイドの「現在幅」変数(--asideB-cur / --asideR-cur)を使うことで、
    		折りたたみや入れ替えに関係なくボードは自動拡張します。 */
-		main{
-  		display:grid;
-  		gap:12px; padding:12px; overflow:hidden;
-  		grid-template-columns: var(--asideB-cur) 1fr var(--asideR-cur);
-  		transition: grid-template-columns .15s ease;
-		}
-		body.swap-sidebars main{
-  		grid-template-columns: var(--asideR-cur) 1fr var(--asideB-cur);
-		}
-		/* 折りたたみ時に「現在幅」を 0 に */
-		body.asideB-collapsed { --asideB-cur: 0px; }
-		body.aside-collapsed  { --asideR-cur: 0px; }
-		
-    /* ===== ここから置き換え ===== */
+		/* 置き換え推奨（両方とも） */
+	main{
+  	display:grid;
+  	gap:12px; padding:12px; overflow:hidden;
+  	grid-template-columns: var(--asideB-cur) minmax(0,1fr) var(--asideR-cur);
+  	transition: grid-template-columns .15s ease;
+	}
+  /* 折りたたみ時は実カラム幅を 0 にする（グリッドがその分伸びる） */
+	body.asideB-collapsed { --asideB-cur: 0px; }
+	body.aside-collapsed  { --asideR-cur: 0px; }
+	body.swap-sidebars main{
+  	grid-template-columns: var(--asideR-cur) minmax(0,1fr) var(--asideB-cur);
+	}
+    
+    /* 並び順（デフォルト：左→ボード→右） */
+		.asideB     { order: 0; }
+		.board-wrap { order: 1; }
+		aside       { order: 2; }
+
+		/* スワップ時：右→ボード→左 に入れ替え */
+		body.swap-sidebars .asideB { order: 2; }
+		body.swap-sidebars aside   { order: 0; }
+    body.swap-sidebars .board-wrap{ order:1; } /* 念のため明示 */
+
+		/* ===== ここから置き換え ===== */
 
 	/* 左ツールバー本体：タブがはみ出せるように */
 	.asideB{
@@ -234,8 +245,8 @@
       width:0;
       padding:0;
       border:none;
-      opacity:1;     	/* タブは消さない */
-      /* pointer-events:none; ← 削除 */
+      opacity:1;             /* タブは消さない */
+      pointer-events:none;
     }
     body.aside-collapsed aside > *:not(.aside-tab){
       display:none;
@@ -456,8 +467,8 @@
         <option value="pink">ピンク</option>
       </select>
       <select id="noteHdrSize" title="付箋の文字サイズ">
-        <option value="s" selected>12pt</option>
-        <option value="m">15pt</option>
+        <option value="s">10pt</option>
+        <option value="m" selected>13pt</option>
         <option value="l">18pt</option>
       </select>
     </div>
@@ -628,8 +639,7 @@
   	const swapped   = document.body.classList.contains('swap-sidebars');
   	const leftCollapsed  = document.body.classList.contains('asideB-collapsed');
   	const rightCollapsed = document.body.classList.contains('aside-collapsed');
-
-  	// 左ツールバー：左側にある時は「▶ で開く」、右側にある時は「◀ で開く」
+    // 左ツールバー：左側にある時は「▶ で開く」、右側にある時は「◀ で開く」
   	uiB.tab.textContent = (swapped
     	? (leftCollapsed ? '◀' : '▶')
     	: (leftCollapsed ? '▶' : '◀'));
@@ -642,6 +652,18 @@
       	: (rightCollapsed ? '◀' : '▶'));
     }
   }
+  
+  function bindMainTransitionRelayout(){
+  const m = document.querySelector('main');
+  if (!m) return;
+  m.addEventListener('transitionend', (e)=>{
+    if (e.propertyName === 'grid-template-columns') {
+      scheduleRelayout();
+      refreshSidebarTabIcons();
+    	}
+  	});
+	}
+  	
 	let lbIndex = 0;
   
   async function captureViewportPNG(){
@@ -1077,7 +1099,7 @@
   function noteBgClass(color){
     return color==='pink' ? 'note-pink' : color==='blue' ? 'note-blue' : 'note-yellow';
   }
-  function fontPt(font){ return font==='s' ? '10pt' : font==='l' ? '18pt' : '12pt'; }
+  function fontPt(font){ return font==='s' ? '10pt' : font==='l' ? '18pt' : '13pt'; }
 
   function renderNotes(){
     const textLayer=document.getElementById('textLayer');
@@ -1997,11 +2019,8 @@
   ui.asideTab.addEventListener('click', ()=>{
   	const collapsed = document.body.classList.toggle('aside-collapsed');
   	scheduleRelayout();
-  	refreshSidebarTabIcons(); // ← 追加
+  	refreshSidebarTabIcons(); //
 	});
-
-	/* 起動時にも一度同期 */
-	window.addEventListener('load', refreshSidebarTabIcons);
 
   // ========= カーソルオーバーレイ（消しゴムゴーストのみ） =========
   function redrawCursorOverlay(){
@@ -2075,6 +2094,9 @@
     };
     requestAnimationFrame(tick);
   }
+  refreshSidebarTabIcons();                // ← 即時同期
+	requestAnimationFrame(refreshSidebarTabIcons); // ← 1フレ後も保険
+	bindMainTransitionRelayout();            // ← カラム遷移後に再同期
   updateEraserSizeVisibility();
   window.addEventListener('load', boot);
   window.addEventListener('load', ()=> setTool('edit'));
