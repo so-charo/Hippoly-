@@ -335,7 +335,6 @@
     }
 
     .panel-title{font-size:var(--fs-base); color:var(--hint); margin:2px 0 8px;}
-    .toolbar{display:grid; gap:8px;}
     .group{border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;}
 
     .board{width:100%; height:100%; border-radius:12px; display:block; background:#0b0b0b08; touch-action:none;}
@@ -494,7 +493,55 @@
   		vertical-align: middle;
   		margin-right: 3px;
 		}
-    
+    /* ========== ヘッダーの保存・読み込み右寄せ＆小型化 ========== */
+		.save-load.right {
+  		display: flex;
+  		justify-content: flex-end; /* 右端寄せ */
+  		align-items: center;
+  		gap: 6px;
+  		margin-left: auto; /* ヘッダー全体で右端に押しやる */
+		}
+
+		.save-load.small button,
+		.save-load.small label {
+  		font-size: 10pt;     /* 小さめ */
+  		padding: 3px 6px;
+  		border-radius: 6px;
+  		background: var(--btn-bg);
+  		border: 1px solid var(--btn-border);
+  		box-shadow: var(--btn-hover-shadow);
+  		cursor: pointer;
+  		transition: background 0.15s;
+		}
+
+		.save-load.small button:hover,
+		.save-load.small label:hover {
+  		background: var(--btn-active);
+		}
+  /* ========== ヘッダー操作ボタンの押しやすさ改善 ========== */
+	header .row button,
+	header .row label.toggle {
+  	font-size: 11pt;
+  	padding: 6px 10px;            /* ← タップ領域を拡大 */
+  	margin: 0 2px;                /* ← 隣との余白を確保 */
+  	border-radius: 8px;
+  	background: var(--btn-bg);
+  	border: 1px solid var(--btn-border);
+  	box-shadow: var(--btn-hover-shadow);
+  	cursor: pointer;
+  	touch-action: manipulation;   /* ← iPadで誤タッチ防止 */
+  	transition: background 0.15s;
+	}
+
+	header .row button:hover,
+	header .row label.toggle:hover {
+  	background: var(--btn-active);
+	}
+
+	header .row button:active,
+	header .row label.toggle:active {
+  	transform: scale(0.97);       /* ← 押した感フィードバック */
+	}  
   </style>
 </head>
 <body>
@@ -511,11 +558,16 @@
     <button id="undo" title="戻る（Undo）">↶ もどる</button>
     <button id="redo" title="進む（Redo）">↷ すすむ</button>
     <button id="reset" title="リセット（画面を再読み込み）">⟲ リセット</button>
-    <button id="export" title="保存（JSONとして保存）">💾 保存</button>
-    <label class="toggle" title="読み込み（保存したJSONを選択）">📂 読み込み<input id="import" type="file" accept="application/json" style="display:none"></label>
     <button id="themeToggle" title="テーマ切替（ライト/ダーク）">🌙</button>
     <button id="swapSidebars" title="左右のツールバーを入れ替え">↔️</button>
     <button id="shot" title="今見えてる範囲を画像化">📸 スナップ</button>
+    <div class="save-load small right">
+  	<button id="export" title="保存（JSONとして保存）">💾 保存</button>
+  	<label class="toggle" title="読み込み（保存したJSONを選択）">
+    	📂 読み込み
+    	<input id="import" type="file" accept="application/json" style="display:none">
+  	</label>
+	</div>
 
     <div id="notePanel" title="付箋の見た目を変更">
       <strong>付箋:</strong>
@@ -1086,7 +1138,7 @@
     toolbar:document.getElementById('toolbar'), undo:document.getElementById('undo'), redo:document.getElementById('redo'),
     exportBtn:document.getElementById('export'), importInput:document.getElementById('import'),
     penColor:document.getElementById('penColor'), penThickness: document.getElementById('penThickness'),
-  	penStraight:  document.getElementById('penStraight'), eraserMode:document.getElementById('eraserMode'),
+  	penStraight:document.getElementById('penStraight'), eraserMode:document.getElementById('eraserMode'),
     gridSize:document.getElementById('gridSize'), splitGridSnap:document.getElementById('splitGridSnap'),
     vertexEdit:document.getElementById('vertexEdit'),
     resetBtn:document.getElementById('reset'),
@@ -1099,21 +1151,6 @@
     asideTab:document.getElementById('asideTab')
   };
   
-	// 追加：UI参照
-	ui.penThickness = document.getElementById('penThickness');
-	ui.penStraight  = document.getElementById('penStraight');
-
-	// 追加：イベント
-	ui.penThickness.addEventListener('change', ()=>{
-  	state.penThickness = parseFloat(ui.penThickness.value) || 1;
-  	setTool('draw');        // ← 色変更と同じく自動でペンに
-  	render();
-	});
-	ui.penStraight.addEventListener('change', ()=>{
-  	state.penStraight = ui.penStraight.checked;
-  	setTool('draw');        // 直線ONにしたらペンに
-  	redrawCursorOverlay();
-	});
 
   // ========= レイアウト安定化 =========
   function ensureLayout(){
@@ -2549,6 +2586,7 @@
 	}
 
 	async function shareAllSnaps(){
+    alert('「〜枚の画像を保存」を押そう！');
   	// 0) 存在チェック & 上限
   	if (state.snaps.length === 0){
     	alert('共有できるスナップがありません。');
