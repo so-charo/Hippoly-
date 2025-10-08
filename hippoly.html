@@ -465,6 +465,12 @@
 		#penColor option[hidden]{
   	display: none !important;
 		}
+    /* 画面が狭いとき（例：幅368px以下）に右サイドを自動で畳む */
+	@media (max-width: 368px) {
+  	:root {
+    	--asideR-cur: 0px; /* ← 右サイド幅をゼロにしてボードを広げる */
+  	}
+	}
   </style>
 </head>
 <body>
