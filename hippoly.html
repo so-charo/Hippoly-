@@ -38,7 +38,7 @@
       --badge-text:#1e3a8a;
       --hint:#6b7280;
 
-      --fs-base: 11pt;          /* 全体の基本フォントサイズ */
+      --fs-base: 12pt;          /* 全体の基本フォントサイズ */
       --aside-width:320px;			 /* 右ツールバーの幅（指定：320px） */
   		--asideB-width: 220px;    /* 左ツールバーの幅（指定：220px） */
   		--asideB-cur: var(--asideB-width); /* 左の現在幅（折りたたみで0に） */
@@ -56,8 +56,11 @@
 		body.swap-sidebars main{
   		grid-template-columns: var(--asideR-cur) 1fr var(--asideB-cur);
 		}
-
-		/* ===== ここから置き換え ===== */
+		/* 折りたたみ時に「現在幅」を 0 に */
+		body.asideB-collapsed { --asideB-cur: 0px; }
+		body.aside-collapsed  { --asideR-cur: 0px; }
+		
+    /* ===== ここから置き換え ===== */
 
 	/* 左ツールバー本体：タブがはみ出せるように */
 	.asideB{
@@ -231,8 +234,8 @@
       width:0;
       padding:0;
       border:none;
-      opacity:1;             /* タブは消さない */
-      pointer-events:none;
+      opacity:1;     	/* タブは消さない */
+      /* pointer-events:none; ← 削除 */
     }
     body.aside-collapsed aside > *:not(.aside-tab){
       display:none;
@@ -453,8 +456,8 @@
         <option value="pink">ピンク</option>
       </select>
       <select id="noteHdrSize" title="付箋の文字サイズ">
-        <option value="s">10pt</option>
-        <option value="m" selected>13pt</option>
+        <option value="s" selected>12pt</option>
+        <option value="m">15pt</option>
         <option value="l">18pt</option>
       </select>
     </div>
@@ -637,6 +640,8 @@
     	rightTab.textContent = (swapped
       	? (rightCollapsed ? '▶' : '◀')
       	: (rightCollapsed ? '◀' : '▶'));
+    }
+  }
 	let lbIndex = 0;
   
   async function captureViewportPNG(){
@@ -1072,7 +1077,7 @@
   function noteBgClass(color){
     return color==='pink' ? 'note-pink' : color==='blue' ? 'note-blue' : 'note-yellow';
   }
-  function fontPt(font){ return font==='s' ? '10pt' : font==='l' ? '18pt' : '13pt'; }
+  function fontPt(font){ return font==='s' ? '10pt' : font==='l' ? '18pt' : '12pt'; }
 
   function renderNotes(){
     const textLayer=document.getElementById('textLayer');
