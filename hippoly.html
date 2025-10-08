@@ -94,11 +94,6 @@
   	pointer-events: auto; /* ← タブだけ操作可能に */
 	}
   
-	body.aside-collapsed aside{
-  	width:0; padding:0; border:none; opacity:1;
-  	/* pointer-events:none; ← 削除 */
-	}
-  
 	/* 折りたたみ時、中身はタブ以外非表示のままでOK */
 	body.asideB-collapsed .asideB > *:not(.asideB-tab){ display:none; }
 
@@ -110,6 +105,10 @@
   	border-radius:0 8px 8px 0;
   	cursor:pointer; box-shadow:var(--btn-hover-shadow);
   	z-index:9999; touch-action:manipulation;
+	}
+  /* 右を畳んだときも、左タブ(.asideB-tab)はクリック可 */
+	body.aside-collapsed .asideB > .asideB-tab{
+  	pointer-events:auto;
 	}
 
 	/* ===== ここまで置き換え ===== */
@@ -267,16 +266,13 @@
       position:relative;
       transition: width .15s ease, opacity .15s ease;
     }
-    body.aside-collapsed aside{
-      width:0;
-      padding:0;
-      border:none;
-      opacity:1;             /* タブは消さない */
-      pointer-events:none;
-    }
-    body.aside-collapsed aside > *:not(.aside-tab){
-      display:none;
-    }
+    body.aside-collapsed aside:not(.asideB){
+  		width:0; padding:0; border:none; opacity:1;
+  		pointer-events:none;
+		}
+    body.aside-collapsed aside:not(.asideB) > *:not(.aside-tab){
+  		display:none;
+		}
     .aside-tab {
       position: absolute;
       left: -26px;
@@ -927,6 +923,7 @@
     const avail = Math.max(420, Math.floor(vv) - hHeader - 24 - 1);
     if (wrap) wrap.style.height = avail + 'px';
   }
+  .board-wrap{ min-width:0; }
   function scheduleRelayout(){
   	requestAnimationFrame(()=>{
     	ensureLayout();
