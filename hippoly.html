@@ -43,15 +43,18 @@
       --aside-width:320px;			 
   		--asideB-width: 220px;    
   		--asideB-cur: var(--asideB-width); 
-  		--asideR-cur: var(--aside-width);  
+  		--asideR-cur: var(--aside-width); 
+	   
+	    --shot-size: 40px;   /* ← ここを 28px/32px/40px とかに変えればサイズ即反映 */
+  		--shot-font: 24px;   /* ← 絵文字の大きさ。サイズ上げたら 20〜24px に */
     }
 		
 		
 		
 	main{
 	  display:grid;
-	  gap:6px;               /* 12px → 6px で詰める */
-	  padding:6px 8px 8px;   /* 上を薄く、左右下も少し減量 */
+	  gap:6px;
+	  padding:6px 8px 8px;
 	  overflow:hidden;
 	  grid-template-columns: var(--asideB-cur) minmax(0,1fr) var(--asideR-cur);
 	  transition: grid-template-columns .15s ease;
@@ -452,9 +455,16 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
     .toolbar button .icon { font-size:16px; line-height:1; }
 	  /* 丸いアイコンボタン */
 	button.icon-round{
-  		width:36px; height:36px; padding:0;
-  		border-radius:9999px; display:inline-flex; align-items:center; justify-content:center;
-  		font-size:18px; line-height:1;
+	  width: var(--shot-size);
+	  height: var(--shot-size);
+	  min-width: var(--shot-size);  /* 一部ブラウザの横つぶれ対策 */
+	  padding: 0;
+	  border-radius: 9999px;
+	  display: inline-flex;
+	  align-items: center;
+	  justify-content: center;
+	  font-size: var(--shot-font);
+	  line-height: 1;
 	}
     
     #toolbar button[data-add] {
@@ -607,6 +617,22 @@ body:not(.header-fixed) main{ min-height: calc(100vh - var(--header-h)); }
 }
 .header-menu.open{ display:block; }
 .header-menu button{ width:100%; text-align:left; font-size:12px; padding:.4rem .6rem; }
+
+/* ふせん行をフレックス化して📷を右端へ */
+.toolbar > div:first-child{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;           /* 幅が狭い時は折り返す */
+}
+
+/* 📷 を右端に押しやる */
+#shot.icon-round{ margin-left: auto; }
+
+/* 下に並ぶ「手書き」「図形」などの .group は改行して全幅に */
+.toolbar > div:first-child > .group{
+  flex-basis: 100%;
+}
 
 
 </style>
