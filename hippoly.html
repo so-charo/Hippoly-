@@ -537,7 +537,52 @@
 	header .row label.toggle:active {
   	transform: scale(0.97);       
 	}
-  </style>
+  
+/* header tools compact */
+.header-tools{ margin-left:auto; display:flex; align-items:center; gap:.5rem; }
+.header-tools button{ font-size:11px; padding:.25rem .5rem; }
+.header-tools .header-tab{ cursor:pointer; user-select:none; padding:.25rem .4rem; border:1px solid var(--btn-border); border-radius:6px; }
+body.header-tools-collapsed .header-tools .tools-inner{ display:none; }
+
+
+/* ========== grid visibility hardening ========== */
+html, body { height: 100%; }
+main { min-height: calc(100vh - 48px); }
+.board-wrap { height: 100%; min-height: 200px; }
+#board { display: block; width: 100%; height: 100%; }
+canvas#drawCanvas, canvas#cursorCanvas { display:block; width:100%; height:100%; }
+
+
+/* ==== header/viewport sizing guards ==== */
+:root{ --header-h: 56px; }
+body{ margin:0; }
+header{ box-sizing:border-box; }
+main{ box-sizing:border-box; }
+.board-wrap{ box-sizing:border-box; }
+#board{ display:block; width:100%; height:100%; }
+canvas#drawCanvas, canvas#cursorCanvas{ display:block; width:100%; height:100%; }
+/* If header is fixed/sticky, reserve its height */
+body.header-fixed main{ padding-top: var(--header-h); }
+body.header-fixed .board-wrap{ height: calc(100vh - var(--header-h)); min-height: 200px; }
+/* If header is normal flow, ensure main area still has minimum */
+body:not(.header-fixed) main{ min-height: calc(100vh - var(--header-h)); }
+
+/* === header tab menu === */
+.header-actions.right{ position:relative; margin-left:auto; display:flex; align-items:center; gap:.5rem; }
+#headerTab{ cursor:pointer; user-select:none; padding:.25rem .45rem; border:1px solid var(--btn-border,#e5e7eb); border-radius:8px; }
+.header-menu{
+  position:absolute; right:0; top:calc(100% + 6px);
+  display:none; z-index:1000;
+  background:var(--panel-bg,#fff);
+  border:1px solid var(--btn-border,#e5e7eb);
+  box-shadow:0 6px 24px rgba(0,0,0,.12);
+  border-radius:10px; padding:6px; min-width:140px;
+}
+.header-menu.open{ display:block; }
+.header-menu button{ width:100%; text-align:left; font-size:12px; padding:.4rem .6rem; }
+
+
+</style>
  </head>
  <body>
   <header>
@@ -603,17 +648,35 @@
       </select>
      </div>
     </div>
-    <div class="save-load small right">
-     <button id="export" title="保存（JSONとして保存）">
-      💾 保存
-     </button>
-     <label class="toggle" title="読み込み（保存したJSONを選択）">
+   <!-- 右端のアクションをタブメニュー化 -->
+<div class="header-actions right">
+  <!-- 非表示で温存：既存ハンドラをそのまま使うため -->
+  <div class="save-load small right" style="display:none">
+    <button id="export" title="保存（JSONとして保存）">💾 保存</button>
+    <label class="toggle" title="読み込み（保存したJSONを選択）">
       📂 読み込み
       <input accept="application/json" id="import" style="display:none" type="file"/>
-     </label>
-    </div>
+    </label>
+  </div>
+
+  <!-- 表示されるのはこのタブだけ -->
+  <div id="headerTab" class="header-tab" title="メニュー">◀</div>
+  <div id="headerMenu" class="header-menu">
+    <button type="button" data-act="save">💾 保存</button>
+    <button type="button" data-act="load">📂 読み込み</button>
+  </div>
+</div>
+
    </div>
-  </header>
+  
+<div class="header-tools">
+  <div class="tools-inner">
+    <button id="btnSave">保存</button>
+    <button id="btnLoad">読み込み</button>
+  </div>
+  <div id="headerTab" class="header-tab" title="格納/表示">◀</div>
+</div>
+</header>
   <main>
    <aside class="asideB">
     <div class="asideB-tab" id="asideBTab" title="開閉">
@@ -1256,26 +1319,44 @@
   	const url = await captureViewportPNG();
   	addSnap(url);
 	});
-	uiB.saveAll.addEventListener('click', shareAllSnaps);
+	
+  window.addEventListener('pointerup', (e)=>{ try{ endDrawingIfMatches(e);}catch(_){}} , {passive:true});
+  window.addEventListener('pointercancel', (e)=>{ try{ endDrawingIfMatches(e);}catch(_){}} , {passive:true});
+uiB.saveAll.addEventListener('click', shareAllSnaps);
 	uiB.tab.addEventListener('click', ()=>{
-  	
-  	const collapsed = document.body.classList.toggle('asideB-collapsed');
+const collapsed = document.body.classList.toggle('asideB-collapsed');
   	scheduleRelayout();           
   	refreshSidebarTabIcons();     
 		drawGrid();
   	render();
   	redrawCanvas();
   	redrawCursorOverlay();
-	});
+	
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    try{ ensureLayout(); }catch(_){}
+    try{ drawGrid(); }catch(_){}
+    try{ render(); }catch(_){}
+    try{ redrawCanvas(); }catch(_){}
+    try{ redrawCursorOverlay(); }catch(_){}
+  }));
+});
 	document.getElementById('swapSidebars').addEventListener('click', ()=>{
-  	document.body.classList.toggle('swap-sidebars');
+document.body.classList.toggle('swap-sidebars');
   	scheduleRelayout();
   	refreshSidebarTabIcons();
     drawGrid();
   	render();
   	redrawCanvas();
   	redrawCursorOverlay();
-	});
+	
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    try{ ensureLayout(); }catch(_){}
+    try{ drawGrid(); }catch(_){}
+    try{ render(); }catch(_){}
+    try{ redrawCanvas(); }catch(_){}
+    try{ redrawCursorOverlay(); }catch(_){}
+  }));
+});
 
 	
 	uiB.lbClose.addEventListener('click', closeLightbox);
@@ -1329,15 +1410,15 @@
   	});
 	}
   function setSvgSizeByClient(){
-    const r=board.getBoundingClientRect();
-    const w=Math.max(1, Math.floor(r.width));
-    const h=Math.max(1, Math.floor(r.height));
-    board.setAttribute('width', w);
-    board.setAttribute('height', h);
-    setupCanvasDPR(drawCanvas, ctx, w, h);
-    setupCanvasDPR(cursorCanvas, cctx, w, h);
-    return {w,h};
-  }
+  const r = board.getBoundingClientRect();
+  const w = Math.max(1, Math.floor(r.width));
+  const h = Math.max(1, Math.floor(r.height));
+  board.setAttribute('width', w);
+  board.setAttribute('height', h);
+  setupCanvasDPR(drawCanvas, ctx, w, h);
+  setupCanvasDPR(cursorCanvas, cctx, w, h);
+  return {w, h};
+};
   function setupCanvasDPR(canvas, context, cssW, cssH){
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     state.dpr = dpr;
@@ -1779,7 +1860,7 @@
   
   function setTool(name){
     state.tool = name;
-    if (name !== 'draw') state.lineAnchor = null;
+    if (name !== 'draw') state.__dragStart = null;
     [...ui.toolbar.querySelectorAll('button')].forEach(x=>x.classList.remove('active'));
     const btn = ui.toolbar.querySelector(`button[data-tool="${name}"]`);
     if (btn) btn.classList.add('active');
@@ -1869,42 +1950,34 @@
   
   drawCanvas.addEventListener('pointerdown', (e)=>{
   	const p0 = pt(e);
-  	state.pointerPos = p0; 
+  	state.pointerPos = p0;
+	if(state.drawingPointerId!==null && state.drawingPointerId!==e.pointerId) return;
+	state.drawingPointerId = e.pointerId; 
   	redrawCursorOverlay();
 
   	if (state.tool === 'draw'){
     	e.preventDefault();
 
-    	
-    	if (state.penStraight) {
-      	
-      	const s = snapPointWithProjection(p0.x, p0.y) || p0;
+    	// ★ 直線モード：ドラッグ限定。頂点優先→辺→空白で開始
+	if (state.penStraight) {
+  		// 旧仕様を無効化
+  	state.lineAnchor = null;
 
-      	
-      	if (!state.lineAnchor) {
-        	state.lineAnchor = { x: s.x, y: s.y };
-        	redrawCursorOverlay(); 
-        	return;
-      	}
+  	// 開始点をスナップ決定
+  	const snap = snapStartPoint(p0);
+  	state.__lineMode  = snap.mode;            // 'vertex' | 'edge' | 'free'
+  	state.__lineStart = snap.start;           // {x,y}
+  	state.__lineEdge  = snap.edge || null;    // 辺開始なら {a,b}
+  	state.__draggingStraight = true;
 
-      	
-      	const a = state.lineAnchor;               
-      	const b = { x: s.x, y: s.y };            
-      	state.actions.push({
-        	type: 'draw',
-        	color: state.penColor,
-        	width: state.penThickness,
-        	pts: [[a.x, a.y], [b.x, b.y]]
-      	});
-      	state.lineAnchor = null;                  
-      	pushHistory();
-      	redrawCanvas();
-      	redrawCursorOverlay();                    
-      	return;                                   
-    	}
+  	try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
+  	// プレビューと確定は pointermove / pointerup で処理
+  	return;
+	}
 
-    	
-    	
+
+    	// ★ フリーハンド（従来どおり）
+    	// すでに別指で描画中なら無視
     	if (state.drawingPointerId !== null && state.drawingPointerId !== e.pointerId) return;
     	state.drawingPointerId = e.pointerId;
     	state.dragging = {
@@ -1912,7 +1985,7 @@
       	stroke:{
         	id: uid(),
         	color: state.penColor,
-        	width: state.penThickness,   
+        	width: state.penThickness,   // この線の太さを固定保存
         	pts: [[p0.x, p0.y]]
       	}
     	};
@@ -1932,11 +2005,19 @@
     const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
     
     
-  	if (state.tool === 'draw' && state.penStraight && state.lineAnchor) {
-    	
-    	e.preventDefault();
-    	
-    	
+  	if (state.tool === 'draw' && state.penStraight && state.__draggingStraight){
+    	let a = state.__lineStart;
+    	let b = p;
+
+    	if(state.__lineMode === 'edge' && state.__lineEdge){
+      	// ★辺拘束：現在位置を辺に射影
+      	b = constrainOnEdge(p, state.__lineEdge);
+    	}
+    	// 頂点開始は a=頂点固定、b=自由。free は a,b とも自由
+
+    	// プレビュー：直線のみ一時描画（履歴は確定時に push）
+    	state._previewStroke = { color: state.penColor, width: state.penThickness, pts: [[a.x,a.y], [b.x,b.y]] };
+    	redrawCanvas(); // この中で _previewStroke を描く処理がなければ、軽いオーバーレイ描画関数に出してもOK
     	return;
   	}
 
@@ -2014,6 +2095,40 @@
 
   
   function onPointerUpOrCancel(e){
+	  // ★ 直線ドラッグを確定して片付ける（最優先で実行）
+	if (state.tool === 'draw' && state.penStraight && state.__draggingStraight) {
+  	const p = state.pointerPos || pt(e);
+
+  	// 始点は pointerdown で確定済み
+  	let a = state.__lineStart;
+  	let b = p;
+
+  	// 辺開始だった場合は、現在点を辺に射影して拘束
+  	if (state.__lineMode === 'edge' && state.__lineEdge) {
+    	b = constrainOnEdge(p, state.__lineEdge);
+  	}
+
+  	// 履歴に確定直線を push
+  	state.actions.push({
+    	type: 'draw',
+    	color: state.penColor,
+    	width: state.penThickness,
+    	pts: [[a.x, a.y], [b.x, b.y]]
+  	});
+
+  	// 後片付け
+  	state._previewStroke    = null;
+  	state.__draggingStraight = false;
+  	state.__lineMode         = null;
+  	state.__lineStart        = null;
+  	state.__lineEdge         = null;
+
+  	// 他の onPointerUp の処理に任せる前に、見た目を更新
+  	try { redrawCanvas(); } catch(_){}
+  	try { redrawCursorOverlay(); } catch(_){}
+  	return;
+	}
+
   	if(!state.dragging) return;
   	const m = state.dragging.mode;
 
@@ -2155,6 +2270,22 @@
       ctx.restore();
     }
   }
+	      // === 直線プレビュー（state._previewStroke） ===
+    if (state._previewStroke){
+      const s = state._previewStroke;
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = s.width;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = s.color;
+      ctx.beginPath();
+      ctx.moveTo(s.pts[0][0], s.pts[0][1]);
+      ctx.lineTo(s.pts[1][0], s.pts[1][1]);
+      ctx.stroke();
+      ctx.restore();
+    }
+
   function addStrokePoint(p){ state.dragging.stroke.pts.push([p.x,p.y]); }
   function finishStroke(){
     const s = state.dragging.stroke;
@@ -2429,7 +2560,7 @@
 	
 	ui.penStraight.addEventListener('change', ()=>{
   	state.penStraight = ui.penStraight.checked;
-  	if (!state.penStraight) state.lineAnchor = null; 
+  	if (!state.penStraight) state.__dragStart = null; 
   	setTool('draw');   
   	redrawCursorOverlay();
 	});
@@ -2820,6 +2951,194 @@
     	uiB.saveAll.disabled = false;
   	}
 	}
-  </script>
+  
+function canStartDrawing(e){
+  if(state.drawingPointerId!=null) return false;
+  state.drawingPointerId = e.pointerId;
+  return true;
+}
+function endDrawingIfMatches(e){
+  if(state.drawingPointerId===e.pointerId) state.drawingPointerId=null;
+}
+
+
+(function(){
+  const tab=document.getElementById('headerTab');
+  if(tab){
+    tab.addEventListener('click', ()=>{
+      document.body.classList.toggle('header-tools-collapsed');
+    });
+  }
+  // If existing save/load handlers target different IDs, they will continue to work;
+  // otherwise you can bind simple fallbacks here if missing.
+  if(!document.getElementById('btnSave') && window.saveAllSnaps){
+    // noop: existing UI retained
+  }
+})();
+
+
+// ========== initial draw queue (waits for stable layout) ==========
+function __queueInitialDraw(){
+  let tries = 0;
+  const pump = ()=>{
+    tries++;
+    try{ ensureLayout(); }catch(_){}
+    try{
+      const r = (typeof board!=='undefined' && board && board.getBoundingClientRect) ? board.getBoundingClientRect() : {width:0,height:0};
+      if(!r || r.width < 2 || r.height < 2){
+        if(tries < 60){ requestAnimationFrame(pump); }
+        return;
+      }
+      drawGrid();
+      render();
+      redrawCanvas();
+      redrawCursorOverlay();
+    }catch(_){}
+  };
+  requestAnimationFrame(()=>requestAnimationFrame(pump));
+}
+try{ document.addEventListener('DOMContentLoaded', ()=>{ __queueInitialDraw(); }, {once:true}); }catch(_){}
+try{ window.addEventListener('load', ()=>{ __queueInitialDraw(); }, {once:true}); }catch(_){}
+
+
+// ==== header height compute + redraw ====
+function __measureHeaderHeight(){
+  try{
+    const h = document.querySelector('header');
+    const rect = h ? h.getBoundingClientRect() : null;
+    const px = rect ? Math.max(0, Math.floor(rect.height)) : 0;
+    if(px>0){
+      document.documentElement.style.setProperty('--header-h', px + 'px');
+    }
+  }catch(_){}
+}
+function __kickRedrawAfterHeaderMeasure(){
+  try{ __measureHeaderHeight(); }catch(_){}
+  try{ ensureLayout(); }catch(_){}
+  try{ drawGrid(); }catch(_){}
+  try{ render(); }catch(_){}
+  try{ redrawCanvas(); }catch(_){}
+  try{ redrawCursorOverlay(); }catch(_){}
+}
+// measure on ready, after fonts, and on header mutations
+document.addEventListener('DOMContentLoaded', ()=>{
+  __kickRedrawAfterHeaderMeasure();
+  try{ if(document.fonts && document.fonts.ready){ document.fonts.ready.then(()=>__kickRedrawAfterHeaderMeasure()); } }catch(_){}
+}, {once:true});
+window.addEventListener('load', ()=>{ __kickRedrawAfterHeaderMeasure(); }, {once:true});
+(function(){
+  const h=document.querySelector('header');
+  if(!h || !('MutationObserver' in window)) return;
+  const mo=new MutationObserver(()=>{ __kickRedrawAfterHeaderMeasure(); });
+  mo.observe(h, {attributes:true, childList:true, subtree:true});
+})();
+
+
+// heuristic: mark header-fixed if computed position is fixed or sticky
+(function(){
+  try{
+    const h=document.querySelector('header');
+    if(!h) return;
+    const pos = getComputedStyle(h).position;
+    if(pos==='fixed' || pos==='sticky'){ document.body.classList.add('header-fixed'); }
+  }catch(_){}
+})();
+
+// === straight-line snapping helpers ===
+const SNAP_VTX = 16;   // 頂点スナップ半径(px)
+const SNAP_EDGE = 12;  // 辺スナップ距離(px)
+
+function dist2(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx+dy*dy; }
+function projOnSeg(p, a, b){
+  const vx=b.x-a.x, vy=b.y-a.y;
+  const wx=p.x-a.x, wy=p.y-a.y;
+  const vv = vx*vx+vy*vy || 1;
+  let t = (vx*wx+vy*wy)/vv;
+  if(t<0) t=0; else if(t>1) t=1;
+  return { x: a.x+vx*t, y: a.y+vy*t, t };
+}
+function allVertices(){
+  const out=[];
+  for(const sh of (state.shapes||[])){
+    if(!sh?.points) continue;
+    for(const p of sh.points) out.push({x:p[0], y:p[1], shape:sh});
+  }
+  return out;
+}
+function allEdges(){
+  const out=[];
+  for(const sh of (state.shapes||[])){
+    const pts = sh.points||[];
+    for(let i=0;i<pts.length;i++){
+      const a={x:pts[i][0], y:pts[i][1]}, b={x:pts[(i+1)%pts.length][0], y:pts[(i+1)%pts.length][1]};
+      out.push({a,b,shape:sh});
+    }
+  }
+  return out;
+}
+function snapStartPoint(p){
+  // 頂点優先
+  let bestV=null, bestD2=Infinity;
+  for(const v of allVertices()){
+    const d2=dist2(p,v);
+    if(d2<bestD2 && d2<=SNAP_VTX*SNAP_VTX){ bestD2=d2; bestV=v; }
+  }
+  if(bestV) return { mode:'vertex', start:{x:bestV.x,y:bestV.y} };
+
+  // 次に辺
+  let bestE=null, bestPt=null, bestAbs=Infinity;
+  for(const e of allEdges()){
+    const q=projOnSeg(p,e.a,e.b);
+    const d=Math.hypot(p.x-q.x,p.y-q.y);
+    if(d<bestAbs && d<=SNAP_EDGE){ bestAbs=d; bestE=e; bestPt=q; }
+  }
+  if(bestE) return { mode:'edge', start:bestPt, edge:bestE };
+
+  // 何もなければフリー
+  return { mode:'free', start:{x:p.x,y:p.y} };
+}
+function constrainOnEdge(cur, edge){
+  return projOnSeg(cur, edge.a, edge.b);
+}
+
+// === ヘッダ右端タブ：保存/読み込みをメニューから発火 ===
+(function(){
+  const tab  = document.getElementById('headerTab');
+  const menu = document.getElementById('headerMenu');
+  if(!tab || !menu) return;
+
+  // 既存ハンドラを尊重：export/import 要素があれば click 委譲
+  function doSave(){
+    const btn = document.getElementById('export');
+    if(btn){ btn.click(); return; }
+    if(typeof saveAllSnaps==='function'){ saveAllSnaps(); return; }
+    console.warn('保存先が見つかりません');
+  }
+  function doLoad(){
+    const inp = document.getElementById('import');
+    if(inp){ inp.click(); return; }
+    if(typeof loadFromFile==='function'){ loadFromFile(); return; }
+    console.warn('読み込み先が見つかりません');
+  }
+
+  tab.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    menu.classList.toggle('open');
+  });
+
+  menu.addEventListener('click', (e)=>{
+    const act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
+    if(act==='save'){ doSave(); menu.classList.remove('open'); }
+    if(act==='load'){ doLoad(); menu.classList.remove('open'); }
+  });
+
+  // 外側クリックでメニューを閉じる
+  document.addEventListener('click', ()=>{
+    if(menu.classList.contains('open')) menu.classList.remove('open');
+  });
+})();
+
+	  
+</script>
  </body>
 </html>
