@@ -1,14 +1,13 @@
 <!DOCTYPE html>
-<html data-theme="light" lang="ja">
- <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" name="viewport"/>
-  <title>
-   Hippoly!
-  </title>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <!-- ダブルタップ拡大を無効化 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+  <title>Hippoly!</title>
   <style>
-   :root {
-      
+    :root {
+      /* 基本 */
       --page-bg:#f7fafc;
       --text:#111827;
       --panel-bg:#ffffff;
@@ -16,73 +15,74 @@
       --accent:#2563eb;
       --soft:#e5e7eb;
 
-      
+      /* ボタン */
       --btn-bg:#ffffff;
       --btn-border:#e5e7eb;
       --btn-active:#dbeafe;
       --btn-hover-shadow:0 1px 3px rgba(0,0,0,.06);
       --btn-focus:#93c5fd;
 
-      
-      --grid-cm:37.7952755906; 
-      --grid-stroke:#bfdbfe;   
-      --grid-pt:1.0;           
+      /* 方眼 */
+      --grid-cm:37.7952755906; /* 96dpi前提 1cm ≒ 37.795px */
+      --grid-stroke:#bfdbfe;   /* 薄水色 */
+      --grid-pt:1.0;           /* 1px */
 
-      
+      /* 付箋色 */
       --note-yellow:#fffbe6;
       --note-blue:#e6f3ff;
       --note-pink:#ffeaf1;
 
-      
+      /* バッジ/ヘルプ */
       --badge-bg:#eef2ff;
       --badge-border:#c7d2fe;
       --badge-text:#1e3a8a;
       --hint:#6b7280;
 
-      --fs-base: 11pt;          
-      --aside-width:320px;			 
-  		--asideB-width: 220px;    
-  		--asideB-cur: var(--asideB-width); 
-  		--asideR-cur: var(--aside-width);  
+      --fs-base: 11pt;          /* 全体の基本フォントサイズ */
+      --aside-width:320px;			 /* 右ツールバーの幅（指定：320px） */
+  		--asideB-width: 220px;    /* 左ツールバーの幅（指定：220px） */
+  		--asideB-cur: var(--asideB-width); /* 左の現在幅（折りたたみで0に） */
+  		--asideR-cur: var(--aside-width);  /* 右の現在幅（折りたたみで0に） */
     }
-		
-		
-		
+		/* ===== 3カラム統合：左B / ボード / 右 ===== */
+		/* ※各サイドの「現在幅」変数(--asideB-cur / --asideR-cur)を使うことで、
+   		折りたたみや入れ替えに関係なくボードは自動拡張します。 */
+		/* 置き換え推奨（両方とも） */
 	main{
   	display:grid;
   	gap:12px; padding:12px; overflow:hidden;
   	grid-template-columns: var(--asideB-cur) minmax(0,1fr) var(--asideR-cur);
   	transition: grid-template-columns .15s ease;
 	}
-  
+  /* 折りたたみ時は実カラム幅を 0 にする（グリッドがその分伸びる） */
 	body.asideB-collapsed { --asideB-cur: 0px; }
 	body.aside-collapsed  { --asideR-cur: 0px; }
 	body.swap-sidebars main{
   	grid-template-columns: var(--asideR-cur) minmax(0,1fr) var(--asideB-cur);
 	}
     
-    
+    /* 並び順（デフォルト：左→ボード→右） */
 		.asideB     { order: 0; }
 		.board-wrap { order: 1; }
 		aside       { order: 2; }
 
-		
+		/* スワップ時：右→ボード→左 に入れ替え */
 		body.swap-sidebars .asideB { order: 2; }
 		body.swap-sidebars aside   { order: 0; }
-    body.swap-sidebars .board-wrap{ order:1; } 
+    body.swap-sidebars .board-wrap{ order:1; } /* 念のため明示 */
 
-		
+		/* ===== ここから置き換え ===== */
 
-	
+	/* 左ツールバー本体：タブがはみ出せるように */
 	.asideB{
   	order:0; background:var(--panel-bg); color:var(--text);
   	border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
-  	overflow:visible;                 
+  	overflow:visible;                 /* ← hidden から visible に変更 */
   	position:relative;
   	transition: width .15s ease, opacity .15s ease;
 	}
 
-	
+	/* 折りたたみ時：pointer-events を消しておく（子タブが押せるように） */
 	body.asideB-collapsed .asideB {
   	width: 0;
   	padding: 0;
@@ -91,13 +91,13 @@
   	pointer-events: none;
 	}
 	body.asideB-collapsed .asideB > .asideB-tab {
-  	pointer-events: auto; 
+  	pointer-events: auto; /* ← タブだけ操作可能に */
 	}
   
-	
+	/* 折りたたみ時、中身はタブ以外非表示のままでOK */
 	body.asideB-collapsed .asideB > *:not(.asideB-tab){ display:none; }
 
-	
+	/* タブ（通常は右に突き出す） */
 	.asideB-tab{
   	position:absolute; right:-26px; top:12px; width:26px; height:44px;
   	display:flex; align-items:center; justify-content:center;
@@ -106,34 +106,34 @@
   	cursor:pointer; box-shadow:var(--btn-hover-shadow);
   	z-index:9999; touch-action:manipulation;
 	}
-  
+  /* 右を畳んだときも、左タブ(.asideB-tab)はクリック可 */
 	body.aside-collapsed .asideB > .asideB-tab{
   	pointer-events:auto;
 	}
 
-	
+	/* ===== ここまで置き換え ===== */
 
-	
-	.aside-tab { left:-26px;  border-radius:8px 0 0 8px; }
-	
+	/* 右側タブの既存 */
+	.aside-tab { left:-26px; /* …省略… */ border-radius:8px 0 0 8px; }
+	/* 入れ替え時は右に出す */
 	body.swap-sidebars .aside-tab{
   	left:auto; right:-26px;
   	border-radius:0 8px 8px 0;
 	}
 
-	
+	/* ★ 1ブロックだけ新規追加（サイド入れ替え時は左に突き出す） */
 	body.swap-sidebars .asideB-tab{
   	left:-26px; right:auto;
   	border-radius:8px 0 0 8px;
 	}
 
-	
+	/* サムネリスト（左ツールバー） */
 	#thumbList {
   	display: flex;
   	flex-direction: column;
   	gap: 8px;
 
-  	
+  	/* タイトル行＋余白＋下部の「すべて保存」ボタン分を差し引き */
   	height: calc(100% - 150px);
 
   	overflow: auto;
@@ -141,46 +141,51 @@
   	padding-top: 8px;
   	margin-top: 8px;
 
-  	
+  	/* iOSの慣性スクロール */
   	-webkit-overflow-scrolling: touch;
 
-  	
+  	/* 任意（保留中）：必要になったら復活
+  	-webkit-user-select: none;
+  	user-select: none;
+  	*/
 	}
-	
-		
+	/* 画像のドラッグ抑止も保留するならコメントアウトのまま
+	#thumbList img { -webkit-user-drag: none; }
+	*/
+		/* サムネ1枚のコンテナ：並べ替えのためフレックスに */
 		.thumb{
   		position:relative;
-  		display:flex;                 
-  		align-items:stretch;           
-  		gap:6px;                      
+  		display:flex;                 /* ← ここを追加(変更) */
+  		align-items:stretch;           /* ← 追加 */
+  		gap:6px;                      /* ← 追加 */
   		border:1px solid var(--btn-border);
   		border-radius:8px;
   		background:#fff;
   		overflow:hidden;
 		}
 
-		
+		/* 並べ替え用ハンドル（≡） */
 		.thumb .grab{
   		flex:0 0 22px;
   		display:flex; align-items:center; justify-content:center;
   		margin-left:6px; margin-right:2px;
   		user-select:none; -webkit-user-select:none;
-  		touch-action:none;             
+  		touch-action:none;             /* ← 長押し不要で即ドラッグ */
   		cursor:grab;
   		color:#64748b;
 		}
 		.thumb.dragging .grab{ cursor:grabbing; }
 
-		
+		/* 画像は横に伸縮、既存の高さは維持 */
 		.thumb img{
-  		flex:1 1 auto;                
+  		flex:1 1 auto;                /* ← 追加 */
   		display:block;
   		min-width:0;
-  		height:100px;                 
+  		height:100px;                 /* 既存と同じ(小サイズ) */
   		object-fit:cover;
 		}
 
-		
+		/* 並べ替え中の視覚効果 */
 		#thumbList.dragging .thumb.dragging{
   		opacity:.6;
   		transform:scale(0.98);
@@ -192,7 +197,7 @@
 		}
 		.thumb.dragging{ opacity:.6; }
 
-		
+		/* フルスクリーンビューア */
 		#lightbox{
   		position:fixed; inset:0; display:none; background:rgba(0,0,0,.8); z-index:99999;
   		align-items:center; justify-content:center;
@@ -207,7 +212,7 @@
 		.lb-prev{ left:16px; } .lb-next{ right:16px; }
 		.lb-close{ position:absolute; right:16px; top:16px; background:#fff; border-radius:8px; padding:6px 10px; }
 
-    
+    /* ダークテーマ */
     [data-theme="dark"] {
       --page-bg:#0f172a;
       --text:#e5e7eb;
@@ -249,7 +254,7 @@
   		justify-content: center;
   		flex-wrap: wrap;
 		}
-    
+    /* iPad長押しの選択・コールアウトを全要素で抑止（付箋は後で解除） */
     * {
       -webkit-user-select: none;
       user-select: none;
@@ -287,11 +292,11 @@
     button:disabled{opacity:.5; cursor:not-allowed;}
     .active{background:var(--btn-active)!important; color:#fff; }
 
-    
+    /* ========== aside（ここ重要） ========== */
     aside{
       order:2; background:var(--panel-bg); color:var(--text); border-radius:14px;
       padding:12px; box-shadow: var(--panel-shadow);
-      overflow: visible;     
+      overflow: visible;     /* タブがはみ出しても見えるように */
       position:relative;
       transition: width .15s ease, opacity .15s ease;
     }
@@ -333,10 +338,10 @@
     .group{border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;}
 
     .board{width:100%; height:100%; border-radius:12px; display:block; background:#0b0b0b08; touch-action:none;}
-		
+		/* 左ツールバーの文字サイズも11ptへ（念のため） */
 		.asideB, .asideB *{ font-size: var(--fs-base); }
 
-		
+		/* サムネ右上の削除ボタン（赤ゴミ箱） */
 		.thumb .del{
   		position:absolute; right:6px; top:6px;
   		border:1px solid var(--btn-border);
@@ -346,19 +351,19 @@
   		cursor:pointer;
 		}
 
-		
+		/* 「すべて保存」を左ツールバーの下部に固定配置 */
 		.asideB .save-all-wrap{
   		position:absolute; left:12px; right:12px; bottom:12px;
 		}
 		.asideB .save-all-wrap button{ width:100%; }
 
-    
+    /* 描画キャンバス & カーソルオーバーレイ */
     canvas.draw, canvas.cursor-layer{
       position:absolute; inset:0; width:100%; height:100%; pointer-events:none; touch-action:none;
     }
     canvas.cursor-layer{ z-index:6; }
 
-    
+    /* 方眼線（SVG line） */
     #gridLayer line { pointer-events:none; }
 
     .shape{fill-opacity:.35; stroke-width:2;}
@@ -366,7 +371,7 @@
     .handle{fill:#fff; stroke:var(--accent); stroke-width:2; cursor:pointer;}
     .bbox-handle{fill:#fff; stroke:#64748b; stroke-width:2; cursor:nwse-resize;}
 
-    
+    /* ▼回転ハンドル */
     .rot-stem{ stroke:#94a3b8; stroke-width:2; }
     .rot-handle{
       fill:var(--btn-bg);
@@ -382,7 +387,7 @@
 		}
 		.hint{color:var(--hint); font-size:var(--fs-base); display:none;}
 
-    
+    /* 付箋 */
     .note-wrap{ position:relative; width:100%; height:100%; overflow:visible; }
     .note{
       width:100%; height:100%;
@@ -410,68 +415,68 @@
     }
     [data-theme="dark"] .note-resize{ background:#1f2937; border-color:#475569; }
 
-    
+    /* ヘッダの付箋パネル（選択時だけ表示） */
     #notePanel{ display:none; gap:8px; align-items:center; padding:4px 6px; border:1px solid var(--btn-border); border-radius:10px; }
-    
+    /* ヘッダの行高さを安定させる */
     header .row{
-      min-height: 56px;        
+      min-height: 56px;        /* 端末差を吸収できる安全値 */
       align-items: center;
     }
 
-    
+    /* 付箋パネルをボタンと同じ高さに固定 */
     #notePanel{
-      height: 36px;            
+      height: 36px;            /* ボタン(10px上下padding+font-size14pxの実高≒36px) */
       box-sizing: border-box;
-      display: none;           
-      align-items: center;     
-      gap: 8px;                
+      display: none;           /* 既存 */
+      align-items: center;     /* 既存がなければ追加 */
+      gap: 8px;                /* 既存がなければ追加 */
     }
-    
+    /* ボタン群（アイコン＋ラベル） */
     .toolbar button { display:inline-flex; align-items:center; gap:6px; touch-action:manipulation; }
     .toolbar button .icon { font-size:16px; line-height:1; }
-    
+    /* 図形ボタンのサイズを統一 */
     #toolbar button[data-add] {
-      min-width: 120px;   
-      height: 44px;       
+      min-width: 120px;   /* ボタンの横幅（調整可） */
+      height: 44px;       /* 高さをそろえる */
       justify-content: center;
       text-align: center;
       font-size: 15px;
       border-radius: 10px;
       box-shadow: var(--btn-hover-shadow);
     }
-    
+    /* タッチ端末：ハンドル大きめ */
     @media (pointer:coarse) {
       .handle { r: 14 !important; }
       .bbox-handle { width: 24px !important; height: 24px !important; }
       button, select, input[type="color"] { padding:12px 14px; }
     }
-    
+    /* ========== レイアウト微調整 ========== */
     .toolbar{
       display:grid;
       gap:8px;
-      grid-auto-rows: min-content; 
+      grid-auto-rows: min-content; /* 内容の高さで詰める（Safari対策） */
     }
     .draw-row, .erase-row{
   		display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:6px;
 		}
-    
+    /* 付箋パネル出現時にヘッダが下がらないように固定高さ */
     header .row {
       align-items: center;
       min-height: 48px;
     }
 
-    
+    /* 「頂点編集」「サイズ固定」「色」を横一列に並べる */
     #vertexEdit, #lockSize, #color {
       display: inline-block;
       vertical-align: middle;
       margin-right: 6px;
     }
 
-    
+    /* 付箋パネルのせいで下に押されないよう、メインエリアの高さ確保 */
     main {
       overflow: hidden;
     }
-    
+    /* Safari/iOS 向け: hidden の option を確実に隠す */
 		#penColor option[hidden]{
   	display: none !important;
 		}
@@ -488,18 +493,18 @@
   		vertical-align: middle;
   		margin-right: 3px;
 		}
-    
+    /* ========== ヘッダーの保存・読み込み右寄せ＆小型化 ========== */
 		.save-load.right {
   		display: flex;
-  		justify-content: flex-end; 
+  		justify-content: flex-end; /* 右端寄せ */
   		align-items: center;
   		gap: 6px;
-  		margin-left: auto; 
+  		margin-left: auto; /* ヘッダー全体で右端に押しやる */
 		}
 
 		.save-load.small button,
 		.save-load.small label {
-  		font-size: 10pt;     
+  		font-size: 10pt;     /* 小さめ */
   		padding: 3px 6px;
   		border-radius: 6px;
   		background: var(--btn-bg);
@@ -513,18 +518,18 @@
 		.save-load.small label:hover {
   		background: var(--btn-active);
 		}
-  
+  /* ========== ヘッダー操作ボタンの押しやすさ改善 ========== */
 	header .row button,
 	header .row label.toggle {
   	font-size: 11pt;
-  	padding: 6px 10px;            
-  	margin: 0 2px;                
+  	padding: 6px 10px;            /* ← タップ領域を拡大 */
+  	margin: 0 2px;                /* ← 隣との余白を確保 */
   	border-radius: 8px;
   	background: var(--btn-bg);
   	border: 1px solid var(--btn-border);
   	box-shadow: var(--btn-hover-shadow);
   	cursor: pointer;
-  	touch-action: manipulation;   
+  	touch-action: manipulation;   /* ← iPadで誤タッチ防止 */
   	transition: background 0.15s;
 	}
 
@@ -535,342 +540,183 @@
 
 	header .row button:active,
 	header .row label.toggle:active {
-  	transform: scale(0.97);       
-	}
+  	transform: scale(0.97);       /* ← 押した感フィードバック */
+	}  
   </style>
- </head>
- <body>
-  <header>
-   <div class="row">
-    <div class="title">
-     🦛Hippoly!
-    </div>
-    <div class="header-center">
-     <label title="方眼のサイズを切り替え（1/3cm）">
-      方眼：
+</head>
+<body>
+<header>
+  <div class="row">
+    <div class="title">🦛Hippoly!</div>
+		<div class="header-center">
+    <label title="方眼のサイズを切り替え（1/3cm）">方眼：
       <select id="gridSize" title="1/3cm 方眼">
-       <option value="1">
-        小
-       </option>
-       <option selected="" value="3">
-        大
-       </option>
+        <option value="1">1cm</option>
+        <option value="3" selected>3cm</option>
       </select>
-     </label>
-     <button id="undo" title="戻る（Undo）">
-      ↶ もどる
-     </button>
-     <button id="redo" title="進む（Redo）">
-      ↷ すすむ
-     </button>
-     <button id="reset" title="リセット（画面を再読み込み）">
-      ⟲ リセット
-     </button>
-     <button id="themeToggle" title="テーマ切替（ライト/ダーク）">
-      🌙
-     </button>
-     <button id="swapSidebars" title="左右のツールバーを入れ替え">
-      ↔️
-     </button>
-     <button id="shot" title="今見えてる範囲を画像化">
-      📸 スナップ
-     </button>
-     <div id="notePanel" title="付箋の見た目を変更">
-      <strong>
-       付箋:
-      </strong>
+    </label>
+    <button id="undo" title="戻る（Undo）">↶ もどる</button>
+    <button id="redo" title="進む（Redo）">↷ すすむ</button>
+    <button id="reset" title="リセット（画面を再読み込み）">⟲ リセット</button>
+    <button id="themeToggle" title="テーマ切替（ライト/ダーク）">🌙</button>
+    <button id="swapSidebars" title="左右のツールバーを入れ替え">↔️</button>
+    <button id="shot" title="今見えてる範囲を画像化">📸 スナップ</button>
+    <div id="notePanel" title="付箋の見た目を変更">
+      <strong>付箋:</strong>
       <select id="noteHdrColor" title="付箋の色">
-       <option value="yellow">
-        黄色
-       </option>
-       <option value="blue">
-        水色
-       </option>
-       <option value="pink">
-        ピンク
-       </option>
+        <option value="yellow">黄色</option>
+        <option value="blue">水色</option>
+        <option value="pink">ピンク</option>
       </select>
       <select id="noteHdrSize" title="付箋の文字サイズ">
-       <option value="s">
-        10pt
-       </option>
-       <option selected="" value="m">
-        13pt
-       </option>
-       <option value="l">
-        18pt
-       </option>
+        <option value="s">10pt</option>
+        <option value="m" selected>13pt</option>
+        <option value="l">18pt</option>
       </select>
-     </div>
     </div>
-    <div class="save-load small right">
-     <button id="export" title="保存（JSONとして保存）">
-      💾 保存
-     </button>
-     <label class="toggle" title="読み込み（保存したJSONを選択）">
-      📂 読み込み
-      <input accept="application/json" id="import" style="display:none" type="file"/>
-     </label>
     </div>
-   </div>
-  </header>
-  <main>
-   <aside class="asideB">
-    <div class="asideB-tab" id="asideBTab" title="開閉">
-     ◀
-    </div>
-    <div class="panel-title">
-     スクショ
-    </div>
-    <div aria-label="snapshots" id="thumbList">
-    </div>
-    <div class="save-all-wrap">
-     <button id="saveAll" title="並んだ画像をまとめて保存">
-      💾全ての画像を保存
-     </button>
-    </div>
-   </aside>
-   <div class="board-wrap">
-    <svg aria-label="draw-board" class="board" id="board">
-    </svg>
-    <canvas class="draw" id="drawCanvas">
-    </canvas>
-    <canvas class="cursor-layer" id="cursorCanvas">
-    </canvas>
+     <div class="save-load small right">
+  		<button id="export" title="保存（JSONとして保存）">💾 保存</button>
+  		<label class="toggle" title="読み込み（保存したJSONを選択）">
+    		📂 読み込み
+    		<input id="import" type="file" accept="application/json" style="display:none">
+  		</label>
+		</div>
+  </div>
+</header>
+
+<main>
+  <!-- ▼ ツールバーB（左） -->
+	<aside class="asideB">
+  	<div class="asideB-tab" id="asideBTab" title="開閉">◀</div>
+  	<div class="panel-title">スクショ</div>
+  	<div id="thumbList" aria-label="snapshots"></div>
+		<div class="save-all-wrap">
+  		<button id="saveAll" title="並んだ画像をまとめて保存">💾全ての画像を保存</button>
+		</div>
+	</aside>
+  <div class="board-wrap">
+    <svg id="board" class="board" aria-label="draw-board"></svg>
+    <canvas id="drawCanvas" class="draw"></canvas>
+    <canvas id="cursorCanvas" class="cursor-layer"></canvas>
+
     <div class="badgebar">
-     <span class="badge">
-      選択:
-      <strong id="selType">
-       —
-      </strong>
-     </span>
-     <span class="badge">
-      <span id="wLabel">
-       幅
-      </span>
-      :
-      <strong id="w">
-       —
-      </strong>
-      <span id="u1">
-       cm
-      </span>
-     </span>
-     <span class="badge">
-      <span id="hLabel">
-       高さ
-      </span>
-      :
-      <strong id="h">
-       —
-      </strong>
-      <span id="u2">
-       cm
-      </span>
-     </span>
-     <span class="badge">
-      頂点:
-      <strong id="vh">
-       —
-      </strong>
-     </span>
+      <span class="badge">選択: <strong id="selType">—</strong></span>
+      <span class="badge"><span id="wLabel">幅</span>: <strong id="w">—</strong> <span id="u1">cm</span></span>
+      <span class="badge"><span id="hLabel">高さ</span>: <strong id="h">—</strong> <span id="u2">cm</span></span>
+      <span class="badge">頂点: <strong id="vh">—</strong></span>
     </div>
-   </div>
-   <aside>
-    <div class="aside-tab" id="asideTab" title="折りたたむ/戻す">
-     ▶
-    </div>
-    <div class="panel-title">
-     ツール
-    </div>
+  </div>
+
+  <aside>
+    <div class="aside-tab" id="asideTab" title="折りたたむ/戻す">▶</div>
+    <div class="panel-title">ツール</div>
     <div class="toolbar" id="toolbar">
-     <div>
-      <button class="active" data-tool="edit" title="編集/移動（選択・移動・リサイズなど）">
-       <span class="icon">
-        ✋
-       </span>
-       移動
-      </button>
-      <button data-tool="text" title="付箋を1枚配置（配置後は自動で編集モードに戻ります）">
-       <span class="icon">
-        📝
-       </span>
-       ふせん
-      </button>
+      <div>
+        <button data-tool="edit" class="active" title="編集/移動（選択・移動・リサイズなど）"><span class="icon">✋</span>移動</button>
+        <button data-tool="text" title="付箋を1枚配置（配置後は自動で編集モードに戻ります）"><span class="icon">📝</span>ふせん</button>
+        <div class="group">
+  				<div class="panel-title">手書き</div>
+
+  				<div class="draw-row">
+    				<button data-tool="draw" title="ペン（キャンバスに自由線を描画）"><span class="icon">🖊️</span>ペン</button>
+    				<select id="penColor" title="色変え"></select>
+            <select id="penThickness" title="太さを選択">
+    					<option value="1.5">細</option>
+    					<option value="3.5">太</option>
+  					</select>
+  					<label class="line-check">
+    					<input type="checkbox" id="penStraight">直線を引く</label>
+  				</div>
+
+  				<div class="erase-row">
+    				<button data-tool="erase" title="消しゴム"><span class="icon">🗑</span>消す</button>
+            <select id="eraserMode" title="消しゴムの種類">
+    					<option value="pixel" selected>ピクセル</option>
+    					<option value="object">オブジェクト</option>
+    					<option value="clear">全消し</option>
+  					</select>
+    				<select id="eraserSize" title="消しゴムのサイズ選択">
+      				<option value="8">細</option>
+      				<option value="14" selected>中</option>
+      				<option value="24">太</option>
+    				</select>
+  				</div>
+				</div>
+
       <div class="group">
-       <div class="panel-title">
-        手書き
-       </div>
-       <div class="draw-row">
-        <button data-tool="draw" title="ペン（キャンバスに自由線を描画）">
-         <span class="icon">
-          🖊️
-         </span>
-         ペン
-        </button>
-        <select id="penColor" title="色変え">
-        </select>
-        <select id="penThickness" title="太さを選択">
-         <option value="1.5">
-          細
-         </option>
-         <option value="3.5">
-          太
-         </option>
-        </select>
-        <label class="line-check">
-         <input id="penStraight" type="checkbox"/>
-         直線を引く
-        </label>
-       </div>
-       <div class="erase-row">
-        <button data-tool="erase" title="消しゴム">
-         <span class="icon">
-          🗑
-         </span>
-         消す
-        </button>
-        <select id="eraserMode" title="消しゴムの種類">
-         <option selected="" value="pixel">
-          ピクセル
-         </option>
-         <option value="object">
-          オブジェクト
-         </option>
-         <option value="clear">
-          全消し
-         </option>
-        </select>
-        <select id="eraserSize" title="消しゴムのサイズ選択">
-         <option value="8">
-          細
-         </option>
-         <option selected="" value="14">
-          中
-         </option>
-         <option value="24">
-          太
-         </option>
-        </select>
-       </div>
+        <div class="panel-title">図形</div>
+        <button data-add="rect" title="長方形を追加">▭ 長方形</button>
+        <button data-add="para" title="平行四辺形を追加">▱ 平行四辺形</button>
+        <button data-add="tri" title="三角形（ランダム）を追加">△ 三角形</button>
+        <button data-add="trap" title="台形（3パターンからランダム）を追加">⏃ 台形</button>
+        <button data-add="rh" title="ひし形を追加">◇ ひし形</button>
+        <button id="deleteShape" title="選択図形を削除">✖ 削除</button>
       </div>
+
       <div class="group">
-       <div class="panel-title">
-        図形
-       </div>
-       <button data-add="rect" title="長方形を追加">
-        ▭ 長方形
-       </button>
-       <button data-add="para" title="平行四辺形を追加">
-        ▱ 平行四辺形
-       </button>
-       <button data-add="tri" title="三角形（ランダム）を追加">
-        △ 三角形
-       </button>
-       <button data-add="trap" title="台形（3パターンからランダム）を追加">
-        ⏃ 台形
-       </button>
-       <button data-add="rh" title="ひし形を追加">
-        ◇ ひし形
-       </button>
-       <button id="deleteShape" title="選択図形を削除">
-        ✖ 削除
-       </button>
+        <div class="panel-title">図形編集</div>
+        <div class="inline-controls">
+          <label class="toggle">
+            <input type="checkbox" id="vertexEdit"/> 頂点編集
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="lockSize"/> サイズ固定
+          </label>
+          <label class="color-pick">色 <input type="color" id="color" value="#2563eb"/></label>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+          <button id="dup" title="選択図形をコピー">⧉ コピー</button>
+          <button id="front" title="前面へ">⤴ 手前へ</button>
+          <button id="back" title="背面へ">⤵ 奥へ</button>
+          <button id="flipH" title="左右反転">⇔ 反転</button>
+          <button id="flipV" title="上下反転">⇕ 反転</button>
+        </div>
       </div>
+
       <div class="group">
-       <div class="panel-title">
-        図形編集
-       </div>
-       <div class="inline-controls">
-        <label class="toggle">
-         <input id="vertexEdit" type="checkbox">
-          頂点編集
-         </input>
+        <div class="panel-title">分割</div>
+        <button data-tool="splitLine" title="直線で分割（複数図形にも対応）"><span class="icon">✂️</span>カット</button>
+        <label class="toggle" style="display:block; margin-top:6px;" title="分割線を方眼に吸着させる">
+          <input type="checkbox" id="splitGridSnap"/> 線にそってカット
         </label>
-        <label class="toggle">
-         <input id="lockSize" type="checkbox">
-          サイズ固定
-         </input>
-        </label>
-        <label class="color-pick">
-         色
-         <input id="color" type="color" value="#2563eb"/>
-        </label>
-       </div>
-       <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
-        <button id="dup" title="選択図形をコピー">
-         ⧉ コピー
-        </button>
-        <button id="front" title="前面へ">
-         ⤴ 手前へ
-        </button>
-        <button id="back" title="背面へ">
-         ⤵ 奥へ
-        </button>
-        <button id="flipH" title="左右反転">
-         ⇔ 反転
-        </button>
-        <button id="flipV" title="上下反転">
-         ⇕ 反転
-        </button>
-       </div>
       </div>
-      <div class="group">
-       <div class="panel-title">
-        分割
-       </div>
-       <button data-tool="splitLine" title="直線で分割（複数図形にも対応）">
-        <span class="icon">
-         ✂️
-        </span>
-        カット
-       </button>
-       <label class="toggle" style="display:block; margin-top:6px;" title="分割線を方眼に吸着させる">
-        <input id="splitGridSnap" type="checkbox"/>
-        線にそってカット
-       </label>
-      </div>
-     </div>
     </div>
-   </aside>
-   <div id="lightbox">
-    <button class="lb-close" id="lbClose">
-     閉じる
-    </button>
-    <div class="lb-nav lb-prev" id="lbPrev">
-     ‹
-    </div>
-    <img alt="preview" id="lbImg"/>
-    <div class="lb-nav lb-next" id="lbNext">
-     ›
-    </div>
-   </div>
-  </main>
-  <script>
-   const svgNS='http://www.w3.org/2000/svg';
+  </aside>
+  	<div id="lightbox">
+  		<button class="lb-close" id="lbClose">閉じる</button>
+  		<div class="lb-nav lb-prev" id="lbPrev">‹</div>
+  		<img id="lbImg" alt="preview"/>
+  		<div class="lb-nav lb-next" id="lbNext">›</div>
+		</div>
+</main>
+
+<script>
+  // ========= 基本 =========
+  const svgNS='http://www.w3.org/2000/svg';
   const board=document.getElementById('board');
   const drawCanvas=document.getElementById('drawCanvas');
   const cursorCanvas=document.getElementById('cursorCanvas');
   const ctx=drawCanvas.getContext('2d');
-  const cctx=cursorCanvas.getContext('2d'); 
+  const cctx=cursorCanvas.getContext('2d'); // カーソルオーバーレイ
   const pxPerCm=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--grid-cm'))||37.7952755906;
 	const THEME_SHAPE_COLOR = { light:'#2563eb', dark:'#facc15' };
 	function getTheme(){ return document.documentElement.getAttribute('data-theme') || 'light'; }
   function el(name, attrs={}){ const n=document.createElementNS(svgNS,name); for(const k in attrs) n.setAttribute(k, attrs[k]); return n; }
   function uid(){ return 's'+Math.random().toString(36).slice(2,9); }
 
-  
+  // ========= 状態 =========
   const state={
     tool:'edit',
     gridPx:pxPerCm*3,
-    gridOffset:0, 
+    gridOffset:0, // 見た目のグリッド線オフセット（0 or 0.5）
     snapTol:16,
     shapes:[],
-    notes:[],   
+    notes:[],   // 付箋 {id,x,y,w,h,html,color,font:'s'|'m'|'l'}
     drawings:[],
-    eraseStrokes:[], 
-    sel:null,          
-    selNoteId:null,    
+    eraseStrokes:[], // ピクセル消し用マスクパス {pts:[[x,y]...], radius:number}
+    sel:null,          // 図形選択
+    selNoteId:null,    // 付箋選択
     dragging:null,
     lockSize:false,
     vertexEdit:false,
@@ -886,14 +732,14 @@
     pointerPos:{x:0,y:0},
     splitStart:null,
     splitPinEl:null,
-    actions: [], 
+    actions: [], // {type:'draw'|'erase', ...}
 		drawingPointerId: null,
     penThickness: 1.5,
-    penStraight: false,      
-  	lineAnchor: null,        
+    penStraight: false,      // 直線モード（既にあればそのまま）
+  	lineAnchor: null,        // ★1点目を保持 {x,y} / 無ければ null
   };
-  
-	state.snaps = []; 
+  // ▼ ツールバーB：状態
+	state.snaps = []; // {id, dataURL, created:number}
 
 	const uiB = {
   	tab: document.getElementById('asideBTab'),
@@ -911,12 +757,12 @@
   	const swapped   = document.body.classList.contains('swap-sidebars');
   	const leftCollapsed  = document.body.classList.contains('asideB-collapsed');
   	const rightCollapsed = document.body.classList.contains('aside-collapsed');
-    
+    // 左ツールバー：左側にある時は「▶ で開く」、右側にある時は「◀ で開く」
   	uiB.tab.textContent = (swapped
     	? (leftCollapsed ? '◀' : '▶')
     	: (leftCollapsed ? '▶' : '◀'));
 
-  	
+  	// 右ツールバー：左側に来たら「▶ で開く」、右側なら「◀ で開く」
   	const rightTab = document.getElementById('asideTab');
   	if (rightTab){
     	rightTab.textContent = (swapped
@@ -938,20 +784,20 @@
   	
 	let lbIndex = 0;
   
-  
+  // 追加：CSS変数を拾う
 	function cssVar(name, fallback='') {
   	const v = getComputedStyle(document.documentElement).getPropertyValue(name);
   	return (v && v.trim()) || fallback;
 	}
-	
+	// 追加：HTMLを素テキストへ（<br> → 改行）
 	function htmlToPlainText(html) {
   	const div = document.createElement('div');
   	div.innerHTML = html || '';
-  	
+  	// <br>を改行に変換
   	div.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
   	return (div.textContent || '').replace(/\r\n/g, '\n');
 	}
-	
+	// 追加：単純ワードラップ（キャンバスで文字幅計測）
 	function wrapLines(text, maxWidth, font) {
   	const c = document.createElement('canvas');
   	const g = c.getContext('2d');
@@ -967,7 +813,7 @@
       	cur = tryStr;
     	} else {
       	if (cur) push();
-      	
+      	// 単語自体が長すぎる場合は強制改行
       	if (g.measureText(words[i]).width > maxWidth) {
         	let chunk='', rest=words[i];
         	while (g.measureText(rest).width > maxWidth) {
@@ -986,20 +832,20 @@
     	}
   	}
   	if (cur) push();
-  	
+  	// 改行も処理
   	return lines.map(l => l.split('\n')).flat();
 	}
 
-	
+	// 置き換え：付箋をSVG化してから合成
 	async function captureViewportPNG(){
   	const svgEl = board;
   	const {width:W, height:H} = svgEl.getBoundingClientRect();
 
-  	
+  	// 既存レイヤから「方眼＋図形」だけをコピー、付箋は純SVGで描く
   	const grid = document.getElementById('gridLayer')?.outerHTML || '';
   	const shapes = document.getElementById('shapesLayer')?.outerHTML || '';
 
-  	
+  	// 付箋 → <rect> + <text> に変換してSVGを作る
   	const notes = state.notes || [];
   	const noteYellow = cssVar('--note-yellow', '#fffbe6');
   	const noteBlue   = cssVar('--note-blue',   '#e6f3ff');
@@ -1007,23 +853,23 @@
   	const btnBorder  = cssVar('--btn-border',  '#e5e7eb');
   	const textColor  = cssVar('--text',        '#111827');
 
-  	
-  	const fontPx = (font)=> font==='s' ? 13 : (font==='l' ? 24 : 17); 
+  	// フォント倍率（付箋の s/m/l → px）
+  	const fontPx = (font)=> font==='s' ? 13 : (font==='l' ? 24 : 17); // 見栄え調整
   	const noteFill = (c)=> c==='blue'?noteBlue : c==='pink'?notePink : noteYellow;
 
-  	
+  	// テキストの左右上下パディング
   	const padX = 8, padY = 8, lineGap = 4;
 
-  	
+  	// ラップ済み<tspan>群を作る
   	function noteTextSVG(n){
     	const plain = htmlToPlainText(n.html||'');
     	const fpx = fontPx(n.font);
-    	
+    	// 付箋の内側幅
     	const innerW = Math.max(0, (n.w - padX*2));
     	const lines = wrapLines(plain, innerW, `${fpx}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`);
-    	
+    	// 1行あたりの行高（ざっくり）
     	const lh = Math.round(fpx * 1.25);
-    	let y = n.y + padY + fpx; 
+    	let y = n.y + padY + fpx; // ベースライン位置
     	const tspans = lines.map(l=>{
       	const t = `<tspan x="${n.x + padX}" y="${y}">${String(l).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</tspan>`;
       	y += lh + lineGap;
@@ -1049,7 +895,7 @@
     	<g id="notesLayer">${noteSVG}</g>
   	</svg>`.trim();
 
-  	
+  	// 画像として読み込み
   	const svgBlob = new Blob([safeSVG], {type: 'image/svg+xml'});
   	const svgURL = URL.createObjectURL(svgBlob);
   	const img = await new Promise(res=>{
@@ -1058,14 +904,14 @@
     	im.src = svgURL;
   	});
 
-  	
+  	// 最終合成（背景＋SVG＋手描き）
   	const c = document.createElement('canvas');
   	c.width = Math.ceil(W); c.height = Math.ceil(H);
   	const g = c.getContext('2d');
   	g.fillStyle = getComputedStyle(document.body).getPropertyValue('--panel-bg') || '#fff';
   	g.fillRect(0,0,c.width,c.height);
-  	g.drawImage(img, 0, 0, c.width, c.height);       
-  	g.drawImage(drawCanvas, 0, 0, c.width, c.height); 
+  	g.drawImage(img, 0, 0, c.width, c.height);       // (安全な)SVG
+  	g.drawImage(drawCanvas, 0, 0, c.width, c.height); // 手描き層
   	URL.revokeObjectURL(svgURL);
 
   	return c.toDataURL('image/png');
@@ -1080,17 +926,17 @@
   	state.snaps.push({id, dataURL, created: Date.now()});
   	renderSnaps();
 
-  	
+  	// 7枚になったら撮影ボタンを止める（任意）
   	if (state.snaps.length >= 7 && uiB.shot) uiB.shot.disabled = true;
 	}
 
-	
+	// どこかで、削除時や並べ替え後に再評価（任意）
 	function reevaluateShotButton(){
   	if (!uiB.shot) return;
   	uiB.shot.disabled = state.snaps.length >= 7;
 	}
   
-	
+	// ★ 2) ユーティリティ：サムネの番号付け直し（再レンダ無し）
 	function renumberThumbCaptions() {
   	const thumbs = uiB.list.querySelectorAll('.thumb');
   	thumbs.forEach((el, i) => {
@@ -1099,7 +945,7 @@
   	});
 	}
 
-	
+	// ★ 3) idからライトボックスを開く（クリック時の“インデックスずれ”を回避）
 	function openLightboxById(id) {
   	const idx = state.snaps.findIndex(s => s.id === id);
   	if (idx >= 0) openLightbox(idx);
@@ -1113,7 +959,7 @@
     	box.className = 'thumb';
     	box.dataset.id = s.id;
 
-    	
+    	// ← 追加：ドラッグ専用ハンドル
     	const grab = document.createElement('div');
     	grab.className = 'grab';
     	grab.title = 'ドラッグで並べ替え';
@@ -1139,7 +985,7 @@
         reevaluateShotButton();
     	});
 
-    	
+    	// クリックでプレビュー（並べ替え中は発火しない）
     	img.addEventListener('click', () => openLightboxById(s.id));
 
     	box.appendChild(grab);
@@ -1148,20 +994,20 @@
     	box.appendChild(del);
     	uiB.list.appendChild(box);
 
-    	
+    	// ← 追加：タップ直後に並べ替え開始（pointer版）
     	attachDirectReorder(grab, box);
   	});
 
   	renumberThumbCaptions();
     reevaluateShotButton();
 	}
-	
+	/* DOM順から state.snaps を再構成 */
 	function syncSnapsFromDOM(){
   	const ids = [...uiB.list.querySelectorAll('.thumb')].map(x => x.dataset.id);
   	state.snaps = ids.map(id => state.snaps.find(s => s.id === id));
 	}
 
-	
+	/* ハンドル押下で“即ドラッグ”を有効化 */
 	function attachDirectReorder(handleEl, rowEl){
   	let dragging = false;
   	let pointerId = null;
@@ -1175,7 +1021,7 @@
     	if (after == null) uiB.list.appendChild(rowEl);
     	else uiB.list.insertBefore(rowEl, after);
 
-    	
+    	// 端でオートスクロール
     	const r = uiB.list.getBoundingClientRect();
     	const margin = 24;
     	if (y < r.top + margin) uiB.list.scrollTop -= 12;
@@ -1201,7 +1047,7 @@
   	};
 
   	handleEl.addEventListener('pointerdown', (e) => {
-    	e.preventDefault(); 
+    	e.preventDefault(); // ← 長押し不要で即ドラッグ
     	pointerId = e.pointerId;
     	try { handleEl.setPointerCapture(pointerId); } catch(_){}
 
@@ -1215,7 +1061,7 @@
   	}, {passive:false});
 	}
 
-	
+	/* 現在のY位置の直後に来る要素を返す */
 	function getAfterElement(container, y){
   	const els = [...container.querySelectorAll('.thumb:not(.dragging)')];
   	let closest = {offset: Number.NEGATIVE_INFINITY, node: null};
@@ -1239,7 +1085,7 @@
 	function lbNext(){ if(!state.snaps.length) return; lbIndex = (lbIndex+1)%state.snaps.length; uiB.lbImg.src = state.snaps[lbIndex].dataURL; }
 	function lbPrev(){ if(!state.snaps.length) return; lbIndex = (lbIndex-1+state.snaps.length)%state.snaps.length; uiB.lbImg.src = state.snaps[lbIndex].dataURL; }
 
-	
+	// スワイプ
 	(function(){
   	let sx=0, sy=0;
   	uiB.lb?.addEventListener('touchstart', e=>{ const t=e.touches[0]; sx=t.clientX; sy=t.clientY; }, {passive:true});
@@ -1255,10 +1101,10 @@
 	});
 	uiB.saveAll.addEventListener('click', shareAllSnaps);
 	uiB.tab.addEventListener('click', ()=>{
-  	
+  	// asideB-collapsed を付け外し
   	const collapsed = document.body.classList.toggle('asideB-collapsed');
-  	scheduleRelayout();           
-  	refreshSidebarTabIcons();     
+  	scheduleRelayout();           // ← レイアウト再計算
+  	refreshSidebarTabIcons();     // ← ★ 新しい関数で矢印の向きを自動で合わせる
 		drawGrid();
   	render();
   	redrawCanvas();
@@ -1274,13 +1120,13 @@
   	redrawCursorOverlay();
 	});
 
-	
+	// Lightbox
 	uiB.lbClose.addEventListener('click', closeLightbox);
 	uiB.lbNext.addEventListener('click', lbNext);
 	uiB.lbPrev.addEventListener('click', lbPrev);
-	uiB.lb.addEventListener('click', (e)=>{ if(e.target===uiB.lb) closeLightbox(); }); 
+	uiB.lb.addEventListener('click', (e)=>{ if(e.target===uiB.lb) closeLightbox(); }); // 余白クリックで閉じる
    
-	let suppressPenAutoSelect = false; 
+	let suppressPenAutoSelect = false; // プログラム起因のchangeではペンに切り替えない
   const ui={
     selType:document.getElementById('selType'), w:document.getElementById('w'), h:document.getElementById('h'), vh:document.getElementById('vh'),
     wLabel:document.getElementById('wLabel'), hLabel:document.getElementById('hLabel'),
@@ -1295,17 +1141,17 @@
     gridSize:document.getElementById('gridSize'), splitGridSnap:document.getElementById('splitGridSnap'),
     vertexEdit:document.getElementById('vertexEdit'),
     resetBtn:document.getElementById('reset'),
-    
+    // 付箋ヘッダパネル
     notePanel:document.getElementById('notePanel'),
     noteHdrColor:document.getElementById('noteHdrColor'),
     noteHdrSize:document.getElementById('noteHdrSize'),
-    
+    // UI表示
     themeToggle:document.getElementById('themeToggle'),
     asideTab:document.getElementById('asideTab')
   };
   
 
-  
+  // ========= レイアウト安定化 =========
   function ensureLayout(){
     const header = document.querySelector('header');
     const wrap = document.querySelector('.board-wrap');
@@ -1345,7 +1191,7 @@
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  
+  // ★ visualViewport/resize でズームやDPR変化を検知 → 再初期化
   let __vpTick = null;
   function onViewportChange() {
     if (__vpTick) cancelAnimationFrame(__vpTick);
@@ -1357,7 +1203,7 @@
     });
   }
 
-  
+  // ========= 方眼描画（オフセット保持） =========
   function drawGrid(){
     while(board.firstChild) board.removeChild(board.firstChild);
     const {w,h}=setSvgSizeByClient();
@@ -1368,7 +1214,7 @@
     const lw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--grid-pt')) || 1.0;
     const g = state.gridPx;
 
-    
+    // 半ピクセル補正と保持
     const pixelW = lw * state.dpr;
     const pxOffset = (Math.round(pixelW) % 2 === 1) ? 0.5 : 0;
     state.gridOffset = pxOffset;
@@ -1393,13 +1239,13 @@
     }
   }
 
-  
+  // ========= ユーティリティ =========
   function pt(e){
     const tgt = (e.currentTarget && e.currentTarget.getBoundingClientRect) ? e.currentTarget : board;
     const bb = tgt.getBoundingClientRect();
     return { x: e.clientX - bb.left, y: e.clientY - bb.top };
   }
-  
+  // board 固定基準（foreignObject内でもズレない）
   function ptBoard(e){
     const bb = board.getBoundingClientRect();
     return { x: e.clientX - bb.left, y: e.clientY - bb.top };
@@ -1416,7 +1262,7 @@
     });
   }
 
-  
+  // ========= スナップ等 =========
   function segI(A,B,C,D){
     const den=(B[0]-A[0])*(D[1]-C[1])-(B[1]-A[1])*(D[0]-C[0]);
     if(Math.abs(den)<1e-6) return null;
@@ -1476,7 +1322,7 @@
     return {x:W,y:y,d:m,axis:'v',value:W};
   }
 
-  
+  // 近い頂点があれば、その頂点がグリッドに“だけ”吸着するように移動量(dx,dy)を微修正
   function snapDeltaForMove(dx, dy, initPts){
     const off = state.gridOffset || 0;
     const g   = state.gridPx;
@@ -1500,7 +1346,7 @@
     return {dx: bestDx, dy: bestDy};
   }
 
-  
+  // ========= 図形生成 =========
   function gridPoint(n, m){
     const off = state.gridOffset || 0;
        const g = state.gridPx;
@@ -1510,25 +1356,25 @@
     const g=state.gridPx, off=state.gridOffset||0, cx=off+g*2, cy=off+g*2; let pts=[];
     if(type==='rect') pts=[[cx,cy],[cx+3*g,cy],[cx+3*g,cy+2*g],[cx,cy+2*g]];
     if (type === 'tri') {
-  		
-  		
+  		// ★グリッド依存の特注三角形：底辺6マス・高さ4マス
+  		// 正三角形の頂点を左へ1マスずらす
   		const grid   = state.gridPx;
-  		const base   = 6 * grid;     
-  		const height = 4 * grid;     
-  		const dx     = -1 * grid;    
+  		const base   = 6 * grid;     // 底辺=6マス
+  		const height = 4 * grid;     // 高さ=4マス
+  		const dx     = -1 * grid;    // 頂点を左に1マス
 
-  		
+  		// ▼ 生成位置のオフセット：今の位置から 右に2マス、下に1マス
   		const cx2 = cx + 2 * grid;
   		const cy2 = cy + 1 * grid;
 
-  		
-  		const x0 = cx2 - base / 2;       
-  		const y0 = cy2 + height / 2;     
+  		// 図形の配置（底辺の中心を cx2, cy2 に置く）
+  		const x0 = cx2 - base / 2;       // 底辺左
+  		const y0 = cy2 + height / 2;     // 底辺の y
 
   		pts = [
-    		[x0,            y0],           
-    		[x0 + base,     y0],           
-    		[x0 + base/2 + dx, y0 - height]
+    		[x0,            y0],           // 底辺左
+    		[x0 + base,     y0],           // 底辺右
+    		[x0 + base/2 + dx, y0 - height]// 頂点（左に1マスずらし）
   		];
 		}
     if(type==='trap'){
@@ -1544,9 +1390,9 @@
     if (type === 'para') {
       const g = state.gridPx;
       const off = state.gridOffset || 0;
-      const baseCells   = 3;  
-      const heightCells = 2;  
-      const skewCells   = 1;  
+      const baseCells   = 3;  // 底辺 3
+      const heightCells = 2;  // 高さ 2
+      const skewCells   = 1;  // ずらし 1
 
       const x0 = off + 2 * g;
       const y0 = off + 2 * g;
@@ -1575,15 +1421,15 @@
 
     const sh={id:uid(), type, points:pts, fill:ui.color.value, stroke:ui.color.value, userColored: false};
     state.shapes.push(sh);
-		selectShape(sh);       
+		selectShape(sh);       // いったん選択
 		pushHistory();
-		setTool('edit');       
+		setTool('edit');       // ★これが重要（代入ではなく関数を呼ぶ）
 		render();
   }
 
-  
+  // ========= 付箋 =========
   function addNote(x,y){
-    const dpx = Math.round(pxPerCm * 0.5); 
+    const dpx = Math.round(pxPerCm * 0.5); // +5mm
     const n={id:uid(), x, y, w:160 + dpx, h:80 + dpx, html:'メモ', color:'yellow', font:'m'};
     state.notes.push(n);
     state.selNoteId=n.id;
@@ -1652,7 +1498,7 @@
     }
   }
 
-  
+  // ========= レンダリング =========
   function render(){
     ensureLayers();
     const layer=document.getElementById('shapesLayer');
@@ -1675,9 +1521,9 @@
           hs.forEach(h=>{const r=el('rect',{x:h.x-10,y:h.y-10,width:20,height:20,rx:4,class:'bbox-handle'}); r.dataset.id=sh.id; r.dataset.corner=h.c; handles.appendChild(r);});
           handles.appendChild(el('rect',{x:bb.x,y:bb.y,width:bb.w,height:bb.h,fill:'none',stroke:'#94a3b8','stroke-dasharray':'6 4'}));
 
-          
+          /* ▼回転ハンドル（追加） */
           const topMid = { x: bb.x + bb.w/2, y: bb.y };
-          const offset = 28; 
+          const offset = 28; // 突き出し量(px)
           handles.appendChild(el('line', {
             x1: topMid.x, y1: topMid.y,
             x2: topMid.x, y2: topMid.y - offset + 10,
@@ -1701,7 +1547,7 @@
     redrawCursorOverlay();
   }
 
-  
+  // ========= 直線分割 =========
   function splitSnapOnce(p){
     const tol=state.snapTol;
     for(const sh of state.shapes){
@@ -1749,7 +1595,7 @@
     return {pt:{x:p.x,y:p.y}, lock:null};
   }
 
-  
+  // 始点ピン（SVG）
   function updateSplitPin(a){
     const hl=document.getElementById('handlesLayer');
     if(!hl) return;
@@ -1773,7 +1619,7 @@
     updateSplitPin(a);
   }
 
-  
+  // ========= UI ヘルパ =========
   function setTool(name){
     state.tool = name;
     if (name !== 'draw') state.lineAnchor = null;
@@ -1785,7 +1631,7 @@
   }
   function selectShape(sh){ state.sel=sh; state.selNoteId=null; if(sh) ui.color.value=sh.fill; render(); }
 
-  
+  // ====== board 側 pointerdown ======
   board.addEventListener('pointerdown', (e)=>{
     if(state.tool==='draw' || state.tool==='erase') return;
     const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
@@ -1863,7 +1709,7 @@
     }
   });
 
-  
+  // ====== drawCanvas 側 pointer 入力（ペン/消しゴム） ======
   drawCanvas.addEventListener('pointerdown', (e)=>{
   	const p0 = pt(e);
   	state.pointerPos = p0; 
@@ -1872,36 +1718,36 @@
   	if (state.tool === 'draw'){
     	e.preventDefault();
 
-    	
+    	// ★ 直線モード：タップ→タップで確定
     	if (state.penStraight) {
-      	
+      	// スナップ（方眼/辺への射影も利用）
       	const s = snapPointWithProjection(p0.x, p0.y) || p0;
 
-      	
+      	// まだアンカーが無ければセットして終了（この時点では描かない）
       	if (!state.lineAnchor) {
         	state.lineAnchor = { x: s.x, y: s.y };
-        	redrawCursorOverlay(); 
+        	redrawCursorOverlay(); // プレビュー線を出す
         	return;
       	}
 
-      	
-      	const a = state.lineAnchor;               
-      	const b = { x: s.x, y: s.y };            
+      	// 2タップ目：アンカー→現在点で1本の線を確定して保存
+      	const a = state.lineAnchor;               // 始点
+      	const b = { x: s.x, y: s.y };            // 終点
       	state.actions.push({
         	type: 'draw',
         	color: state.penColor,
         	width: state.penThickness,
         	pts: [[a.x, a.y], [b.x, b.y]]
       	});
-      	state.lineAnchor = null;                  
+      	state.lineAnchor = null;                  // アンカー解除
       	pushHistory();
       	redrawCanvas();
-      	redrawCursorOverlay();                    
-      	return;                                   
+      	redrawCursorOverlay();                    // プレビュー消し
+      	return;                                   // ← ドラッグ描画はしない
     	}
 
-    	
-    	
+    	// ★ フリーハンド（従来どおり）
+    	// すでに別指で描画中なら無視
     	if (state.drawingPointerId !== null && state.drawingPointerId !== e.pointerId) return;
     	state.drawingPointerId = e.pointerId;
     	state.dragging = {
@@ -1909,7 +1755,7 @@
       	stroke:{
         	id: uid(),
         	color: state.penColor,
-        	width: state.penThickness,   
+        	width: state.penThickness,   // この線の太さを固定保存
         	pts: [[p0.x, p0.y]]
       	}
     	};
@@ -1928,12 +1774,12 @@
   drawCanvas.addEventListener('pointermove', (e)=>{
     const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
     
-    
+    // ★ 追加：直線モードのプレビュー更新（アンカーがある時だけ）
   	if (state.tool === 'draw' && state.penStraight && state.lineAnchor) {
-    	
+    	// ドラッグ中ではなく、プレビューだけ更新
     	e.preventDefault();
-    	
-    	
+    	// pointerPos はもう更新済みなので、オーバーレイ再描画だけでOK
+    	// （スナップは redrawCursorOverlay 側で適用）
     	return;
   	}
 
@@ -1952,7 +1798,7 @@
   drawCanvas.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
   drawCanvas.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
 
-  
+  // ====== board 側 pointermove（図形/分割/付箋） ======
   board.addEventListener('pointermove', (e)=>{
     const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
     if(!state.dragging) { return; }
@@ -1995,7 +1841,7 @@
     }else if(state.dragging.mode==='rotateFree'){
   		const { sh, center, startAngle, initPts } = state.dragging;
   		let ang = Math.atan2(p.y - center.y, p.x - center.x) - startAngle;
-  		
+  		// 常時スナップ：通常15°、Shift中は30°
   		const step = (e.shiftKey ? 30 : 15) * Math.PI / 180;
   		ang = Math.round(ang / step) * step;
   		sh.points = rotatePointsAround(initPts, center.x, center.y, ang);
@@ -2009,7 +1855,7 @@
     }
   }, {passive:false});
 
-  
+  // 終了処理（共通）
   function onPointerUpOrCancel(e){
   	if(!state.dragging) return;
   	const m = state.dragging.mode;
@@ -2027,7 +1873,7 @@
     	finishSplit(); pushHistory(); 
   	}
 
-  	
+  	// ★ drawCanvas と board の両方に対してキャプチャ解放を試す
   	try { drawCanvas.releasePointerCapture(e.pointerId); } catch(_) {}
   	try { board.releasePointerCapture(e.pointerId); } catch(_) {}
 
@@ -2046,7 +1892,7 @@
   window.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
   window.addEventListener('blur', onPointerUpOrCancel);
 
-  
+  // bbox リサイズ
   function resizeByBBoxSnap(sh, corner, initBB, initPts, curPt){
     const g   = state.gridPx;
     const off = state.gridOffset || 0;
@@ -2090,7 +1936,7 @@
     return pts.map(p=>[p[0]+dx, p[1]+dy]);
   }
 
-  
+  // ========= 手書き & カーソルオーバーレイ =========
   function setCanvasInteractivity(){
     const active = (state.tool==='draw' || state.tool==='erase');
     drawCanvas.style.pointerEvents = active ? 'auto' : 'none';
@@ -2108,7 +1954,7 @@
     const W=drawCanvas.width/state.dpr, H=drawCanvas.height/state.dpr;
     ctx.clearRect(0,0,W,H);
 
-    
+    // 1) actions を時系列で再生
     for(const act of state.actions){
       if(act.type==='draw'){
         ctx.save();
@@ -2133,12 +1979,12 @@
       }
     }
 
-    
+    // 2) ドラッグ中のプレビュー
     if(state.dragging && state.dragging.mode==='draw' && state.dragging.stroke){
       const s=state.dragging.stroke;
       ctx.save();
       ctx.globalCompositeOperation='source-over';
-      ctx.beginPath(); ctx.lineWidth=(s.width != null ? s.width : 2);       
+      ctx.beginPath(); ctx.lineWidth=(s.width != null ? s.width : 2);       // ★ その場で保持してる太さを使う 
 			ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
       const pts=s.pts; if(pts.length){ ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
       ctx.restore();
@@ -2200,7 +2046,7 @@
     const pr=projectPointToSeg(p,[a.x,a.y],[b.x,b.y]); return pr?pr.d:1e9;
   }
 
-  
+  // ========= 形状判定（ラベル用） =========
   function almostEq(a,b,eps=1e-2){ return Math.abs(a-b)<=eps; }
   function vsub(a,b){ return [a[0]-b[0], a[1]-b[1]]; }
   function vdot(a,b){ return a[0]*b[0] + a[1]*b[1]; }
@@ -2247,7 +2093,7 @@
     return '図形';
   }
 
-  
+  // ========= 分割（複数図形対応 + 自動ラベル） =========
   function lineIntersectsPolygon(a,b, poly){
     let cnt=0; for(let i=0;i<poly.length;i++){ const P=poly[i], Q=poly[(i+1)%poly.length]; const I=segI([a.x,a.y],[b.x,b.y],P,Q); if(I) cnt++; if(cnt>=2) return true; }
     return false;
@@ -2310,7 +2156,7 @@
     render();
   }
 
-  
+  // ========= ラベル/単位 & UI =========
   function pxToCm(px){ return px/pxPerCm; }
   function fmtLen(px){ return pxToCm(px).toFixed(2); }
   function updateBadges(){
@@ -2353,7 +2199,7 @@
     n.font=ui.noteHdrSize.value; pushHistory(); render();
   });
 
-  
+  // ========= 履歴 =========
   function snapshot(){
     return JSON.stringify({
       shapes: state.shapes,
@@ -2372,7 +2218,7 @@
   ui.undo.addEventListener('click', ()=>{ if(!state.history.length) return; const cur=snapshot(); const prev=state.history.pop(); state.future.push(cur); restore(prev); });
   ui.redo.addEventListener('click', ()=>{ if(!state.future.length) return; const cur=snapshot(); const next=state.future.pop(); state.history.push(cur); restore(next); });
 
-  
+  // ========= 保存・読み込み・リセット =========
   ui.exportBtn.addEventListener('click', ()=>{
     const data=snapshot();
     const blob=new Blob([data],{type:'application/json'});
@@ -2383,7 +2229,7 @@
   });
   ui.resetBtn.addEventListener('click', ()=>{ location.reload(); });
 
-  
+  // ========= その他UI =========
   ui.toolbar.addEventListener('click', (e)=>{
     const b=e.target.closest('button'); if(!b) return;
     const add=b.getAttribute('data-add'); const tool=b.getAttribute('data-tool');
@@ -2408,30 +2254,30 @@
   ui.deleteShape.addEventListener('click', ()=>{
     if(state.sel){ state.shapes=state.shapes.filter(s=>s.id!==state.sel.id); state.sel=null; pushHistory(); render(); }
   });
-	
-	
+	// ========= ペン関係のイベント =========
+	// 色を変えたら自動でペンに切り替え
 	ui.penColor.addEventListener('change', ()=> {
   	state.penColor = ui.penColor.value;
-  	if (!suppressPenAutoSelect) setTool('draw'); 
+  	if (!suppressPenAutoSelect) setTool('draw'); // ユーザー操作のときだけ
   	render();
 	});
 
-	
+	// ペンの太さ変更：選択したら自動でペンに
 	ui.penThickness.addEventListener('change', ()=>{
   	state.penThickness = parseFloat(ui.penThickness.value) || 1.5;
-  	setTool('draw');   
+  	setTool('draw');   // 自動でペンモードへ
   	render();
 	});
 
-	
+	// 「直線を引く」チェック：ONで直線モード、OFFで解除
 	ui.penStraight.addEventListener('change', ()=>{
   	state.penStraight = ui.penStraight.checked;
-  	if (!state.penStraight) state.lineAnchor = null; 
-  	setTool('draw');   
+  	if (!state.penStraight) state.lineAnchor = null; // OFFならアンカー解除
+  	setTool('draw');   // 自動でペンモードへ
   	redrawCursorOverlay();
 	});
 
-	
+	// ========= 消しゴム関係 =========
   ui.eraserMode.addEventListener('change', ()=>{
   	state.eraserMode = ui.eraserMode.value;
   	updateEraserSizeVisibility();
@@ -2442,7 +2288,7 @@
   const eraserSizeSel = document.getElementById('eraserSize');
 	eraserSizeSel.addEventListener('change', ()=>{
   	state.eraserSize = parseInt(eraserSizeSel.value,10) || 14;
-  	setTool('erase');              
+  	setTool('erase');              // 自動で消しゴムに
   	redrawCursorOverlay();
 	});
 	function updateEraserSizeVisibility(){
@@ -2465,7 +2311,7 @@
     }
   });
 
-  
+  // ======== テーマ連動：ペン選択肢の構築（Safari対策） ========
   const LIGHT_PENS = [
     { value: '#1f2937', label: '黒' },
     { value: '#ef4444', label: '赤' },
@@ -2479,16 +2325,16 @@
     { value: '#a8ff00', label: '黄緑' },
   ];
   function showPenOptionsForTheme(theme){
-  	
+  	// 直前のペン色（state優先）
   	const prev = (state.penColor || ui.penColor.value || '').toLowerCase();
 
-  	
+  	// テーマに応じた対応色へマップ（例：ライト→ダークなら 黒→白）
   	const mapped = (theme === 'dark'
     	? (DARK_PEN_MAP[prev]  || prev)
     	: (LIGHT_PEN_MAP[prev] || prev)
   	).toLowerCase();
 
-  	
+  	// 一旦選択肢を空にしてから、該当テーマのリストで再構築
   	while (ui.penColor.firstChild) ui.penColor.removeChild(ui.penColor.firstChild);
   	const list = (theme === 'dark') ? DARK_PENS : LIGHT_PENS;
   	for (const {value, label} of list){
@@ -2498,25 +2344,25 @@
     	ui.penColor.appendChild(opt);
   	}
 
-  	
+  	// マップ後の色があればそれを選択、なければ先頭
   	const hasMapped = list.some(x => x.value.toLowerCase() === mapped);
   	ui.penColor.value = hasMapped ? mapped : list[0].value;
 
-  	
+  	// state と同期
   	state.penColor = ui.penColor.value;
 	}
-  
+  // 通常↔蛍光の相互マップ
 	const DARK_PEN_MAP = {
-  	'#1f2937':'#ffffff', 
-  	'#ef4444':'#ff6b00', 
-  	'#2563eb':'#33ddff', 
-  	'#16a34a':'#a8ff00'  
+  	'#1f2937':'#ffffff', // 黒→白
+  	'#ef4444':'#ff6b00', // 赤→蛍光オレンジ
+  	'#2563eb':'#33ddff', // 青→蛍光水色
+  	'#16a34a':'#a8ff00'  // 緑→蛍光黄緑
 	};
 	const LIGHT_PEN_MAP = {
-  	'#ffffff':'#1f2937', 
-  	'#ff6b00':'#ef4444', 
-  	'#33ddff':'#2563eb', 
-  	'#a8ff00':'#16a34a'  
+  	'#ffffff':'#1f2937', // 白→黒
+  	'#ff6b00':'#ef4444', // 蛍光オレンジ→赤
+  	'#33ddff':'#2563eb', // 蛍光水色→青
+  	'#a8ff00':'#16a34a'  // 蛍光黄緑→緑
 	};
 
 	function recolorDrawActionsForTheme(theme){
@@ -2531,38 +2377,38 @@
 	function remapCurrentPenColor(theme){
   	const map = (theme==='dark') ? DARK_PEN_MAP : LIGHT_PEN_MAP;
 
-  	
+  	// 1) state の現在色をマップ
   	const cur = (state.penColor||'').toLowerCase();
   	if (map[cur]) state.penColor = map[cur];
 
-  	
+  	// 2) UI の可視候補に合わせて value を調整
   	const visible = Array.from(ui.penColor.options).filter(o=>!o.hidden);
   	const hasVisibleSame = visible.some(o => o.value.toLowerCase() === state.penColor.toLowerCase());
   	ui.penColor.value = hasVisibleSame ? state.penColor : (visible[0]?.value || state.penColor);
 
-  	
+  	// 3) 念のため state と同期（2）でフォールバックした場合にも反映
   	state.penColor = ui.penColor.value;
 	}
 
 	function applyTheme(theme){
-  	
+  	// 0) DOM属性の切替
   	document.documentElement.setAttribute('data-theme', theme);
   	ui.themeToggle.textContent = (theme === 'dark') ? '☀️' : '🌙';
   	localStorage.setItem('board-theme', theme);
     
-	 	
+	 	// ペン自動選択の抑止（テーマ適用中）
 	  suppressPenAutoSelect = true;
-  	
+  	// 1) まず選択肢の可視/不可視を切替
   	showPenOptionsForTheme(theme);
 
-  	
+  	// 2) 現在のペン色をテーマ側の色へ置換（不可視なら可視の先頭にフォールバック）
   	remapCurrentPenColor(theme);
 		suppressPenAutoSelect = false;
     
-  	
+  	// 3) 既に描いた線の色も一括でマップ
   	recolorDrawActionsForTheme(theme);
 
-  	
+  	// 4) 図形の既定色（選択中だけでなく未手動の全図形を更新）
 		const newColor = THEME_SHAPE_COLOR[theme];
 		for(const sh of state.shapes){
   		if(!sh.userColored){
@@ -2570,17 +2416,17 @@
     		sh.stroke = newColor;
   		}
 		}
-		
+		// UIの既定色も更新（選択中があれば即反映）
 		ui.color.value = newColor;
 		if (state.sel){ state.sel.fill = newColor; state.sel.stroke = newColor; }
     
-  	
+  	// 5) 最後に再描画（キャンバス含む）
   	drawGrid();
   	render();
   	redrawCanvas();
   	redrawCursorOverlay();
 
-  	
+  	// 6) セレクト変更イベントを通知（外部依存があれば）
   	ui.penColor.dispatchEvent(new Event('change', {bubbles:false}));
 	}
 
@@ -2597,7 +2443,7 @@
     }
   })();
 
-  
+  // ========== サイドバー折りたたみ（突起タブ） ==========
   ui.asideTab.addEventListener('click', ()=>{
   	const collapsed = document.body.classList.toggle('aside-collapsed');
   	scheduleRelayout();
@@ -2608,25 +2454,25 @@
   	redrawCursorOverlay();
 	});
 
-  
+  // ========= カーソルオーバーレイ（消しゴムゴーストのみ） =========
   function redrawCursorOverlay(){
   	const W=cursorCanvas.width/state.dpr, H=cursorCanvas.height/state.dpr;
   	cctx.clearRect(0,0,W,H);
   	const p = state.pointerPos;
     
-    
+    // 直線プレビュー（アンカーがある時だけ）
   	if (state.tool === 'draw' && state.penStraight && state.lineAnchor) {
-    	
+    	// 現在位置にスナップを適用（プレビューも正確に見せる）
     	const s = snapPointWithProjection(p.x, p.y) || p;
 
     	cctx.save();
-    	
+    	// アンカー点（始点）
     	cctx.beginPath();
     	cctx.arc(state.lineAnchor.x, state.lineAnchor.y, 3, 0, Math.PI*2);
-    	cctx.fillStyle = 'rgba(239,68,68,0.9)'; 
+    	cctx.fillStyle = 'rgba(239,68,68,0.9)'; // 赤い点
     	cctx.fill();
 
-    	
+    	// プレビュー線
     	cctx.beginPath();
     	cctx.moveTo(state.lineAnchor.x, state.lineAnchor.y);
     	cctx.lineTo(s.x, s.y);
@@ -2639,7 +2485,7 @@
     	cctx.restore();
   	}
 
-  	
+  	// 消しゴムのゴースト
   	if(state.tool==='erase'){
     	cctx.save();
     	cctx.beginPath();
@@ -2650,12 +2496,12 @@
     	cctx.lineWidth=1;
     	cctx.fill(); cctx.stroke();
     	cctx.restore();
-    	return; 
+    	return; // erase優先で表示
   	}
 
-  	
+  	// ★ 直線プレビュー（アンカーがあるとき）
   	if (state.tool==='draw' && state.penStraight && state.lineAnchor){
-    	
+    	// カーソル位置もスナップをかけて表示がカチッとするように
     	const s = snapPointWithProjection(p.x, p.y) || p;
 
     	cctx.save();
@@ -2666,17 +2512,17 @@
     	cctx.lineCap = 'round';
     	cctx.lineJoin = 'round';
     	cctx.strokeStyle = state.penColor || '#1f2937';
-    	cctx.globalAlpha = 0.9; 
+    	cctx.globalAlpha = 0.9; // ほんの少しだけ薄めに
     	cctx.stroke();
     	cctx.restore();
   	}
 	}
 
-  
+  // ========= 起動 =========
   function boot(){
-    
+    // 起動時は左ツールバーを格納
 		document.body.classList.add('asideB-collapsed');
-    
+    // iPadのダブルタップズーム/長押しメニュー/選択開始を抑止（付箋内は許可）
     (function(){
       if (window.__iosTouchPatched) return;
       window.__iosTouchPatched = true;
@@ -2695,14 +2541,14 @@
       document.addEventListener('selectstart', (e)=>{ if(!inNote(e.target)) e.preventDefault(); }, {capture:true, passive:false});
     })();
 
-    
+    // タッチ端末ではスナップ閾値を少し緩める
     try{
       if (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) {
         state.snapTol = Math.max(state.snapTol, 20);
       }
     }catch(_){}
 
-    
+    // viewport 監視
     window.addEventListener('resize', onViewportChange, {passive:true});
     window.addEventListener('orientationchange', onViewportChange, {passive:true});
     try{
@@ -2725,9 +2571,9 @@
     };
     requestAnimationFrame(tick);
   }
-  refreshSidebarTabIcons();                
-	requestAnimationFrame(refreshSidebarTabIcons); 
-	bindMainTransitionRelayout();            
+  refreshSidebarTabIcons();                // ← 即時同期
+	requestAnimationFrame(refreshSidebarTabIcons); // ← 1フレ後も保険
+	bindMainTransitionRelayout();            // ← カラム遷移後に再同期
   updateEraserSizeVisibility();
   window.addEventListener('load', boot);
   window.addEventListener('load', ()=> setTool('edit'));
@@ -2744,7 +2590,7 @@
 
 	async function shareAllSnaps(){
     alert('「〜枚の画像を保存」を押そう！');
-  	
+  	// 0) 存在チェック & 上限
   	if (state.snaps.length === 0){
     	alert('共有できるスナップがありません。');
     	return;
@@ -2754,12 +2600,12 @@
     	return;
   	}
 
-  	
+  	// 1) dataURL → File に変換
   	const files = state.snaps.map((s, i) =>
     	dataURLtoFile(s.dataURL, `hippoly_${String(i+1).padStart(2,'0')}.png`)
   	);
 
-  	
+  	// 2) Web Share（Level 2 / files対応）判定
   	let canShareFiles = false;
 		try {
   		canShareFiles = !!(navigator.canShare && navigator.canShare({ files }));
@@ -2768,7 +2614,7 @@
 		}
 
   	if (canShareFiles){
-    	
+    	// 共有ボタン連打防止
     	uiB.saveAll.disabled = true;
     	try{
       	await navigator.share({
@@ -2776,24 +2622,24 @@
         	title: 'Hippoly スナップ',
         	text: `${files.length}枚の画像`
       	});
-      	
+      	// 共有成功（ユーザーが保存先を選ぶ）: ここでやることは特に無し
     	} catch(err) {
   			console.warn('share canceled or failed:', err);
-  			
+  			// キャンセル（AbortErrorなど）なら何もせずスルー
   			if (err && err.name === 'AbortError') return;
-  			
+  			// 本当に失敗したときだけフォールバック
   			if (err && err.message && /share/i.test(err.message)) return;
-  			
+  			// await saveAllSnapsFallback(); ← これを削除またはコメントアウト
 			} finally {
       	uiB.saveAll.disabled = false;
     	}
   	}else{
-    	
+    	// 共有に非対応 -> 従来の1枚ずつDLへ
     	await saveAllSnapsFallback();
   	}
 	}
 
-	
+	// 従来の“1枚ずつダウンロード”版（フォールバック用）
 	async function saveAllSnapsFallback(){
   	if (state.snaps.length === 0){
     	alert('保存できるスナップはありません。');
@@ -2818,6 +2664,7 @@
     	uiB.saveAll.disabled = false;
   	}
 	}
-  </script>
- </body>
+  
+</script>
+</body>
 </html>
