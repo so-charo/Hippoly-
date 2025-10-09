@@ -44,17 +44,18 @@
   		--asideB-width: 220px;    
   		--asideB-cur: var(--asideB-width); 
   		--asideR-cur: var(--aside-width); 
-	   
-	    --shot-size: 40px;   /* ← ここを 28px/32px/40px とかに変えればサイズ即反映 */
-  		--shot-font: 24px;   /* ← 絵文字の大きさ。サイズ上げたら 20〜24px に */
+	   	--main-pad-top: 4px;  /* ← ここを 0～8px で調整 */
+	   	--board-pad: 0px; /* もっとピタ付けしたければ 0 に */
+	    --shot-size: 120px;   /* ← ここを 28px/32px/40px とかに変えればサイズ即反映 */
+  		--shot-font: 75px;   /* ← 絵文字の大きさ。サイズ上げたら 20〜24px に */
     }
 		
 		
 		
 	main{
 	  display:grid;
-	  gap:6px;
-	  padding:6px 8px 8px;
+	  gap:12px;
+	  padding: var(--main-pad-top) 12px 12px;
 	  overflow:hidden;
 	  grid-template-columns: var(--asideB-cur) minmax(0,1fr) var(--asideR-cur);
 	  transition: grid-template-columns .15s ease;
@@ -348,8 +349,7 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
 
     .board-wrap{
 	  order:1; background:var(--panel-bg); color:var(--text);
-	  border-radius:14px; padding:4px;   /* 8px → 4px で盤面をヘッダに近づける */
-	  box-shadow: var(--panel-shadow);
+	  border-radius:14px; padding: var(--board-pad); box-shadow: var(--panel-shadow);
 	  position:relative; min-height:420px; overflow:hidden;
 	}
 
@@ -598,11 +598,10 @@ main{ box-sizing:border-box; }
 .board-wrap{ box-sizing:border-box; }
 #board{ display:block; width:100%; height:100%; }
 canvas#drawCanvas, canvas#cursorCanvas{ display:block; width:100%; height:100%; }
-/* If header is fixed/sticky, reserve its height */
-body.header-fixed main{ padding-top: var(--header-h); }
-body.header-fixed .board-wrap{ height: calc(100vh - var(--header-h)); min-height: 200px; }
-/* If header is normal flow, ensure main area still has minimum */
-body:not(.header-fixed) main{ min-height: calc(100vh - var(--header-h)); }
+/* fixed ヘッダの時だけ特別扱い。sticky は自然に積まれるので余白は足さない */
+body.header-fixed main{ padding-top: 0; }
+body.header-fixed .board-wrap{ height: auto; }
+/* 高さ確保は JS の ensureLayout でやる。ここでは何も足さない */
 
 /* === header tab menu === */
 .header-actions.right{ position:relative; margin-left:auto; display:flex; align-items:center; gap:.5rem; }
@@ -3088,7 +3087,11 @@ window.addEventListener('load', ()=>{ __kickRedrawAfterHeaderMeasure(); }, {once
     const h=document.querySelector('header');
     if(!h) return;
     const pos = getComputedStyle(h).position;
-    if(pos==='fixed' || pos==='sticky'){ document.body.classList.add('header-fixed'); }
+    if(pos === 'fixed'){
+      document.body.classList.add('header-fixed');
+    }else{
+      document.body.classList.remove('header-fixed');
+    }
   }catch(_){}
 })();
 
