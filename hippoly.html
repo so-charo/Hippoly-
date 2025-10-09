@@ -645,8 +645,8 @@ body.header-fixed .board-wrap{ height: auto; }
 	      <label title="方眼のサイズを切り替え（1/3cm）">
 	        方眼：
 	        <select id="gridSize" title="1/3cm 方眼">
-	          <option value="1">1cm</option>
-	          <option value="3" selected>3cm</option>
+	          <option value="1">細</option>
+	          <option value="3" selected>広</option>
 	        </select>
 	      </label>
 	
@@ -655,7 +655,6 @@ body.header-fixed .board-wrap{ height: auto; }
 	      <button id="reset" title="リセット（画面を再読み込み）">⟲ リセット</button>
 			
 	      <div id="notePanel" title="付箋の見た目を変更">
-	        <strong>付箋:</strong>
 	        <select id="noteHdrColor" title="付箋の色">
 	          <option value="yellow">黄色</option>
 	          <option value="blue">水色</option>
@@ -668,10 +667,7 @@ body.header-fixed .board-wrap{ height: auto; }
 	        </select>
 	      </div>
 	    </div>
-	
-	    <!-- 右端：保存/読み込みはここに集約 -->
 	    <div class="header-actions right">
-	      <!-- 既存ハンドラ委譲のため温存（非表示） -->
 	      <div class="save-load small right" style="display:none">
 	        <button id="export" title="保存（JSONとして保存）">💾 保存</button>
 	        <label class="toggle" title="読み込み（保存したJSONを選択）">
@@ -681,7 +677,6 @@ body.header-fixed .board-wrap{ height: auto; }
 	      </div>
 			<button id="swapSidebars" title="左右のツールバーを入れ替え">↔️</button>
   			<button id="themeToggle"  title="テーマ切替（ライト/ダーク）">🌙</button>
-	      <!-- タブメニュー本体 -->
 	      <div id="headerTab" class="header-tab" title="メニュー">◀</div>
 	      <div id="headerMenu" class="header-menu">
 	        <button type="button" data-act="save">💾 保存</button>
@@ -694,7 +689,7 @@ body.header-fixed .board-wrap{ height: auto; }
   <main>
    <aside class="asideB">
     <div class="asideB-tab" id="asideBTab" title="開閉">
-     ◀
+     ▼
     </div>
     <div class="panel-title">
      スクショ
@@ -3196,7 +3191,34 @@ function constrainOnEdge(cur, edge){
   state.cutAlongEdge = !!chk.checked;
   chk.addEventListener('change', ()=>{ state.cutAlongEdge = !!chk.checked; });
 })();
-	  
+	  // ==== ショートカット設定 ====
+document.addEventListener('keydown', (e)=>{
+  const mod = e.ctrlKey || e.metaKey; // Ctrl or ⌘ どちらでもOK
+
+  // スナップ（📷）
+  if (mod && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    const shotBtn = document.getElementById('shot');
+    if (shotBtn) shotBtn.click();
+  }
+
+  // Undo（戻る）
+  if (mod && !e.shiftKey && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    if (typeof undo === 'function') undo();
+  }
+
+  // Redo（進む）
+  if (mod && e.shiftKey && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    if (typeof redo === 'function') redo();
+  }
+
+  // 例：ツール切替（必要なら）
+  if (e.key.toLowerCase() === 'p') setTool('draw');   // ペン
+  if (e.key.toLowerCase() === 'e') setTool('erase');  // 消しゴム
+  if (e.key.toLowerCase() === 'm') setTool('edit');   // 移動
+});
 	  
 </script>
  </body>
