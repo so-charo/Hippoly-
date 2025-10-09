@@ -49,10 +49,12 @@
 		
 		
 	main{
-  	display:grid;
-  	gap:12px; padding:12px; overflow:hidden;
-  	grid-template-columns: var(--asideB-cur) minmax(0,1fr) var(--asideR-cur);
-  	transition: grid-template-columns .15s ease;
+	  display:grid;
+	  gap:6px;               /* 12px → 6px で詰める */
+	  padding:6px 8px 8px;   /* 上を薄く、左右下も少し減量 */
+	  overflow:hidden;
+	  grid-template-columns: var(--asideB-cur) minmax(0,1fr) var(--asideR-cur);
+	  transition: grid-template-columns .15s ease;
 	}
   
 	body.asideB-collapsed { --asideB-cur: 0px; }
@@ -342,10 +344,11 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
     body.aside-collapsed .aside-tab{ pointer-events:auto; }
 
     .board-wrap{
-      order:1; background:var(--panel-bg); color:var(--text);
-      border-radius:14px; padding:8px; box-shadow: var(--panel-shadow);
-      position:relative; min-height:420px; overflow:hidden;
-    }
+	  order:1; background:var(--panel-bg); color:var(--text);
+	  border-radius:14px; padding:4px;   /* 8px → 4px で盤面をヘッダに近づける */
+	  box-shadow: var(--panel-shadow);
+	  position:relative; min-height:420px; overflow:hidden;
+	}
 
     .panel-title{font-size:var(--fs-base); color:var(--hint); margin:2px 0 8px;}
     .group{border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;}
@@ -432,9 +435,9 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
     #notePanel{ display:none; gap:8px; align-items:center; padding:4px 6px; border:1px solid var(--btn-border); border-radius:10px; }
     
     header .row{
-      min-height: 56px;        
-      align-items: center;
-    }
+	  min-height: 44px;      /* 56px → 44px に微調整 */
+	  align-items: center;
+	}
 
     
     #notePanel{
@@ -572,7 +575,7 @@ canvas#drawCanvas, canvas#cursorCanvas { display:block; width:100%; height:100%;
 
 
 /* ==== header/viewport sizing guards ==== */
-:root{ --header-h: 56px; }
+:root{ --header-h: 44px; }
 body{ margin:0; }
 header{ box-sizing:border-box; }
 main{ box-sizing:border-box; }
@@ -2078,23 +2081,33 @@ document.body.classList.toggle('swap-sidebars');
     }
   }, {passive:false});
 
-  
-  function onPointerUpOrCancel(e){
-	  // ★ 直線ドラッグ確定
-	if (state.tool==='draw' && state.penStraight && state.__draggingStraight){
-  	const p = state.pointerPos || pt(e);
-  	let a = state.__lineStart;
-  	let b = p;
-  	if (state.__lineMode==='edge' && state.__lineEdge){
-    	b = constrainOnEdge(p, state.__lineEdge);
-  	}
-  	state.actions.push({ type:'draw', color:state.penColor, width:state.penThickness, pts:[[a.x,a.y],[b.x,b.y]] });
-  	state._previewStroke = null;
-  	state.__draggingStraight = false;
-  	state.__lineMode = state.__lineStart = state.__lineEdge = null;
-  	redrawCanvas(); redrawCursorOverlay();
-  	return;
-	}
+ function onPointerUpOrCancel(e){
+  // ★ 直線ドラッグ確定（頂点/辺/自由のいずれで開始しても統一処理）
+  if (state.tool === 'draw' && state.penStraight && state.__draggingStraight) {
+    const p = state.pointerPos || pt(e);
+    let a = state.__lineStart;
+    let b = p;
+    if (state.__lineMode === 'edge' && state.__lineEdge) {
+      b = constrainOnEdge(p, state.__lineEdge);   // 辺に沿って拘束
+    }
+    state.actions.push({
+      type: 'draw',
+      color: state.penColor,
+      width: state.penThickness,
+      pts: [[a.x, a.y], [b.x, b.y]]
+    });
+    // 片付け
+    state._previewStroke      = null;
+    state.__draggingStraight  = false;
+    state.__lineMode          = null;
+    state.__lineStart         = null;
+    state.__lineEdge          = null;
+    redrawCanvas();
+    redrawCursorOverlay();
+    // ここで return。下の汎用処理に落とさない
+    return;
+  }
+
 
 	  // ★ 直線ドラッグを確定して片付ける（最優先で実行）
 	if (state.tool === 'draw' && state.penStraight && state.__draggingStraight) {
@@ -2224,81 +2237,97 @@ document.body.classList.toggle('swap-sidebars');
   }
 
   function redrawCanvas(){
-    const W=drawCanvas.width/state.dpr, H=drawCanvas.height/state.dpr;
-    ctx.clearRect(0,0,W,H);
-
-    
-    for(const act of state.actions){
-      if(act.type==='draw'){
-        ctx.save();
-        ctx.globalCompositeOperation='source-over';
-        ctx.beginPath();
-        ctx.lineWidth = (act.width != null ? act.width : 2);
-        ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=act.color;
-        const pts=act.pts; if(!pts || !pts.length){ ctx.restore(); continue; }
-        ctx.moveTo(pts[0][0], pts[0][1]);
-        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
-        ctx.stroke();
-        ctx.restore();
-      }else if(act.type==='erase'){
-        ctx.save();
-        ctx.globalCompositeOperation='destination-out';
-        ctx.lineWidth=act.radius; ctx.lineCap='round'; ctx.lineJoin='round';
-        const pts=act.pts; if(!pts || !pts.length){ ctx.restore(); continue; }
-        ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
-        ctx.stroke();
-        ctx.restore();
-      }if (state._previewStroke){
-      const s = state._previewStroke;
-      ctx.save();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.lineWidth = s.width;
-      ctx.lineJoin  = 'round';
-      ctx.lineCap   = 'round';
-      ctx.strokeStyle = s.color;
-      ctx.beginPath();
-      ctx.moveTo(s.pts[0][0], s.pts[0][1]);
-      ctx.lineTo(s.pts[1][0], s.pts[1][1]);
-      ctx.stroke();
-      ctx.restore();
+	  const W = drawCanvas.width / state.dpr, H = drawCanvas.height / state.dpr;
+	  ctx.clearRect(0,0,W,H);
+	
+	  // 既存アクション（描画/消去）
+	  for (const act of state.actions){
+	    if (act.type === 'draw'){
+	      ctx.save();
+	      ctx.globalCompositeOperation = 'source-over';
+	      ctx.lineWidth   = (act.width != null ? act.width : 2);
+	      ctx.lineJoin    = 'round';
+	      ctx.lineCap     = 'round';
+	      ctx.strokeStyle = act.color;
+	      const pts = act.pts;
+	      if (pts && pts.length){
+	        ctx.beginPath();
+	        ctx.moveTo(pts[0][0], pts[0][1]);
+	        for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+	        ctx.stroke();
+	      }
+	      ctx.restore();
+	    } else if (act.type === 'erase'){
+	      ctx.save();
+	      ctx.globalCompositeOperation = 'destination-out';
+	      ctx.lineWidth = act.radius;
+	      ctx.lineCap   = 'round';
+	      ctx.lineJoin  = 'round';
+	      const pts = act.pts;
+	      if (pts && pts.length){
+	        ctx.beginPath();
+	        ctx.moveTo(pts[0][0], pts[0][1]);
+	        for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+	        ctx.stroke();
+	      }
+	      ctx.restore();
+	    }
 	  }
-    }
+	
+	  // ドラッグ中フリーハンドのライブ描画
+	  if (state.dragging && state.dragging.mode === 'draw' && state.dragging.stroke){
+	    const s = state.dragging.stroke;
+	    ctx.save();
+	    ctx.globalCompositeOperation = 'source-over';
+	    ctx.lineWidth   = (s.width != null ? s.width : 2);
+	    ctx.lineJoin    = 'round';
+	    ctx.lineCap     = 'round';
+	    ctx.strokeStyle = s.color;
+	    const pts = s.pts;
+	    if (pts && pts.length){
+	      ctx.beginPath();
+	      ctx.moveTo(pts[0][0], pts[0][1]);
+	      for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+	      ctx.stroke();
+	    }
+	    ctx.restore();
+	  }
+	
+	  // ピクセル消しゴムのライブ描画
+	  if (state.dragging && state.dragging.mode === 'erasePixel' && state.dragging.eraser){
+	    const e = state.dragging.eraser;
+	    ctx.save();
+	    ctx.globalCompositeOperation = 'destination-out';
+	    ctx.lineWidth = e.radius;
+	    ctx.lineCap   = 'round';
+	    ctx.lineJoin  = 'round';
+	    const pts = e.pts;
+	    if (pts && pts.length){
+	      ctx.beginPath();
+	      ctx.moveTo(pts[0][0], pts[0][1]);
+	      for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]);
+	      ctx.stroke();
+	    }
+	    ctx.restore();
+	  }
 
-    
-    if(state.dragging && state.dragging.mode==='draw' && state.dragging.stroke){
-      const s=state.dragging.stroke;
-      ctx.save();
-      ctx.globalCompositeOperation='source-over';
-      ctx.beginPath(); ctx.lineWidth=(s.width != null ? s.width : 2);       
-			ctx.lineJoin='round'; ctx.lineCap='round'; ctx.strokeStyle=s.color;
-      const pts=s.pts; if(pts.length){ ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
-      ctx.restore();
-    }
-    if(state.dragging && state.dragging.mode==='erasePixel' && state.dragging.eraser){
-      const e=state.dragging.eraser;
-      ctx.save();
-      ctx.globalCompositeOperation='destination-out';
-      ctx.lineWidth=e.radius; ctx.lineCap='round'; ctx.lineJoin='round';
-      const pts=e.pts; if(pts.length){ ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke(); }
-      ctx.restore();
-    }
+  // ★ 直線プレビューは最後に一度だけ描く（必ず最前面）
+  if (state._previewStroke){
+    const s = state._previewStroke;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.lineWidth   = s.width;
+    ctx.lineJoin    = 'round';
+    ctx.lineCap     = 'round';
+    ctx.strokeStyle = s.color;
+    ctx.beginPath();
+    ctx.moveTo(s.pts[0][0], s.pts[0][1]);
+    ctx.lineTo(s.pts[1][0], s.pts[1][1]);
+    ctx.stroke();
+    ctx.restore();
   }
-	      // === 直線プレビュー（state._previewStroke） ===
-    if (state._previewStroke){
-      const s = state._previewStroke;
-      ctx.save();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.lineWidth = s.width;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = s.color;
-      ctx.beginPath();
-      ctx.moveTo(s.pts[0][0], s.pts[0][1]);
-      ctx.lineTo(s.pts[1][0], s.pts[1][1]);
-      ctx.stroke();
-      ctx.restore();
-    }
+}
+
 
   function addStrokePoint(p){ state.dragging.stroke.pts.push([p.x,p.y]); }
   function finishStroke(){
