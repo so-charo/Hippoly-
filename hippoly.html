@@ -450,6 +450,12 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
     
     .toolbar button { display:inline-flex; align-items:center; gap:6px; touch-action:manipulation; }
     .toolbar button .icon { font-size:16px; line-height:1; }
+	  /* 丸いアイコンボタン */
+	button.icon-round{
+  		width:36px; height:36px; padding:0;
+  		border-radius:9999px; display:inline-flex; align-items:center; justify-content:center;
+  		font-size:18px; line-height:1;
+	}
     
     #toolbar button[data-add] {
       min-width: 120px;   
@@ -622,10 +628,7 @@ body:not(.header-fixed) main{ min-height: calc(100vh - var(--header-h)); }
 	      <button id="undo"  title="戻る（Undo）">↶ もどる</button>
 	      <button id="redo"  title="進む（Redo）">↷ すすむ</button>
 	      <button id="reset" title="リセット（画面を再読み込み）">⟲ リセット</button>
-	      <button id="themeToggle"  title="テーマ切替（ライト/ダーク）">🌙</button>
-	      <button id="swapSidebars" title="左右のツールバーを入れ替え">↔️</button>
-	      <button id="shot"  title="今見えてる範囲を画像化">📸 スナップ</button>
-	
+			
 	      <div id="notePanel" title="付箋の見た目を変更">
 	        <strong>付箋:</strong>
 	        <select id="noteHdrColor" title="付箋の色">
@@ -651,7 +654,8 @@ body:not(.header-fixed) main{ min-height: calc(100vh - var(--header-h)); }
 	          <input id="import" type="file" accept="application/json" style="display:none" />
 	        </label>
 	      </div>
-	
+			<button id="swapSidebars" title="左右のツールバーを入れ替え">↔️</button>
+  			<button id="themeToggle"  title="テーマ切替（ライト/ダーク）">🌙</button>
 	      <!-- タブメニュー本体 -->
 	      <div id="headerTab" class="header-tab" title="メニュー">◀</div>
 	      <div id="headerMenu" class="header-menu">
@@ -745,6 +749,7 @@ body:not(.header-fixed) main{ min-height: calc(100vh - var(--header-h)); }
        </span>
        ふせん
       </button>
+	　<button id="shot" class="icon-round" title="今見えてる範囲を画像化">📷</button>
       <div class="group">
        <div class="panel-title">
         手書き
@@ -864,18 +869,21 @@ body:not(.header-fixed) main{ min-height: calc(100vh - var(--header-h)); }
        </div>
       </div>
       <div class="group">
-       <div class="panel-title">
-        分割
-       </div>
-       <div class="split-tools" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-		  <button data-tool="splitLine" title="直線で分割（複数図形にも対応）">
-		    <span class="icon">✂️</span> カット
-		  </button>
-		  <label class="toggle" title="分割線を方眼に吸着させる" style="display:flex; align-items:center; gap:4px;">
-		    <input id="splitGridSnap" type="checkbox"/> 線にそってカット
-		  </label>
-		</div>
-      </div>
+		  <div class="panel-title" style="display:flex; align-items:center; gap:8px;">
+		    分割
+		    <label class="toggle" style="margin-left:auto; display:inline-flex; align-items:center; gap:4px;">
+		      <input id="splitContinuous" type="checkbox"> 連続カット
+		    </label>
+		  </div>
+	  <div class="split-tools" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+	    <button data-tool="splitLine" title="直線で分割（複数図形にも対応）">
+	      <span class="icon">✂️</span> カット
+	    </button>
+	    <label class="toggle" title="分割線を方眼に吸着させる" style="display:flex; align-items:center; gap:4px;">
+	      <input id="splitGridSnap" type="checkbox"/> 線にそってカット
+	    </label>
+	  </div>
+	</div>
      </div>
     </div>
    </aside>
@@ -930,6 +938,7 @@ body:not(.header-fixed) main{ min-height: calc(100vh - var(--header-h)); }
     eraserSize: 14,
     splitPreview:null,
     splitGridSnap:false,
+	splitContinuous:false,
     pointerCaptured:false,
     dpr: Math.max(1, window.devicePixelRatio || 1),
     pointerPos:{x:0,y:0},
@@ -939,7 +948,8 @@ body:not(.header-fixed) main{ min-height: calc(100vh - var(--header-h)); }
 		drawingPointerId: null,
     penThickness: 1.5,
     penStraight: false,      
-  	lineAnchor: null,        
+  	lineAnchor: null,
+	_opPushed: false,
   };
   
 	state.snaps = []; 
@@ -1366,7 +1376,7 @@ document.body.classList.toggle('swap-sidebars');
     notePanel:document.getElementById('notePanel'),
     noteHdrColor:document.getElementById('noteHdrColor'),
     noteHdrSize:document.getElementById('noteHdrSize'),
-    
+    splitContinuous:document.getElementById('splitContinuous'),
     themeToggle:document.getElementById('themeToggle'),
     asideTab:document.getElementById('asideTab')
   };
@@ -1939,43 +1949,34 @@ document.body.classList.toggle('swap-sidebars');
   	redrawCursorOverlay();
 
   	if (state.tool === 'draw'){
-    	e.preventDefault();
+  e.preventDefault();
 
-    	// ★ 直線モード：ドラッグ限定。頂点優先→辺→空白で開始
-	if (state.penStraight) {
-  		// 旧仕様を無効化
-  	state.lineAnchor = null;
+  if (state.penStraight) {
+    if (!state._opPushed) { pushHistory(); state._opPushed = true; }
 
-  	// 開始点をスナップ決定
-  	const snap = snapStartPoint(p0);
-  	state.__lineMode  = snap.mode;            // 'vertex' | 'edge' | 'free'
-  	state.__lineStart = snap.start;           // {x,y}
-  	state.__lineEdge  = snap.edge || null;    // 辺開始なら {a,b}
-  	state.__draggingStraight = true;
+    state.lineAnchor = null;
+    const snap = snapStartPoint(p0);
+    state.__lineMode  = snap.mode;            // 'vertex' | 'edge' | 'free'
+    state.__lineStart = snap.start;           // {x,y}
+    state.__lineEdge  = snap.edge || null;    // 辺開始なら {a,b}
+    state.__draggingStraight = true;
 
-  	try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
-  	// プレビューと確定は pointermove / pointerup で処理
-  	return;
-	}
+    try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
+    return;
+  }
 
+  if (state.drawingPointerId !== null && state.drawingPointerId !== e.pointerId) return;
+  if (!state._opPushed) { pushHistory(); state._opPushed = true; }
 
-    	// ★ フリーハンド（従来どおり）
-    	// すでに別指で描画中なら無視
-    	if (state.drawingPointerId !== null && state.drawingPointerId !== e.pointerId) return;
-    	state.drawingPointerId = e.pointerId;
-    	state.dragging = {
-      	mode:'draw',
-      	stroke:{
-        	id: uid(),
-        	color: state.penColor,
-        	width: state.penThickness,   // この線の太さを固定保存
-        	pts: [[p0.x, p0.y]]
-      	}
-    	};
-    	try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
-    	redrawCanvas();
-    	return;
-  	}
+  state.drawingPointerId = e.pointerId;
+  state.dragging = {
+    mode:'draw',
+    stroke:{ id: uid(), color: state.penColor, width: state.penThickness, pts: [[p0.x, p0.y]] }
+  };
+  try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
+  redrawCanvas();
+  return;
+}
 
   	if (state.tool === 'erase'){
     	e.preventDefault();
@@ -2096,6 +2097,11 @@ document.body.classList.toggle('swap-sidebars');
       width: state.penThickness,
       pts: [[a.x, a.y], [b.x, b.y]]
     });
+	  
+	// ★ 履歴（開始時に積んでいなければここで）
+  	if (!state._opPushed) pushHistory();
+  	state._opPushed = false;
+	  
     // 片付け
     state._previewStroke      = null;
     state.__draggingStraight  = false;
@@ -2108,53 +2114,26 @@ document.body.classList.toggle('swap-sidebars');
     return;
   }
 
-
-	  // ★ 直線ドラッグを確定して片付ける（最優先で実行）
-	if (state.tool === 'draw' && state.penStraight && state.__draggingStraight) {
-  	const p = state.pointerPos || pt(e);
-
-  	// 始点は pointerdown で確定済み
-  	let a = state.__lineStart;
-  	let b = p;
-
-  	// 辺開始だった場合は、現在点を辺に射影して拘束
-  	if (state.__lineMode === 'edge' && state.__lineEdge) {
-    	b = constrainOnEdge(p, state.__lineEdge);
-  	}
-
-  	// 履歴に確定直線を push
-  	state.actions.push({
-    	type: 'draw',
-    	color: state.penColor,
-    	width: state.penThickness,
-    	pts: [[a.x, a.y], [b.x, b.y]]
-  	});
-
-  	// 後片付け
-  	state._previewStroke    = null;
-  	state.__draggingStraight = false;
-  	state.__lineMode         = null;
-  	state.__lineStart        = null;
-  	state.__lineEdge         = null;
-
-  	// 他の onPointerUp の処理に任せる前に、見た目を更新
-  	try { redrawCanvas(); } catch(_){}
-  	try { redrawCursorOverlay(); } catch(_){}
-  	return;
-	}
-
   	if(!state.dragging) return;
   	const m = state.dragging.mode;
 
   	if(m==='move' || m==='vertex' || m==='bbox' || m==='noteMove' || m==='noteResize' || m==='rotateFree'){ 
     	pushHistory(); 
   	}
-  	if(m==='draw'){ 
-    	finishStroke(); pushHistory(); redrawCanvas(); 
-  	}
-  	if(m==='erasePixel'){ 
-    	finishEraseStroke(); pushHistory(); redrawCanvas(); 
-  	}
+  	if(m==='draw'){
+	  finishStroke();
+	  if (!state._opPushed) pushHistory();
+	  state._opPushed = false;
+	  redrawCanvas();
+	}
+
+  	if(m==='erasePixel'){
+	  finishEraseStroke();
+	  if (!state._opPushed) pushHistory();
+	  state._opPushed = false;
+	  redrawCanvas();
+	}
+
   	if(m==='split'){ 
     	finishSplit(); pushHistory(); 
   	}
@@ -2482,10 +2461,11 @@ document.body.classList.toggle('swap-sidebars');
       }
     }
     if(state.splitPreview) state.splitPreview.remove();
-    updateSplitPin(null);
-    setTool('edit');
-    render();
+	updateSplitPin(null);
+	setTool(state.splitContinuous ? 'splitLine' : 'edit');
+	render();
   }
+
 
   
   function pxToCm(px){ return px/pxPerCm; }
@@ -2572,9 +2552,13 @@ document.body.classList.toggle('swap-sidebars');
   ui.gridSize.addEventListener('change', ()=>{
     const cm=parseInt(ui.gridSize.value,10)||3; state.gridPx=pxPerCm*cm; drawGrid(); render(); redrawCursorOverlay();
   });
-  ui.splitGridSnap.addEventListener('change', ()=> { state.splitGridSnap=ui.splitGridSnap.checked; });
-  ui.vertexEdit.addEventListener('change', ()=>{ state.vertexEdit=ui.vertexEdit.checked; render(); });
+  ui.splitGridSnap.addEventListener('change', ()=>{
+	  state.splitGridSnap = ui.splitGridSnap.checked;
+	  if (state.splitGridSnap) setTool('splitLine');
+  });
 
+  ui.vertexEdit.addEventListener('change', ()=>{ state.vertexEdit=ui.vertexEdit.checked; render(); });
+  ui.splitContinuous?.addEventListener('change', ()=>{state.splitContinuous = !!ui.splitContinuous.checked;});
   ui.color.addEventListener('input', ()=>{ if(state.sel){ state.sel.fill=ui.color.value; state.sel.stroke=ui.color.value; state.sel.userColored = true; pushHistory(); render(); } });
   ui.lockSize.addEventListener('change', ()=> state.lockSize=ui.lockSize.checked );
   ui.dup.addEventListener('click', ()=>{ if(!state.sel) return; const c=JSON.parse(JSON.stringify(state.sel)); c.id=uid(); c.points=c.points.map(p=>[p[0]+20,p[1]+20]); state.shapes.push(c); selectShape(c); pushHistory(); });
