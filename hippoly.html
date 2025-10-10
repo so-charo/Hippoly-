@@ -325,7 +325,6 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
 	body.aside-collapsed aside:not(.asideB){
 	  transform: translateX(calc(100% + 16px));
 	  opacity: 0.96;
-	  pointer-events: none;
 	}
 	/* タブだけ逆向きに押し戻す */
 	body.aside-collapsed aside:not(.asideB) > .aside-tab{
@@ -666,7 +665,6 @@ body.swap-sidebars aside:not(.asideB){ right:auto; left:var(--edge-pad); }
 body.asideB-collapsed .asideB{
   transform: translateX(calc(-100% - 16px));
   opacity: .96;
-  pointer-events:none;
 }
 body.aside-collapsed aside:not(.asideB){
   transform: translateX(calc(100% + 16px));
