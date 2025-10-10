@@ -109,32 +109,25 @@
 
 	  
 	/* スナップ一覧は中でスクロール */
-	#thumbList{
-	  display:flex; flex-direction:column; gap:8px;
-	  flex:1 1 auto; min-height:0; overflow:auto;
-	  border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;
-	  -webkit-overflow-scrolling:touch;
-	}
 
 
-	
-	/* 左バー：レイヤーを左にスライドアウト */
+
+	/* 親を左へ退避 */
 	body.asideB-collapsed .asideB {
 	  transform: translateX(calc(-100% - 16px));
 	  opacity: 0.96;
 	  pointer-events: none;
 	}
-	
-	/* タブだけは操作可能に残す */
-	body.asideB-collapsed .asideB > .asideB-tab {
+	/* タブだけ逆向きに押し戻す */
+	body.asideB-collapsed .asideB > .asideB-tab{
+	  transform: translateX(calc(100% + 16px));  /* 親 transform を打ち消す */
 	  pointer-events: auto;
+	  z-index: 10000;
 	}
-	
-	/* 中身の display:none は不要。位置を動かすだけに変更 */
-	body.asideB-collapsed .asideB > *:not(.asideB-tab) {
+	/* display:none は使わない */
+	body.asideB-collapsed .asideB > *:not(.asideB-tab){
 	  display: block;
 	}
-
 	
 	.asideB-tab{
   	position:absolute; right:-26px; top:12px; width:26px; height:44px;
@@ -166,24 +159,16 @@
 	}
 
 	
-	#thumbList {
-  	display: flex;
-  	flex-direction: column;
-  	gap: 8px;
-
-  	
-  	height: calc(100% - 150px);
-
-  	overflow: auto;
-  	border-top: 1px dashed var(--soft);
-  	padding-top: 8px;
-  	margin-top: 8px;
-
-  	
-  	-webkit-overflow-scrolling: touch;
-
-  	
+	#thumbList{
+	  display:flex; flex-direction:column; gap:8px;
+	  flex:1 1 auto;               /* ← これがミソ。親の中で伸縮する */
+	  min-height:0;                /* ← 子scrollを許すための保険 */
+	  overflow:auto;
+	  border-top:1px dashed var(--soft);
+	  padding-top:8px; margin-top:8px;
+	  -webkit-overflow-scrolling:touch;
 	}
+
 	
 		
 		.thumb{
@@ -353,24 +338,27 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
 	  display:flex; flex-direction:column; min-height:0;
 	  background:var(--panel-bg); color:var(--text);
 	  border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
-	  overflow:hidden;                    /* 中のリストにスクロールを委任 */
+	  overflow:visible;                    /* 中のリストにスクロールを委任 */
 	  z-index:20;
 	  transition: transform .2s ease, opacity .2s ease;  /* width ではなく transform をトランジション */
 	}
-    /* 右バーをしまう：右へスライドアウト */
+    /* 親を右へ退避 */
 	body.aside-collapsed aside:not(.asideB){
 	  transform: translateX(calc(100% + 16px));
 	  opacity: 0.96;
 	  pointer-events: none;
 	}
-	/* タブは操作できるように残す */
+	/* タブだけ逆向きに押し戻す */
 	body.aside-collapsed aside:not(.asideB) > .aside-tab{
+	  transform: translateX(calc(-100% - 16px)); /* 親 transform を打ち消す */
 	  pointer-events: auto;
+	  z-index: 10000;
 	}
-	/* 中身を display:none にしない。位置だけ動かす */
+	/* display:none は使わない */
 	body.aside-collapsed aside:not(.asideB) > *:not(.aside-tab){
 	  display: block;
 	}
+
     .aside-tab {
       position: absolute;
       left: -26px;
