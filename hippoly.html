@@ -53,55 +53,87 @@
 		
 		
 	main{
+	  position:relative;                 /* ← レイヤー基準点 */
 	  display:grid;
 	  gap:12px;
-	  padding: var(--main-pad-top) 12px 12px;
+	  padding:12px;
 	  overflow:hidden;
-	  grid-template-columns: var(--asideB-cur) minmax(0,1fr) var(--asideR-cur);
-	  transition: grid-template-columns .15s ease;
+	  grid-template-columns: minmax(0,1fr);   /* ← 1カラム固定。内容が動かない */
+	  transition: none;
+	  min-height:0;
 	}
   
 	body.asideB-collapsed { --asideB-cur: 0px; }
 	body.aside-collapsed  { --asideR-cur: 0px; }
-	body.swap-sidebars main{
-  	grid-template-columns: var(--asideR-cur) minmax(0,1fr) var(--asideB-cur);
-	}
-    
-    
-		.asideB     { order: 0; }
-		.board-wrap { order: 1; }
-		aside       { order: 2; }
-
-		
-		body.swap-sidebars .asideB { order: 2; }
-		body.swap-sidebars aside   { order: 0; }
-    body.swap-sidebars .board-wrap{ order:1; } 
+	
 
 		
 
 	
+	/* 左のスクショバー（オーバーレイ化） */
 	.asideB{
-  	order:0; background:var(--panel-bg); color:var(--text);
-  	border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
-  	overflow:visible;                 
-  	position:relative;
-  	transition: width .15s ease, opacity .15s ease;
+	  position:absolute;                 /* ← レイヤー化 */
+	  inset:auto auto 12px 12px;         /* 左下寄せ（top は後で指定） */
+	  top:12px;                          /* ヘッダと被らないように上マージン */
+	  width: var(--asideB-width, 220px);
+	  max-height: calc(100% - 24px);     /* 枠内に収める */
+	  display:flex; flex-direction:column; min-height:0;
+	  background:var(--panel-bg); color:var(--text);
+	  border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
+	  z-index: 20;                        /* ボードより前 */
+	  transition: transform .2s ease, opacity .2s ease;
+	}
+	
+	/* 右のツールバー（オーバーレイ化） */
+	aside:not(.asideB){
+	  position:absolute;
+	  inset:auto 12px 12px auto;
+	  top:12px;
+	  width: var(--aside-width, 320px);
+	  max-height: calc(100% - 24px);
+	  display:flex; flex-direction:column; min-height:0;
+	  background:var(--panel-bg); color:var(--text);
+	  border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
+	  z-index: 20;
+	  transition: transform .2s ease, opacity .2s ease;
+	}
+	/* swap 時は左右の“位置”だけ入れ替え */
+	body.swap-sidebars .asideB{
+	  inset:auto 12px 12px auto;  /* 右に配置 */
+	  left:auto; right:12px;
+	}
+	body.swap-sidebars aside:not(.asideB){
+	  inset:auto auto 12px 12px;  /* 左に配置 */
+	  right:auto; left:12px;
 	}
 
+	  
+	/* スナップ一覧は中でスクロール */
+	#thumbList{
+	  display:flex; flex-direction:column; gap:8px;
+	  flex:1 1 auto; min-height:0; overflow:auto;
+	  border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;
+	  -webkit-overflow-scrolling:touch;
+	}
+
+
 	
+	/* 左バー：レイヤーを左にスライドアウト */
 	body.asideB-collapsed .asideB {
-  	width: 0;
-  	padding: 0;
-  	border: none;
-  	opacity: 1;
-  	pointer-events: none;
+	  transform: translateX(calc(-100% - 16px));
+	  opacity: 0.96;
+	  pointer-events: none;
 	}
-	body.asideB-collapsed .asideB > .asideB-tab {
-  	pointer-events: auto; 
-	}
-  
 	
-	body.asideB-collapsed .asideB > *:not(.asideB-tab){ display:none; }
+	/* タブだけは操作可能に残す */
+	body.asideB-collapsed .asideB > .asideB-tab {
+	  pointer-events: auto;
+	}
+	
+	/* 中身の display:none は不要。位置を動かすだけに変更 */
+	body.asideB-collapsed .asideB > *:not(.asideB-tab) {
+	  display: block;
+	}
 
 	
 	.asideB-tab{
@@ -313,19 +345,32 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
 .active{ background:var(--btn-active)!important; color:#fff; }
 	  
     aside{
-      order:2; background:var(--panel-bg); color:var(--text); border-radius:14px;
-      padding:12px; box-shadow: var(--panel-shadow);
-      overflow: visible;     
-      position:relative;
-      transition: width .15s ease, opacity .15s ease;
-    }
-    body.aside-collapsed aside:not(.asideB){
-  		width:0; padding:0; border:none; opacity:1;
-  		pointer-events:none;
-		}
-    body.aside-collapsed aside:not(.asideB) > *:not(.aside-tab){
-  		display:none;
-		}
+	  order:2;
+	  position:absolute;                  /* ← レイヤーにする */
+	  top:12px; right:12px; bottom:12px;  /* ← 右上固定。左は自動 */
+	  width: var(--aside-width, 320px);
+	  max-height: calc(100% - 24px);
+	  display:flex; flex-direction:column; min-height:0;
+	  background:var(--panel-bg); color:var(--text);
+	  border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
+	  overflow:hidden;                    /* 中のリストにスクロールを委任 */
+	  z-index:20;
+	  transition: transform .2s ease, opacity .2s ease;  /* width ではなく transform をトランジション */
+	}
+    /* 右バーをしまう：右へスライドアウト */
+	body.aside-collapsed aside:not(.asideB){
+	  transform: translateX(calc(100% + 16px));
+	  opacity: 0.96;
+	  pointer-events: none;
+	}
+	/* タブは操作できるように残す */
+	body.aside-collapsed aside:not(.asideB) > .aside-tab{
+	  pointer-events: auto;
+	}
+	/* 中身を display:none にしない。位置だけ動かす */
+	body.aside-collapsed aside:not(.asideB) > *:not(.aside-tab){
+	  display: block;
+	}
     .aside-tab {
       position: absolute;
       left: -26px;
@@ -350,7 +395,7 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
     .board-wrap{
 	  order:1; background:var(--panel-bg); color:var(--text);
 	  border-radius:14px; padding: var(--board-pad); box-shadow: var(--panel-shadow);
-	  position:relative; min-height:420px; overflow:hidden;
+	  position:relative; min-height:420px; overflow:visible;
 	}
 
     .panel-title{font-size:var(--fs-base); color:var(--hint); margin:2px 0 8px;}
@@ -372,10 +417,10 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
 
 		
 		.asideB .save-all-wrap{
-  		position:absolute; left:12px; right:12px; bottom:12px;
+		  flex:0 0 auto;
+		  margin-top:8px;
+		  position:static;
 		}
-		.asideB .save-all-wrap button{ width:100%; }
-
     
     canvas.draw, canvas.cursor-layer{
       position:absolute; inset:0; width:100%; height:100%; pointer-events:none; touch-action:none;
