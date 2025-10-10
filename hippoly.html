@@ -67,43 +67,6 @@
   
 	body.asideB-collapsed { --asideB-cur: 0px; }
 	body.aside-collapsed  { --asideR-cur: 0px; }
-	
-
-		
-
-	
-	/* 左のスクショバー（オーバーレイ化） */
-	.asideB{
-	  position:absolute;
-	  inset:auto auto var(--edge-pad) var(--edge-pad); /* 外側余白は変数 */
-	  top: var(--edge-pad);
-	  width: var(--asideB-width, 220px);
-	  max-height: calc(100% - (var(--edge-pad) * 2));
-	  /* ...他はそのまま... */
-	}
-	
-	/* 右のツールバー（オーバーレイ化） */
-	aside:not(.asideB){
-	  position:absolute;
-	  inset:auto var(--edge-pad) var(--edge-pad) auto;
-	  top: var(--edge-pad);
-	  width: var(--aside-width, 320px);
-	  max-height: calc(100% - (var(--edge-pad) * 2));
-	  /* ...他はそのまま... */
-	}
-	
-	/* swap 時は左右の“位置”だけ入れ替え（top は固定のまま） */
-	body.swap-sidebars .asideB{
-	  inset:auto var(--edge-pad) var(--edge-pad) auto; /* 右に配置 */
-	  left:auto; right:var(--edge-pad);
-	}
-	body.swap-sidebars aside:not(.asideB){
-	  inset:auto auto var(--edge-pad) var(--edge-pad); /* 左に配置 */
-	  right:auto; left:var(--edge-pad);
-	}
-
-
-
 
 	/* 親を左へ退避 */
 	body.asideB-collapsed .asideB {
@@ -452,8 +415,6 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
       cursor:grab;
     }
     .rot-handle:active{ cursor:grabbing; }
-
-    .badgebar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;}
     .badge{ background:var(--badge-bg); color:var(--badge-text);
   		border:1px solid var(--badge-border); border-radius:10px; padding:6px 10px; font-size:var(--fs-base);
 		}
@@ -637,7 +598,6 @@ body.header-tools-collapsed .header-tools .tools-inner{ display:none; }
 
 /* ========== grid visibility hardening ========== */
 html, body { height: 100%; }
-main { min-height: calc(100vh - 48px); }
 #board { display: block; width: 100%; height: 100%; }
 canvas#drawCanvas, canvas#cursorCanvas { display:block; width:100%; height:100%; }
 
@@ -650,8 +610,6 @@ main{ box-sizing:border-box; }
 .board-wrap{ box-sizing:border-box; }
 #board{ display:block; width:100%; height:100%; }
 canvas#drawCanvas, canvas#cursorCanvas{ display:block; width:100%; height:100%; }
-/* fixed ヘッダの時だけ特別扱い。sticky は自然に積まれるので余白は足さない */
-body.header-fixed main{ padding-top: 0; }
 
 /* === header tab menu === */
 .header-actions.right{ position:relative; margin-left:auto; display:flex; align-items:center; gap:.5rem; }
@@ -682,7 +640,82 @@ body.header-fixed main{ padding-top: 0; }
 .toolbar > div:first-child > .group{
   flex-basis: 100%;
 }
-.badgebar { display:none !important; }
+/* ====== overlay：top/bottom固定、左右だけ入れ替え ====== */
+main{ position:relative; } /* 親基準 */
+
+.asideB,
+aside:not(.asideB){
+  position:absolute;
+  top: var(--edge-pad);
+  bottom: var(--edge-pad);
+  z-index: 20;
+  /* パネル見た目は既存定義をそのまま利用（border, bg など） */
+}
+
+/* 既定配置：左=スクショ(.asideB)、右=ツール(aside) */
+.asideB{ left: var(--edge-pad);  right: auto; }
+aside:not(.asideB){ right: var(--edge-pad); left: auto; }
+
+/* 入れ替え：左右だけ反転（top/bottomは不変） */
+body.swap-sidebars .asideB{ left:auto; right:var(--edge-pad); }
+body.swap-sidebars aside:not(.asideB){ right:auto; left:var(--edge-pad); }
+
+/* ====== 折りたたみ時のスライド（transform で退避） ====== */
+body.asideB-collapsed .asideB{
+  transform: translateX(calc(-100% - 16px));
+  opacity: .96;
+  pointer-events:none;
+}
+body.aside-collapsed aside:not(.asideB){
+  transform: translateX(calc(100% + 16px));
+  opacity: .96;
+  pointer-events:none;
+}
+
+/* タブだけは逆向きに押し戻して可操作に */
+body.asideB-collapsed .asideB > .asideB-tab{
+  transform: translateX(calc(100% + 16px));
+  pointer-events:auto;
+}
+body.aside-collapsed aside:not(.asideB) > .aside-tab{
+  transform: translateX(calc(-100% - 16px));
+  pointer-events:auto;
+}
+
+/* ====== タブ：常に“外側の端”にピッタリ ====== */
+.asideB-tab{
+  position:absolute;
+  top: 12px;
+  right: -26px; left:auto;            /* 左バーは右へ突き出す */
+  width:26px; height:44px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--btn-bg); border:1px solid var(--btn-border);
+  border-radius:0 8px 8px 0;
+  box-shadow:var(--btn-hover-shadow);
+  z-index:9999; touch-action:manipulation; cursor:pointer;
+}
+/* swap で突き出す方向を反転 */
+body.swap-sidebars .asideB-tab{
+  right:auto; left:-26px;
+  border-radius:8px 0 0 8px;
+}
+
+.aside-tab{
+  position:absolute;
+  top: 12px;
+  left: -26px; right:auto;            /* 右バーは左へ突き出す */
+  width:26px; height:44px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--btn-bg); border:1px solid var(--btn-border);
+  border-radius:8px 0 0 8px;
+  box-shadow:var(--btn-hover-shadow);
+  z-index:9999; touch-action:manipulation; cursor:pointer;
+}
+/* swap で突き出す方向を反転 */
+body.swap-sidebars .aside-tab{
+  left:auto; right:-26px;
+  border-radius:0 8px 8px 0;
+}
 
 </style>
  </head>
