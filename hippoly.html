@@ -48,70 +48,57 @@
 	   	--board-pad: 0px; /* もっとピタ付けしたければ 0 に */
 	    --shot-size: 70px;   /* ← ここを 28px/32px/40px とかに変えればサイズ即反映 */
   		--shot-font: 50px;   /* ← 絵文字の大きさ。サイズ上げたら 20〜24px に */
+	    --edge-pad:0px;
     }
 		
 		
 		
 	main{
+	  position:relative;                 /* ← レイヤー基準点 */
+	  height:100%;
 	  display:grid;
 	  gap:12px;
-	  padding: var(--main-pad-top) 12px 12px;
+	  padding:0px;
+	  margin:0;
 	  overflow:hidden;
-	  grid-template-columns: var(--asideB-cur) minmax(0,1fr) var(--asideR-cur);
-	  transition: grid-template-columns .15s ease;
+	  grid-template-columns: minmax(0,1fr);   /* ← 1カラム固定。内容が動かない */
+	  transition: none;
+	  min-height:0;
+	  inset:0; 
 	}
   
 	body.asideB-collapsed { --asideB-cur: 0px; }
 	body.aside-collapsed  { --asideR-cur: 0px; }
-	body.swap-sidebars main{
-  	grid-template-columns: var(--asideR-cur) minmax(0,1fr) var(--asideB-cur);
-	}
-    
-    
-		.asideB     { order: 0; }
-		.board-wrap { order: 1; }
-		aside       { order: 2; }
 
-		
-		body.swap-sidebars .asideB { order: 2; }
-		body.swap-sidebars aside   { order: 0; }
-    body.swap-sidebars .board-wrap{ order:1; } 
-
-		
-
-	
-	.asideB{
-  	order:0; background:var(--panel-bg); color:var(--text);
-  	border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
-  	overflow:visible;                 
-  	position:relative;
-  	transition: width .15s ease, opacity .15s ease;
-	}
-
-	
+	/* 親を左へ退避 */
 	body.asideB-collapsed .asideB {
-  	width: 0;
-  	padding: 0;
-  	border: none;
-  	opacity: 1;
-  	pointer-events: none;
+	  transform: translateX(calc(-100% - 16px));
+	  opacity: 0.96;
+	  pointer-events: none;
 	}
-	body.asideB-collapsed .asideB > .asideB-tab {
-  	pointer-events: auto; 
+	/* タブだけ逆向きに押し戻す */
+	body.asideB-collapsed .asideB > .asideB-tab{
+	  transform: translateX(calc(100% + 16px));  /* 親 transform を打ち消す */
+	  pointer-events: auto;
+	  z-index: 10000;
 	}
-  
+	/* display:none は使わない */
+	body.asideB-collapsed .asideB > *:not(.asideB-tab){
+	  display: block;
+	}
 	
-	body.asideB-collapsed .asideB > *:not(.asideB-tab){ display:none; }
-
-	
+	/* 左バーのタブ（常に“外側の端”にぴったり） */
 	.asideB-tab{
-  	position:absolute; right:-26px; top:12px; width:26px; height:44px;
-  	display:flex; align-items:center; justify-content:center;
-  	background:var(--btn-bg); border:1px solid var(--btn-border);
-  	border-radius:0 8px 8px 0;
-  	cursor:pointer; box-shadow:var(--btn-hover-shadow);
-  	z-index:9999; touch-action:manipulation;
-	}
+	  position:absolute;
+	  right: calc(-26px - var(--edge-pad));  /* 余白ぶんも突き出す */
+	  top: var(--edge-pad);                   /* 同じ top を維持 */
+	  	width:26px; height:44px;
+	  	display:flex; align-items:center; justify-content:center;
+	  	background:var(--btn-bg); border:1px solid var(--btn-border);
+	  	border-radius:0 8px 8px 0;
+	  	cursor:pointer; box-shadow:var(--btn-hover-shadow);
+	  	z-index:9999; touch-action:manipulation;
+		}
   
 	body.aside-collapsed .asideB > .asideB-tab{
   	pointer-events:auto;
@@ -120,38 +107,47 @@
 	
 
 	
-	.aside-tab { left:-26px;  border-radius:8px 0 0 8px; }
+	/* 右バーのタブ（常に外側の端へ） */
+	.aside-tab {
+	  position: absolute;
+	  left:  calc(-26px - var(--edge-pad));   /* ← 外側余白ぶんも突き出す */
+	  top:   var(--edge-pad);                 /* ← 上端そろえ */
+	  width: 26px;
+	  height: 44px;
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+	  background: var(--btn-bg);
+	  border: 1px solid var(--btn-border);
+	  border-radius: 8px 0 0 8px;
+	  cursor: pointer;
+	  box-shadow: var(--btn-hover-shadow);
+	  user-select: none;
+	  -webkit-user-select: none;
+	  touch-action: manipulation;
+	  z-index: 10000;
+	}
+
 	
+	/* サイドバー入れ替え時（突き出す方向だけ反転） */
 	body.swap-sidebars .aside-tab{
-  	left:auto; right:-26px;
-  	border-radius:0 8px 8px 0;
+	  left:auto; right: calc(-26px - var(--edge-pad));
 	}
-
-	
 	body.swap-sidebars .asideB-tab{
-  	left:-26px; right:auto;
-  	border-radius:8px 0 0 8px;
+	  left: calc(-26px - var(--edge-pad)); right:auto;
 	}
 
 	
-	#thumbList {
-  	display: flex;
-  	flex-direction: column;
-  	gap: 8px;
-
-  	
-  	height: calc(100% - 150px);
-
-  	overflow: auto;
-  	border-top: 1px dashed var(--soft);
-  	padding-top: 8px;
-  	margin-top: 8px;
-
-  	
-  	-webkit-overflow-scrolling: touch;
-
-  	
+	#thumbList{
+	  display:flex; flex-direction:column; gap:8px;
+	  flex:1 1 auto;               /* ← これがミソ。親の中で伸縮する */
+	  min-height:0;                /* ← 子scrollを許すための保険 */
+	  overflow:auto;
+	  border-top:1px dashed var(--soft);
+	  padding-top:8px; margin-top:8px;
+	  -webkit-overflow-scrolling:touch;
 	}
+
 	
 		
 		.thumb{
@@ -313,19 +309,35 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
 .active{ background:var(--btn-active)!important; color:#fff; }
 	  
     aside{
-      order:2; background:var(--panel-bg); color:var(--text); border-radius:14px;
-      padding:12px; box-shadow: var(--panel-shadow);
-      overflow: visible;     
-      position:relative;
-      transition: width .15s ease, opacity .15s ease;
-    }
-    body.aside-collapsed aside:not(.asideB){
-  		width:0; padding:0; border:none; opacity:1;
-  		pointer-events:none;
-		}
-    body.aside-collapsed aside:not(.asideB) > *:not(.aside-tab){
-  		display:none;
-		}
+	  order:2;
+	  position:absolute;                  /* ← レイヤーにする */
+	  top:12px; right:12px; bottom:12px;  /* ← 右上固定。左は自動 */
+	  width: var(--aside-width, 320px);
+	  max-height: calc(100% - 24px);
+	  display:flex; flex-direction:column; min-height:0;
+	  background:var(--panel-bg); color:var(--text);
+	  border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
+	  overflow:visible;                    /* 中のリストにスクロールを委任 */
+	  z-index:20;
+	  transition: transform .2s ease, opacity .2s ease;  /* width ではなく transform をトランジション */
+	}
+    /* 親を右へ退避 */
+	body.aside-collapsed aside:not(.asideB){
+	  transform: translateX(calc(100% + 16px));
+	  opacity: 0.96;
+	  pointer-events: none;
+	}
+	/* タブだけ逆向きに押し戻す */
+	body.aside-collapsed aside:not(.asideB) > .aside-tab{
+	  transform: translateX(calc(-100% - 16px)); /* 親 transform を打ち消す */
+	  pointer-events: auto;
+	  z-index: 10000;
+	}
+	/* display:none は使わない */
+	body.aside-collapsed aside:not(.asideB) > *:not(.aside-tab){
+	  display: block;
+	}
+
     .aside-tab {
       position: absolute;
       left: -26px;
@@ -348,10 +360,16 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
     body.aside-collapsed .aside-tab{ pointer-events:auto; }
 
     .board-wrap{
-	  order:1; background:var(--panel-bg); color:var(--text);
-	  border-radius:14px; padding: var(--board-pad); box-shadow: var(--panel-shadow);
-	  position:relative; min-height:420px; overflow:hidden;
+	  position:absolute;               /* ← mainの中で全画面に広げる */
+	  inset: var(--edge-pad);          /* ← 上下左右12pxずつ余白 */
+	  z-index:10;                      /* ← サイドバーより下に配置 */
+	  background:var(--panel-bg);
+	  color:var(--text);
+	  border-radius:0px;
+	  box-shadow:var(--panel-shadow);
+	  overflow:visible;
 	}
+
 
     .panel-title{font-size:var(--fs-base); color:var(--hint); margin:2px 0 8px;}
     .group{border-top:1px dashed var(--soft); padding-top:8px; margin-top:8px;}
@@ -372,10 +390,10 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
 
 		
 		.asideB .save-all-wrap{
-  		position:absolute; left:12px; right:12px; bottom:12px;
+		  flex:0 0 auto;
+		  margin-top:8px;
+		  position:static;
 		}
-		.asideB .save-all-wrap button{ width:100%; }
-
     
     canvas.draw, canvas.cursor-layer{
       position:absolute; inset:0; width:100%; height:100%; pointer-events:none; touch-action:none;
@@ -399,8 +417,6 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
       cursor:grab;
     }
     .rot-handle:active{ cursor:grabbing; }
-
-    .badgebar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;}
     .badge{ background:var(--badge-bg); color:var(--badge-text);
   		border:1px solid var(--badge-border); border-radius:10px; padding:6px 10px; font-size:var(--fs-base);
 		}
@@ -584,8 +600,6 @@ body.header-tools-collapsed .header-tools .tools-inner{ display:none; }
 
 /* ========== grid visibility hardening ========== */
 html, body { height: 100%; }
-main { min-height: calc(100vh - 48px); }
-.board-wrap { height: 100%; min-height: 200px; }
 #board { display: block; width: 100%; height: 100%; }
 canvas#drawCanvas, canvas#cursorCanvas { display:block; width:100%; height:100%; }
 
@@ -598,10 +612,6 @@ main{ box-sizing:border-box; }
 .board-wrap{ box-sizing:border-box; }
 #board{ display:block; width:100%; height:100%; }
 canvas#drawCanvas, canvas#cursorCanvas{ display:block; width:100%; height:100%; }
-/* fixed ヘッダの時だけ特別扱い。sticky は自然に積まれるので余白は足さない */
-body.header-fixed main{ padding-top: 0; }
-body.header-fixed .board-wrap{ height: auto; }
-/* 高さ確保は JS の ensureLayout でやる。ここでは何も足さない */
 
 /* === header tab menu === */
 .header-actions.right{ position:relative; margin-left:auto; display:flex; align-items:center; gap:.5rem; }
@@ -632,7 +642,83 @@ body.header-fixed .board-wrap{ height: auto; }
 .toolbar > div:first-child > .group{
   flex-basis: 100%;
 }
+/* ====== overlay：top/bottom固定、左右だけ入れ替え ====== */
+main{ position:relative; } /* 親基準 */
 
+.asideB,
+aside:not(.asideB){
+  position:absolute;
+  top: var(--edge-pad);
+  bottom: var(--edge-pad);
+  z-index: 20;
+  /* パネル見た目は既存定義をそのまま利用（border, bg など） */
+}
+
+/* 既定配置：左=スクショ(.asideB)、右=ツール(aside) */
+.asideB{ left: var(--edge-pad);  right: auto; }
+aside:not(.asideB){ right: var(--edge-pad); left: auto; }
+
+/* 入れ替え：左右だけ反転（top/bottomは不変） */
+body.swap-sidebars .asideB{ left:auto; right:var(--edge-pad); }
+body.swap-sidebars aside:not(.asideB){ right:auto; left:var(--edge-pad); }
+
+/* ====== 折りたたみ時のスライド（transform で退避） ====== */
+body.asideB-collapsed .asideB{
+  transform: translateX(calc(-100% - 16px));
+  opacity: .96;
+  pointer-events:none;
+}
+body.aside-collapsed aside:not(.asideB){
+  transform: translateX(calc(100% + 16px));
+  opacity: .96;
+  pointer-events:none;
+}
+
+/* タブだけは逆向きに押し戻して可操作に */
+body.asideB-collapsed .asideB > .asideB-tab{
+  transform: translateX(calc(100% + 16px));
+  pointer-events:auto;
+}
+body.aside-collapsed aside:not(.asideB) > .aside-tab{
+  transform: translateX(calc(-100% - 16px));
+  pointer-events:auto;
+}
+
+/* ====== タブ：常に“外側の端”にピッタリ ====== */
+.asideB-tab{
+  position:absolute;
+  top: 12px;
+  right: calc(-26px - 1px); 
+　left:auto;            /* 左バーは右へ突き出す */
+  width:26px; height:44px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--btn-bg); border:1px solid var(--btn-border);
+  border-radius:0 8px 8px 0;
+  box-shadow:var(--btn-hover-shadow);
+  z-index:9999; touch-action:manipulation; cursor:pointer;
+}
+/* swap で突き出す方向を反転 */
+body.swap-sidebars .asideB-tab{
+  right:auto; left:calc(-26px - 1px);
+  border-radius:8px 0 0 8px;
+}
+
+.aside-tab{
+  position:absolute;
+  top: 12px;
+  left: calc(-26px - 1px); right:auto;            /* 右バーは左へ突き出す */
+  width:26px; height:44px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--btn-bg); border:1px solid var(--btn-border);
+  border-radius:8px 0 0 8px;
+  box-shadow:var(--btn-hover-shadow);
+  z-index:9999; touch-action:manipulation; cursor:pointer;
+}
+/* swap で突き出す方向を反転 */
+body.swap-sidebars .aside-tab{
+  left:auto; right:calc(-26px - 1px);
+  border-radius:0 8px 8px 0;
+}
 
 </style>
  </head>
@@ -689,7 +775,6 @@ body.header-fixed .board-wrap{ height: auto; }
   <main>
    <aside class="asideB">
     <div class="asideB-tab" id="asideBTab" title="開閉">
-     ▼
     </div>
     <div class="panel-title">
      スクショ
@@ -709,48 +794,9 @@ body.header-fixed .board-wrap{ height: auto; }
     </canvas>
     <canvas class="cursor-layer" id="cursorCanvas">
     </canvas>
-    <div class="badgebar">
-     <span class="badge">
-      選択:
-      <strong id="selType">
-       —
-      </strong>
-     </span>
-     <span class="badge">
-      <span id="wLabel">
-       幅
-      </span>
-      :
-      <strong id="w">
-       —
-      </strong>
-      <span id="u1">
-       cm
-      </span>
-     </span>
-     <span class="badge">
-      <span id="hLabel">
-       高さ
-      </span>
-      :
-      <strong id="h">
-       —
-      </strong>
-      <span id="u2">
-       cm
-      </span>
-     </span>
-     <span class="badge">
-      頂点:
-      <strong id="vh">
-       —
-      </strong>
-     </span>
-    </div>
    </div>
    <aside>
     <div class="aside-tab" id="asideTab" title="折りたたむ/戻す">
-     ▶
     </div>
     <div class="panel-title">
      ツール
