@@ -49,46 +49,73 @@
 	    --shot-size: 70px;   /* ← ここを 28px/32px/40px とかに変えればサイズ即反映 */
   		--shot-font: 50px;   /* ← 絵文字の大きさ。サイズ上げたら 20〜24px に */
     }
-		
-		
-		
-	main{
-	  display:grid;
-	  gap:12px;
-	  padding: var(--main-pad-top) 12px 12px;
-	  overflow:hidden;
-	  grid-template-columns: var(--asideB-cur) minmax(0,1fr) var(--asideR-cur);
-	  transition: grid-template-columns .15s ease;
-	}
-  
-	body.asideB-collapsed { --asideB-cur: 0px; }
-	body.aside-collapsed  { --asideR-cur: 0px; }
-	body.swap-sidebars main{
-  	grid-template-columns: var(--asideR-cur) minmax(0,1fr) var(--asideB-cur);
-	}
-    
-    
-		.asideB     { order: 0; }
-		.board-wrap { order: 1; }
-		aside       { order: 2; }
-
-		
-		body.swap-sidebars .asideB { order: 2; }
-		body.swap-sidebars aside   { order: 0; }
-    body.swap-sidebars .board-wrap{ order:1; } 
-
-		
-
 	
-	.asideB{
-  	order:0; background:var(--panel-bg); color:var(--text);
-  	border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
-  	overflow:visible;                 
-  	position:relative;
-  	transition: width .15s ease, opacity .15s ease;
-	}
+main {
+  position: relative;
+  display: block !important;       /* ← grid無効化 */
+  padding: 8px;
+  overflow: hidden;
+}
 
-	
+/* 左側サイドバー：オーバーレイ化 */
+.asideB {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 8px;
+  width: var(--asideB-width, 220px);
+  z-index: 5;
+  background: var(--panel-bg);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: var(--panel-shadow);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  transition: transform .2s ease, opacity .15s ease;
+}
+
+body.asideB-collapsed .asideB {
+  transform: translateX(calc(-1 * (var(--asideB-width, 220px) + 16px)));
+  opacity: 1;
+  pointer-events: none;
+}
+body.asideB-collapsed .asideB > .asideB-tab { pointer-events: auto; }
+
+/* 右ツールバーも同様に重ねる */
+aside:not(.asideB) {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  right: 8px;
+  width: var(--aside-width, 320px);
+  z-index: 5;
+  transition: transform .2s ease, opacity .15s ease;
+}
+body.aside-collapsed aside:not(.asideB) {
+  transform: translateX(calc(var(--aside-width, 320px) + 16px));
+}
+
+#thumbList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+
+  border-top: 1px dashed var(--soft);
+  padding-top: 8px;
+  margin-top: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.asideB .save-all-wrap {
+  flex: 0 0 auto;
+  margin-top: 8px;
+}
+	  
 	body.asideB-collapsed .asideB {
   	width: 0;
   	padding: 0;
@@ -886,6 +913,9 @@ body.header-fixed .board-wrap{ height: auto; }
         <button id="flipV" title="上下反転">
          ⇕ 反転
         </button>
+		<button data-tool="lasso" title="範囲選択して一括移動">
+  		⭕ 一括移動
+		</button>
        </div>
       </div>
       <div class="group">
@@ -1261,38 +1291,40 @@ body.header-fixed .board-wrap{ height: auto; }
     	else if (y > r.bottom - margin) uiB.list.scrollTop += 12;
   	};
 
-  	const onPointerUpOrCancel = (e) => {
-    	if (e.pointerId !== pointerId) return;
-    	try { handleEl.releasePointerCapture(pointerId); } catch(_){}
-    	pointerId = null;
+  	// ★サムネD&D用：キャンバス用と衝突しない名前に変更
+	const onThumbPointerUpOrCancel = (e) => {
+	  if (e.pointerId !== pointerId) return;
+	  try { handleEl.releasePointerCapture(pointerId); } catch(_){}
+	  pointerId = null;
+	
+	  if (dragging) {
+	    dragging = false;
+	    uiB.list.classList.remove('dragging');
+	    rowEl.classList.remove('dragging');
+	    syncSnapsFromDOM();
+	    renumberThumbCaptions();
+	  }
+	
+	  window.removeEventListener('pointermove', onPointerMove, {passive:false});
+	  window.removeEventListener('pointerup', onThumbPointerUpOrCancel, {passive:false});
+	  window.removeEventListener('pointercancel', onThumbPointerUpOrCancel, {passive:false});
+	};
 
-    	if (dragging) {
-      	dragging = false;
-      	uiB.list.classList.remove('dragging');
-      	rowEl.classList.remove('dragging');
-      	syncSnapsFromDOM();
-      	renumberThumbCaptions();
-    	}
-
-    	window.removeEventListener('pointermove', onPointerMove, {passive:false});
-    	window.removeEventListener('pointerup', onPointerUpOrCancel, {passive:false});
-    	window.removeEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
-  	};
 
   	handleEl.addEventListener('pointerdown', (e) => {
-    	e.preventDefault(); 
-    	pointerId = e.pointerId;
-    	try { handleEl.setPointerCapture(pointerId); } catch(_){}
-
-    	dragging = true;
-    	uiB.list.classList.add('dragging');
-    	rowEl.classList.add('dragging');
-
-    	window.addEventListener('pointermove', onPointerMove, {passive:false});
-    	window.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
-    	window.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
-  	}, {passive:false});
-	}
+	  e.preventDefault(); 
+	  pointerId = e.pointerId;
+	  try { handleEl.setPointerCapture(pointerId); } catch(_){}
+	
+	  dragging = true;
+	  uiB.list.classList.add('dragging');
+	  rowEl.classList.add('dragging');
+	
+	  window.addEventListener('pointermove', onPointerMove, {passive:false});
+	  window.addEventListener('pointerup', onThumbPointerUpOrCancel, {passive:false});
+	  window.addEventListener('pointercancel', onThumbPointerUpOrCancel, {passive:false});
+	}, {passive:false});
+}
 
 	
 	function getAfterElement(container, y){
@@ -1400,8 +1432,10 @@ document.body.classList.toggle('swap-sidebars');
     themeToggle:document.getElementById('themeToggle'),
     asideTab:document.getElementById('asideTab')
   };
-  
-
+  	state.lassoRect = null;       // {x,y,w,h} or null
+	state.multiSel  = [];         // 選択対象の配列（{kind:'shape'|'stroke'|'note', ref, initPts/initPos}）
+	  
+	state._erasedIds = new Set();
   
   function ensureLayout(){
     const header = document.querySelector('header');
@@ -1562,6 +1596,45 @@ document.body.classList.toggle('swap-sidebars');
     const pr = projectToSegments(x,y);
     return pr || null;
   }
+	  /* === 直線ペン用スナップ補助（頂点/辺/自由） [ADD] === */
+	// 始点スナップ：頂点優先 → 辺射影 → 自由
+	function snapStartPoint(p){
+	  const tol = state.snapTol || 16;
+	
+	  // 頂点に吸着
+	  for (const sh of state.shapes) {
+	    for (const v of sh.points) {
+	      if (Math.hypot(p.x - v[0], p.y - v[1]) <= tol) {
+	        return { mode:'vertex', start:{ x:v[0], y:v[1] } };
+	      }
+	    }
+	  }
+	
+	  // 近い辺に射影
+	  const pr = projectToSegments(p.x, p.y);
+	  if (pr && Math.hypot(p.x - pr.x, p.y - pr.y) <= tol) {
+	    // 最も近い辺を特定
+	    let bestEdge = null, bestD = tol + 1;
+	    const segs = candidates._segs || [];
+	    for (const [a,b] of segs) {
+	      const t = projectPointToSeg(p, {0:a[0],1:a[1]}, {0:b[0],1:b[1]});
+	      if (t && t.d < bestD) { bestD = t.d; bestEdge = { a, b }; }
+	    }
+	    if (bestEdge) return { mode:'edge', start:{ x:pr.x, y:pr.y }, edge: bestEdge };
+	  }
+	
+	  // 自由
+	  return { mode:'free', start:{ x:p.x, y:p.y } };
+	}
+	
+	// 辺上に拘束（射影）
+	if (typeof constrainOnEdge !== 'function') {
+	  function constrainOnEdge(p, edge){
+	    const pr = projectPointToSeg(p, {0:edge.a[0],1:edge.a[1]}, {0:edge.b[0],1:edge.b[1]});
+	    return pr ? { x: pr.x, y: pr.y } : p;
+	  }
+	}
+
 
   function nearestFrame(x,y){
     const W=board.clientWidth, H=board.clientHeight;
@@ -1721,6 +1794,7 @@ document.body.classList.toggle('swap-sidebars');
 
       div.addEventListener('pointerdown',(e)=>{
         e.stopPropagation();
+		setTool('edit');
         state.selNoteId=n.id;
         updateNoteHeaderPanel();
         const startPt = ptBoard(e);
@@ -2000,9 +2074,16 @@ document.body.classList.toggle('swap-sidebars');
 
   	if (state.tool === 'erase'){
     	e.preventDefault();
+		if (state.eraserMode === 'object') {
+    	state._erasedIds = new Set();
+    	if (!state._opPushed) { 
+	  　pushHistory(); 
+	  　state._opPushed = true; 
+		　}
+	  　}
     	handleEraserDown(e, p0);
     	return;
-  	}
+  	　}
 	}, {passive:false});
 
   drawCanvas.addEventListener('pointermove', (e)=>{
@@ -2029,6 +2110,14 @@ document.body.classList.toggle('swap-sidebars');
   return;
 }
 
+ if (state.tool === 'erase' && state.eraserMode === 'object') {
+    e.preventDefault();
+    const removed = eraseNearestDrawAction(p);
+    if (removed) {
+      redrawCanvas();
+    }
+    return;
+  }  
 
     if(!state.dragging) { return; }
     if(state.dragging.mode==='draw'){
@@ -2104,73 +2193,129 @@ document.body.classList.toggle('swap-sidebars');
 
  function onPointerUpOrCancel(e){
   // ★ 直線ドラッグ確定（頂点/辺/自由のいずれで開始しても統一処理）
-  if (state.tool === 'draw' && state.penStraight && state.__draggingStraight) {
-    const p = state.pointerPos || pt(e);
-    let a = state.__lineStart;
-    let b = p;
-    if (state.__lineMode === 'edge' && state.__lineEdge) {
-      b = constrainOnEdge(p, state.__lineEdge);   // 辺に沿って拘束
-    }
-    state.actions.push({
-      type: 'draw',
-      color: state.penColor,
-      width: state.penThickness,
-      pts: [[a.x, a.y], [b.x, b.y]]
-    });
-	  
-	// ★ 履歴（開始時に積んでいなければここで）
-  	if (!state._opPushed) pushHistory();
-  	state._opPushed = false;
-	  
-    // 片付け
-    state._previewStroke      = null;
-    state.__draggingStraight  = false;
-    state.__lineMode          = null;
-    state.__lineStart         = null;
-    state.__lineEdge          = null;
+	if (state.tool === 'draw' && state.penStraight && state.__draggingStraight) {
+	  const p = state.pointerPos || pt(e);
+	  let a = state.__lineStart;
+	  let b = p;
+	  if (state.__lineMode === 'edge' && state.__lineEdge) {
+	    b = constrainOnEdge(p, state.__lineEdge);   // 辺に沿って拘束
+	  }
+	  state.actions.push({
+	    type: 'draw',
+	    color: state.penColor,
+	    width: state.penThickness,
+	    pts: [[a.x, a.y], [b.x, b.y]]
+	  });
+	
+	  // ★ 履歴（開始時に積んでいなければここで）
+	  if (!state._opPushed) pushHistory();
+	  state._opPushed = false;
+	
+	  // 片付け
+	  state._previewStroke      = null;
+	  state.__draggingStraight  = false;
+	  state.__lineMode          = null;
+	  state.__lineStart         = null;
+	  state.__lineEdge          = null;
+	  redrawCanvas();
+	  redrawCursorOverlay();
+	  return;
+	}
+
+
+  // ★ オブジェクト消し：ストローク確定はない → 履歴だけ積んで終了
+  if (state.tool === 'erase' && state.eraserMode === 'object') {
+    if (!state._opPushed) pushHistory();
+    state._opPushed = false;
     redrawCanvas();
-    redrawCursorOverlay();
-    // ここで return。下の汎用処理に落とさない
     return;
   }
 
-  	if(!state.dragging) return;
-  	const m = state.dragging.mode;
+  // ★ ラッソー（矩形選択）確定 → groupMove へ移行
+  if (state.dragging && state.dragging.mode === 'lassoRect') {
+    const r = state.lassoRect;
+    state.multiSel = [];
 
-  	if(m==='move' || m==='vertex' || m==='bbox' || m==='noteMove' || m==='noteResize' || m==='rotateFree'){ 
-    	pushHistory(); 
-  	}
-  	if(m==='draw'){
-	  finishStroke();
-	  if (!state._opPushed) pushHistory();
-	  state._opPushed = false;
-	  redrawCanvas();
-	}
+    // 図形（bbox が矩形に完全内包）
+    for (const sh of state.shapes) {
+      const bb = bbox(sh.points);
+      if (bb.x >= r.x && bb.y >= r.y && bb.x+bb.w <= r.x+r.w && bb.y+bb.h <= r.y+r.h) {
+        state.multiSel.push({ kind:'shape', ref: sh, initPts: sh.points.map(q=>q.slice()) });
+      }
+    }
+    // メモ
+    for (const n of state.notes) {
+      if (n.x >= r.x && n.y >= r.y && n.x+n.w <= r.x+r.w && n.y+n.h <= r.y+r.h) {
+        state.multiSel.push({ kind:'note', ref: n, initPos:{x:n.x,y:n.y} });
+      }
+    }
+    // 手書き（全点が範囲内）
+    for (const a of state.actions) {
+      if (a.type==='draw' && a.pts.length){
+        const inside = a.pts.every(([x,y])=> x>=r.x && y>=r.y && x<=r.x+r.w && y<=r.y+r.h);
+        if (inside) state.multiSel.push({ kind:'stroke', ref:a, initPts: a.pts.map(p=>p.slice()) });
+      }
+    }
 
-  	if(m==='erasePixel'){
-	  finishEraseStroke();
-	  if (!state._opPushed) pushHistory();
-	  state._opPushed = false;
-	  redrawCanvas();
-	}
+    // 何か選べたら groupMove に遷移、なければキャンセル
+    if (state.multiSel.length) {
+      state.dragging = { mode:'groupMove', start: state.pointerPos };
+    } else {
+      state.dragging = null;
+    }
+    state.lassoRect = null;
+    redrawCursorOverlay();
+    return;
+  }
 
-  	if(m==='split'){ 
-    	finishSplit(); pushHistory(); 
-  	}
+	 
+  if(!state.dragging) return;
+  const m = state.dragging.mode;
 
-  	
-  	try { drawCanvas.releasePointerCapture(e.pointerId); } catch(_) {}
-  	try { board.releasePointerCapture(e.pointerId); } catch(_) {}
+  if(m==='move' || m==='vertex' || m==='bbox' || m==='noteMove' || m==='noteResize' || m==='rotateFree'){ 
+    pushHistory(); 
+  }
+  if(m==='draw'){
+    finishStroke();
+    if (!state._opPushed) pushHistory();
+    state._opPushed = false;
+    redrawCanvas();
+  }
 
-  	state.pointerCaptured = false;
+  // ★ ピクセル消しは「ストローク確定」が必要（従来通り）
+  if(m==='erasePixel'){
+    finishEraseStroke();
+    if (!state._opPushed) pushHistory();
+    state._opPushed = false;
+    redrawCanvas();
+  }
 
-  	if (state.drawingPointerId === e.pointerId) {
-    	state.drawingPointerId = null;
-  	}
+  if(m==='split'){ 
+    finishSplit(); pushHistory(); 
+  }
 
-  	state.dragging = null;
-  	redrawCursorOverlay();
-	}
+　/* === ⑤-3E: groupMove終了（追加） === */
+　if (state.dragging && state.dragging.mode === 'groupMove') {
+  　pushHistory();
+  　state.dragging = null;
+  　redrawCursorOverlay();
+  　return;
+　}
+
+	 
+  try { drawCanvas.releasePointerCapture(e.pointerId); } catch(_) {}
+  try { board.releasePointerCapture(e.pointerId); } catch(_) {}
+
+  state.pointerCaptured = false;
+
+  if (state.drawingPointerId === e.pointerId) {
+    state.drawingPointerId = null;
+  }
+
+  state.dragging = null;
+  redrawCursorOverlay();
+}
+
   board.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
   board.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
   window.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
@@ -2334,32 +2479,53 @@ document.body.classList.toggle('swap-sidebars');
     state.actions.push({type:'draw', color:s.color, width:s.width, pts:s.pts});
   }
 
-  function handleEraserDown(e, p){
-    const m=state.eraserMode;
-    if(m==='clear'){
-      state.actions = [];
-      redrawCanvas(); pushHistory(); return;
-    }
-    if(m==='object'){
-      eraseNearestDrawAction(p);
-      redrawCanvas(); pushHistory(); return;
-    }
-    if(m==='pixel'){
-  		state.dragging = { mode:'erasePixel', eraser:{ pts:[[p.x,p.y]], radius: state.eraserSize } };
-  		try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
-  		redrawCanvas();
-  		return;
-		}
+  /* === [REPLACE] 連続消し対応の前準備＆Undoを正しく積むための順序修正 === */
+/* 検索ワード：function handleEraserDown( */
+function handleEraserDown(e, p){
+  const m = state.eraserMode;
+
+  if (m === 'clear'){
+    // 先に履歴を積む（＝元の状態をUndoで戻せる）
+    pushHistory();
+    state.actions = [];
+    redrawCanvas();
+    return;
   }
+
+  if (m === 'object'){
+    // 先に履歴を積む（＝この消去もUndoで戻せる）
+    pushHistory();
+    eraseNearestDrawAction(p);
+    redrawCanvas();
+    return;
+  }
+
+  if (m === 'pixel'){
+    // ピクセル消しはドラッグ終了時（onPointerUp）で pushHistory 済み
+    state.dragging = {
+      mode:'erasePixel',
+      eraser:{ pts:[[p.x,p.y]], radius: state.eraserSize }
+    };
+    try { drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured = true; } catch(_){}
+    redrawCanvas();
+    return;
+  }
+}
+
   function eraseNearestDrawAction(p){
-    let bestd=1e9, idx=-1;
-    state.actions.forEach((a,i)=>{
-      if(a.type!=='draw') return;
-      const d=polylineDist(a.pts,p);
-      if(d<bestd){ bestd=d; idx=i; }
-    });
-    if(idx>=0) state.actions.splice(idx,1);
-  }
+	  let bestd = 1e9, idx = -1;
+	  for (let i = 0; i < state.actions.length; i++){
+	    const a = state.actions[i];
+	    if (a.type !== 'draw') continue;
+	    const d = polylineDist(a.pts, p);
+	    if (d < bestd){ bestd = d; idx = i; }
+	  }
+	  if (idx >= 0){
+	    state.actions.splice(idx, 1);
+	    return true;
+	  }
+	  return false;
+	}
   function addErasePoint(p){
     if(state.dragging?.mode!=='erasePixel') return;
     state.dragging.eraser.pts.push([p.x,p.y]);
