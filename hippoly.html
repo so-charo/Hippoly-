@@ -48,6 +48,7 @@
 	   	--board-pad: 0px; /* もっとピタ付けしたければ 0 に */
 	    --shot-size: 70px;   /* ← ここを 28px/32px/40px とかに変えればサイズ即反映 */
   		--shot-font: 50px;   /* ← 絵文字の大きさ。サイズ上げたら 20〜24px に */
+	    --edge-pad: 12px;
     }
 		
 		
@@ -72,43 +73,34 @@
 	
 	/* 左のスクショバー（オーバーレイ化） */
 	.asideB{
-	  position:absolute;                 /* ← レイヤー化 */
-	  inset:auto auto 12px 12px;         /* 左下寄せ（top は後で指定） */
-	  top:12px;                          /* ヘッダと被らないように上マージン */
+	  position:absolute;
+	  inset:auto auto var(--edge-pad) var(--edge-pad); /* 外側余白は変数 */
+	  top: var(--edge-pad);
 	  width: var(--asideB-width, 220px);
-	  max-height: calc(100% - 24px);     /* 枠内に収める */
-	  display:flex; flex-direction:column; min-height:0;
-	  background:var(--panel-bg); color:var(--text);
-	  border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
-	  z-index: 20;                        /* ボードより前 */
-	  transition: transform .2s ease, opacity .2s ease;
+	  max-height: calc(100% - (var(--edge-pad) * 2));
+	  /* ...他はそのまま... */
 	}
 	
 	/* 右のツールバー（オーバーレイ化） */
 	aside:not(.asideB){
 	  position:absolute;
-	  inset:auto 12px 12px auto;
-	  top:12px;
+	  inset:auto var(--edge-pad) var(--edge-pad) auto;
+	  top: var(--edge-pad);
 	  width: var(--aside-width, 320px);
-	  max-height: calc(100% - 24px);
-	  display:flex; flex-direction:column; min-height:0;
-	  background:var(--panel-bg); color:var(--text);
-	  border-radius:14px; padding:12px; box-shadow: var(--panel-shadow);
-	  z-index: 20;
-	  transition: transform .2s ease, opacity .2s ease;
+	  max-height: calc(100% - (var(--edge-pad) * 2));
+	  /* ...他はそのまま... */
 	}
-	/* swap 時は左右の“位置”だけ入れ替え */
+	
+	/* swap 時は左右の“位置”だけ入れ替え（top は固定のまま） */
 	body.swap-sidebars .asideB{
-	  inset:auto 12px 12px auto;  /* 右に配置 */
-	  left:auto; right:12px;
+	  inset:auto var(--edge-pad) var(--edge-pad) auto; /* 右に配置 */
+	  left:auto; right:var(--edge-pad);
 	}
 	body.swap-sidebars aside:not(.asideB){
-	  inset:auto auto 12px 12px;  /* 左に配置 */
-	  right:auto; left:12px;
+	  inset:auto auto var(--edge-pad) var(--edge-pad); /* 左に配置 */
+	  right:auto; left:var(--edge-pad);
 	}
 
-	  
-	/* スナップ一覧は中でスクロール */
 
 
 
@@ -129,14 +121,18 @@
 	  display: block;
 	}
 	
+	/* 左バーのタブ（常に“外側の端”にぴったり） */
 	.asideB-tab{
-  	position:absolute; right:-26px; top:12px; width:26px; height:44px;
-  	display:flex; align-items:center; justify-content:center;
-  	background:var(--btn-bg); border:1px solid var(--btn-border);
-  	border-radius:0 8px 8px 0;
-  	cursor:pointer; box-shadow:var(--btn-hover-shadow);
-  	z-index:9999; touch-action:manipulation;
-	}
+	  position:absolute;
+	  right: calc(-26px - var(--edge-pad));  /* 余白ぶんも突き出す */
+	  top: var(--edge-pad);                   /* 同じ top を維持 */
+	  	width:26px; height:44px;
+	  	display:flex; align-items:center; justify-content:center;
+	  	background:var(--btn-bg); border:1px solid var(--btn-border);
+	  	border-radius:0 8px 8px 0;
+	  	cursor:pointer; box-shadow:var(--btn-hover-shadow);
+	  	z-index:9999; touch-action:manipulation;
+		}
   
 	body.aside-collapsed .asideB > .asideB-tab{
   	pointer-events:auto;
@@ -145,17 +141,34 @@
 	
 
 	
-	.aside-tab { left:-26px;  border-radius:8px 0 0 8px; }
-	
-	body.swap-sidebars .aside-tab{
-  	left:auto; right:-26px;
-  	border-radius:0 8px 8px 0;
+	/* 右バーのタブ（常に外側の端へ） */
+	.aside-tab {
+	  position: absolute;
+	  left:  calc(-26px - var(--edge-pad));   /* ← 外側余白ぶんも突き出す */
+	  top:   var(--edge-pad);                 /* ← 上端そろえ */
+	  width: 26px;
+	  height: 44px;
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+	  background: var(--btn-bg);
+	  border: 1px solid var(--btn-border);
+	  border-radius: 8px 0 0 8px;
+	  cursor: pointer;
+	  box-shadow: var(--btn-hover-shadow);
+	  user-select: none;
+	  -webkit-user-select: none;
+	  touch-action: manipulation;
+	  z-index: 10000;
 	}
 
 	
+	/* サイドバー入れ替え時（突き出す方向だけ反転） */
+	body.swap-sidebars .aside-tab{
+	  left:auto; right: calc(-26px - var(--edge-pad));
+	}
 	body.swap-sidebars .asideB-tab{
-  	left:-26px; right:auto;
-  	border-radius:8px 0 0 8px;
+	  left: calc(-26px - var(--edge-pad)); right:auto;
 	}
 
 	
