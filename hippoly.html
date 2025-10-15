@@ -1629,24 +1629,36 @@ document.body.classList.toggle('swap-sidebars');
   		];
 		}
     if(type==='trap'){
-      const v=Math.floor(Math.random()*3);
-      if(v===0) pts=[[cx,cy],[cx+3*g,cy],[cx+2.5*g,cy+2*g],[cx+0.5*g,cy+2*g]];
-      else if(v===1) pts=[[cx+0.5*g,cy],[cx+2.5*g,cy],[cx+3*g,cy+2*g],[cx,cy+2*g]];
-      else {
-        const L=Math.random()<0.5;
-        pts = L ? [[cx,cy],[cx+2.2*g,cy],[cx+3*g,cy+2*g],[cx,cy+2*g]]
-                : [[cx+0.3*g,cy],[cx+2.3*g,cy],[cx+3.0*g,cy+2*g],[cx+0.8*g,cy+2*g]];
-      }
-    }
-    if (type === 'para') {const g=state.gridPx;const off=state.gridOffset||0;const x0=off+(2-3)*g;const y0=off+(2+1)*g;const base=6*g;const height=4*g;const skew=2*g;pts=[[x0,y0],[x0+base,y0],[x0+base+skew,y0-height],[x0+skew,y0-height]];}
+	  // 単位1マス = g。既存の cx, cy は「上辺の基準（左寄せ）」
+	  const topY = cy;              // 上辺のY
+	  const bottomY = cy + 4*g;     // 高さ4
+	  const baseL = 9*g;            // 下底9
+	  const topL  = 3*g;            // 上底3
+	
+	  // 生成位置: 中心よりも左に2
+	  // ここでは「既存のcx」を基準として、下底の左端(B)を cx-2 に置く
+	  const x0 = cx - 2*g;
+	
+	  // 条件:
+	  // AはBより右に2、DはCより左に4
+	  const B = [x0,            bottomY];        // 下底左
+	  const C = [x0 + baseL,    bottomY];        // 下底右
+	  const A = [x0 + 2*g,      topY];           // 上底左（Bより右に2）
+	  const D = [A[0] + topL,   topY];           // 上底右（= Cより左に4：9-4=5 → A(2)+3=5 OK）
+	
+	  // 画面座標は下向きが+なので、CWは A→D→C→B
+	  pts = [A, D, C, B];
+	}
+
+    if (type === 'para') {const g=state.gridPx;const off=state.gridOffset||0;const x0=off+(2-3+2)*g;const y0=off+(2+1+3)*g;const base=6*g;const height=4*g;const skew=2*g;pts=[[x0,y0],[x0+base,y0],[x0+base+skew,y0-height],[x0+skew,y0-height]];}
     if(type==='rh'){
       const g = state.gridPx;
       const off = state.gridOffset || 0;
       const cmPerGrid = g / pxPerCm;
-      const short = Math.abs(cmPerGrid - 1) < 1e-3 ? 2 * pxPerCm : 2 * g;
-      const long  = Math.abs(cmPerGrid - 1) < 1e-3 ? 4 * pxPerCm : 4 * g;
-      const cxg = off + 3 * g;
-      const cyg = off + 2 * g;
+      const short = Math.abs(cmPerGrid - 1) < 1e-3 ? 4 * pxPerCm : 4 * g;
+      const long  = Math.abs(cmPerGrid - 1) < 1e-3 ? 8 * pxPerCm : 8 * g;
+      const cxg = off + (3+1) * g;
+      const cyg = off + (2+2) * g;
       const top    = [cxg,            cyg - short/2];
       const right  = [cxg + long/2,   cyg];
       const bottom = [cxg,            cyg + short/2];
