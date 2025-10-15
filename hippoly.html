@@ -1659,17 +1659,33 @@ document.body.classList.toggle('swap-sidebars');
 	    const D = [A[0] + topL,   topY];     // DはCより左に4（9-4=5、A=2→D=5で成立）
 	    pts = [A, D, C, B];                  // 時計回り
 	  }else if(v===1){
-	    // ② 直角を含む台形：右2、上底5、下底7、高さ5（左辺を垂直にして直角）
-	    const topL  = 5*g, baseL = 7*g, h = 5*g;
-	    const topY = cy;
-	    const bottomY = cy + h;
-	    const x0 = cx + 2*g;                 // 下底左端Bを右2へ
-	    const A = [x0,          topY];       // 左上（A）
-	    const D = [x0 + topL,   topY];       // 右上（D）
-	    const C = [x0 + baseL,  bottomY];    // 右下（C）
-	    const B = [x0,          bottomY];    // 左下（B）
-	    pts = [A, D, C, B];                  // 時計回り
-	  }else if(v===2){
+	  // ② 直角を含む台形（左に90°回転）
+	  const topL  = 5*g, baseL = 7*g, h = 5*g;
+	  const topY = cy;
+	  const bottomY = cy + h;
+	  const x0 = cx + 2*g; // 下底左端Bを右2へ
+	
+	  // 元の台形（未回転）
+	  let A = [x0,          topY];       // 左上
+	  let D = [x0 + topL,   topY];       // 右上
+	  let C = [x0 + baseL,  bottomY];    // 右下
+	  let B = [x0,          bottomY];    // 左下
+	
+	  // 回転の中心（cx, cy）を基準に反時計回り90°
+	  const cx0 = cx;
+	  const cy0 = cy;
+	  function rotL(p){
+	    const x=p[0], y=p[1];
+	    return [cx0 - (y - cy0), cy0 + (x - cx0)];
+	  }
+	
+	  A = rotL(A);
+	  B = rotL(B);
+	  C = rotL(C);
+	  D = rotL(D);
+	
+	  pts = [A, D, C, B];  // 時計回り
+	}else if(v===2){
 	    // ③ 上底が長い台形：上底8、下底5、高さ5（中心合わせ）
 	    const topL  = 7*g, baseL = 5*g, h = 5*g;
 	    const topY = cy;
