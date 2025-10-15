@@ -1632,8 +1632,8 @@ document.body.classList.toggle('swap-sidebars');
   		const dx     = -1 * grid;    
 
   		
-  		const cx2 = cx + 2 * grid;
-  		const cy2 = cy + 1 * grid;
+  		const cx2 = cx + (2+2) * grid;
+  		const cy2 = cy + (1+1) * grid;
 
   		
   		const x0 = cx2 - base / 2;       
@@ -1712,8 +1712,8 @@ document.body.classList.toggle('swap-sidebars');
       const cmPerGrid = g / pxPerCm;
       const short = Math.abs(cmPerGrid - 1) < 1e-3 ? 4 * pxPerCm : 4 * g;
       const long  = Math.abs(cmPerGrid - 1) < 1e-3 ? 8 * pxPerCm : 8 * g;
-      const cxg = off + (3+1+3) * g;
-      const cyg = off + 2 * g;
+      const cxg = off + (3+3) * g;
+      const cyg = off;
       const top    = [cxg,            cyg - short/2];
       const right  = [cxg + long/2,   cyg];
       const bottom = [cxg,            cyg + short/2];
