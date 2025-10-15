@@ -1612,8 +1612,8 @@ document.body.classList.toggle('swap-sidebars');
 	  const h = 5 * g;  // たて
 	
 	  // グリッドの中心に合わせて配置（中心 = cx, cy）
-	  const x0 = cx - w/2;
-	  const y0 = cy - h/2;
+	  const x0 = (cx - w/2)+5.5*g;
+	  const y0 = (cy - h/2)+2.5*g;
 	
 	  pts = [
 	    [x0,      y0],      // 左上
@@ -1646,50 +1646,65 @@ document.body.classList.toggle('swap-sidebars');
   		];
 		}
    if(type==='trap'){
-	  const v = Math.floor(Math.random()*4); // 0,1,2,3 の4通り
+	  const v = Math.floor(Math.random()*4); // 0..3 の4通り
 	  if(v===0){
-	    // 既存その1
-	    pts=[[cx,cy],[cx+3*g,cy],[cx+2.5*g,cy+2*g],[cx+0.5*g,cy+2*g]];
+	    // ① 追加した台形（上底3, 下底9, 高さ4）位置: 右3, 下1
+	    const topL  = 3*g, baseL = 9*g, h = 4*g;
+	    const topY = cy + 1*g;
+	    const bottomY = topY + h;
+	    const x0 = cx + 3*g;                 // 下底左端Bのx
+	    const B = [x0,            bottomY];
+	    const C = [x0 + baseL,    bottomY];
+	    const A = [x0 + 2*g,      topY];     // AはBより右に2
+	    const D = [A[0] + topL,   topY];     // DはCより左に4（9-4=5、A=2→D=5で成立）
+	    pts = [A, D, C, B];                  // 時計回り
 	  }else if(v===1){
-	    // 既存その2
-	    pts=[[cx+0.5*g,cy],[cx+2.5*g,cy],[cx+3*g,cy+2*g],[cx,cy+2*g]];
+	    // ② 直角を含む台形：右2、上底5、下底7、高さ5（左辺を垂直にして直角）
+	    const topL  = 5*g, baseL = 7*g, h = 5*g;
+	    const topY = cy;
+	    const bottomY = cy + h;
+	    const x0 = cx + 2*g;                 // 下底左端Bを右2へ
+	    const A = [x0,          topY];       // 左上（A）
+	    const D = [x0 + topL,   topY];       // 右上（D）
+	    const C = [x0 + baseL,  bottomY];    // 右下（C）
+	    const B = [x0,          bottomY];    // 左下（B）
+	    pts = [A, D, C, B];                  // 時計回り
 	  }else if(v===2){
-	    // 既存その3（左右ランダム）
-	    const L = Math.random()<0.5;
-	    pts = L
-	      ? [[cx,cy],[cx+2.2*g,cy],[cx+3*g,cy+2*g],[cx,cy+2*g]]
-	      : [[cx+0.3*g,cy],[cx+2.3*g,cy],[cx+3.0*g,cy+2*g],[cx+0.8*g,cy+2*g]];
+	    // ③ 上底が長い台形：上底8、下底5、高さ5（中心合わせ）
+	    const topL  = 8*g, baseL = 5*g, h = 5*g;
+	    const topY = cy;
+	    const bottomY = cy + h;
+	    const x0 = cx;                       // 下底左端B
+	    const B = [x0,           bottomY];
+	    const C = [x0 + baseL,   bottomY];
+	    const topLeft = x0 + baseL/2 - topL/2; // 上下の中心合わせ
+	    const A = [topLeft,       topY];
+	    const D = [topLeft + topL, topY];
+	    pts = [A, D, C, B];                  // 時計回り
 	  }else{
-	    // ★新規追加: 上底3、下底9、高さ4
-	    // AはBより右に2、DはCより左に4。生成位置は中心より左に2。
-	    const topY = cy;            // 上底のY
-	    const bottomY = cy + 4*g;   // 高さ4
-	    const baseL = 9*g;          // 下底9
-	    const topL  = 3*g;          // 上底3
-	
-	    // 下底左端Bを中心より左に2マスへ
-	    const x0 = cx - 2*g;
-	
-	    // 頂点（時計回り: A→D→C→B）
-	    const B = [x0,             bottomY];        // 下底左
-	    const C = [x0 + baseL,     bottomY];        // 下底右
-	    const A = [x0 + 2*g,       topY];           // AはBより右に2
-	    const D = [A[0] + topL,    topY];           // DはCより左に4（9-4=5、Aが2→Dのx=5で成立）
-	
-	    pts = [A, D, C, B];
+	    // ④ 下底が長い台形（等脚）：上底5、下底8、高さ5（③の上下反転に相当）
+	    const topL  = 5*g, baseL = 8*g, h = 5*g;
+	    const topY = cy;
+	    const bottomY = cy + h;
+	    const x0 = cx;                       // 下底左端B
+	    const B = [x0,           bottomY];
+	    const C = [x0 + baseL,   bottomY];
+	    const topLeft = x0 + baseL/2 - topL/2; // 等脚なので上底は下底の中心に揃える
+	    const A = [topLeft,       topY];
+	    const D = [topLeft + topL, topY];
+	    pts = [A, D, C, B];                  // 時計回り
 	  }
 	}
 
-
-    if (type === 'para') {const g=state.gridPx;const off=state.gridOffset||0;const x0=off+(2-3+2)*g;const y0=off+(2+1+3)*g;const base=6*g;const height=4*g;const skew=2*g;pts=[[x0,y0],[x0+base,y0],[x0+base+skew,y0-height],[x0+skew,y0-height]];}
+    if (type === 'para') {const g=state.gridPx;const off=state.gridOffset||0;const x0=off+(2-3+2+2)*g;const y0=off+(2+1+3+1)*g;const base=6*g;const height=4*g;const skew=2*g;pts=[[x0,y0],[x0+base,y0],[x0+base+skew,y0-height],[x0+skew,y0-height]];}
     if(type==='rh'){
       const g = state.gridPx;
       const off = state.gridOffset || 0;
       const cmPerGrid = g / pxPerCm;
       const short = Math.abs(cmPerGrid - 1) < 1e-3 ? 4 * pxPerCm : 4 * g;
       const long  = Math.abs(cmPerGrid - 1) < 1e-3 ? 8 * pxPerCm : 8 * g;
-      const cxg = off + (3+1) * g;
-      const cyg = off + (2+2) * g;
+      const cxg = off + (3+1+3) * g;
+      const cyg = off + (2+2-1) * g;
       const top    = [cxg,            cyg - short/2];
       const right  = [cxg + long/2,   cyg];
       const bottom = [cxg,            cyg + short/2];
