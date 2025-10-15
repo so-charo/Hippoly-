@@ -44,7 +44,7 @@
   		--asideB-width: 220px;    
   		--asideB-cur: var(--asideB-width); 
   		--asideR-cur: var(--aside-width); 
-	   	--main-pad-top: 4px;  /* ← ここを 0～8px で調整 */
+	   	--main-pad-top: 0px;  /* ← ここを 0～8px で調整 */
 	   	--board-pad: 0px; /* もっとピタ付けしたければ 0 に */
 	    --shot-size: 70px;   /* ← ここを 28px/32px/40px とかに変えればサイズ即反映 */
   		--shot-font: 50px;   /* ← 絵文字の大きさ。サイズ上げたら 20〜24px に */
@@ -372,7 +372,7 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
 
 		
 		.asideB .save-all-wrap{
-  		position:absolute; left:12px; right:12px; bottom:12px;
+  		position:absolute; left:12px; right:12px; bottom:24px;
 		}
 		.asideB .save-all-wrap button{ width:100%; }
 
@@ -632,6 +632,11 @@ body.header-fixed .board-wrap{ height: auto; }
 .toolbar > div:first-child > .group{
   flex-basis: 100%;
 }
+.inline-controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap}
+.inline-controls .toggle,.inline-controls .color-pick{display:inline-flex;align-items:center;gap:4px}
+.inline-controls input[type="checkbox"]{margin:0}
+.vertex-handle{display:none}
+.show-vertices .vertex-handle{display:block}
 
 
 </style>
@@ -749,7 +754,7 @@ body.header-fixed .board-wrap{ height: auto; }
     </div>
    </div>
    <aside>
-    <div class="aside-tab" id="asideTab" title="折りたたむ/戻す">
+    <div class="aside-tab" id="asideTab" title="開閉">
      ▶
     </div>
     <div class="panel-title">
@@ -757,13 +762,13 @@ body.header-fixed .board-wrap{ height: auto; }
     </div>
     <div class="toolbar" id="toolbar">
      <div>
-      <button class="active" data-tool="edit" title="編集/移動（選択・移動・リサイズなど）">
+      <button class="active" data-tool="edit" title="選択・移動・リサイズ">
        <span class="icon">
-        ✋
+        🚀
        </span>
        移動
       </button>
-      <button data-tool="text" title="付箋を1枚配置（配置後は自動で編集モードに戻ります）">
+      <button data-tool="text" title="付箋を1枚配置">
        <span class="icon">
         📝
        </span>
@@ -775,7 +780,7 @@ body.header-fixed .board-wrap{ height: auto; }
         手書き
        </div>
        <div class="draw-row">
-        <button data-tool="draw" title="ペン（キャンバスに自由線を描画）">
+        <button data-tool="draw" title="ペン">
          <span class="icon">
           🖊️
          </span>
@@ -831,22 +836,22 @@ body.header-fixed .board-wrap{ height: auto; }
        <div class="panel-title">
         図形
        </div>
-       <button data-add="rect" title="長方形を追加">
+       <button data-add="rect" title="長方形">
         ▭ 長方形
        </button>
-       <button data-add="para" title="平行四辺形を追加">
+       <button data-add="para" title="平行四辺形">
         ▱ 平行四辺形
        </button>
-       <button data-add="tri" title="三角形（ランダム）を追加">
+       <button data-add="tri" title="三角形">
         △ 三角形
        </button>
-       <button data-add="trap" title="台形（3パターンからランダム）を追加">
+       <button data-add="trap" title="台形4パターン">
         ⏃ 台形
        </button>
-       <button data-add="rh" title="ひし形を追加">
+       <button data-add="rh" title="ひし形">
         ◇ ひし形
        </button>
-       <button id="deleteShape" title="選択図形を削除">
+       <button id="deleteShape" title="図形削除">
         ✖ 削除
        </button>
       </div>
@@ -855,21 +860,12 @@ body.header-fixed .board-wrap{ height: auto; }
         図形編集
        </div>
        <div class="inline-controls">
-        <label class="toggle">
-         <input id="vertexEdit" type="checkbox">
-          頂点編集
-         </input>
-        </label>
-        <label class="toggle">
-         <input id="lockSize" type="checkbox">
-          サイズ固定
-         </input>
-        </label>
-        <label class="color-pick">
-         色
-         <input id="color" type="color" value="#2563eb"/>
-        </label>
+        <label class="toggle"><input id="vertexEdit" type="checkbox">編集</label>
+        <label class="toggle"><input id="lockSize" type="checkbox">固定</label>
+        <label class="toggle"><input id="showVertices" type="checkbox" checked>表示</label>
+        <label class="color-pick">色 <input id="color" type="color" value="#2563eb"/></label>
        </div>
+
        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
         <button id="dup" title="選択図形をコピー">
          ⧉ コピー
@@ -2944,6 +2940,13 @@ document.body.classList.toggle('swap-sidebars');
       }
     };
     requestAnimationFrame(tick);
+    const showVerticesEl=document.getElementById('showVertices');
+      if(showVerticesEl){
+      document.body.classList.toggle('show-vertices',showVerticesEl.checked);
+      showVerticesEl.addEventListener('change',e=>{
+      document.body.classList.toggle('show-vertices',e.target.checked);
+      });
+    }
   }
   refreshSidebarTabIcons();                
 	requestAnimationFrame(refreshSidebarTabIcons); 
