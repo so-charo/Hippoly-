@@ -1713,7 +1713,7 @@ document.body.classList.toggle('swap-sidebars');
       const short = Math.abs(cmPerGrid - 1) < 1e-3 ? 4 * pxPerCm : 4 * g;
       const long  = Math.abs(cmPerGrid - 1) < 1e-3 ? 8 * pxPerCm : 8 * g;
       const cxg = off + (3+3) * g;
-      const cyg = off;
+      const cyg = off+4*g;
       const top    = [cxg,            cyg - short/2];
       const right  = [cxg + long/2,   cyg];
       const bottom = [cxg,            cyg + short/2];
