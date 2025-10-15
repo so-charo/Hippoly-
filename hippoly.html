@@ -1638,23 +1638,7 @@ document.body.classList.toggle('swap-sidebars');
                 : [[cx+0.3*g,cy],[cx+2.3*g,cy],[cx+3.0*g,cy+2*g],[cx+0.8*g,cy+2*g]];
       }
     }
-    if (type === 'para') {
-      const g = state.gridPx;
-      const off = state.gridOffset || 0;
-      const baseCells   = 3;  
-      const heightCells = 2;  
-      const skewCells   = 1;  
-
-      const x0 = off + 2 * g;
-      const y0 = off + 2 * g;
-
-      pts = [
-        [x0,                              y0],
-        [x0 + baseCells * g,              y0],
-        [x0 + (baseCells + skewCells) * g, y0 + heightCells * g],
-        [x0 + skewCells * g,              y0 + heightCells * g]
-      ];
-    }
+    if (type === 'para') {const g=state.gridPx;const off=state.gridOffset||0;const x0=off+(2-3)*g;const y0=off+(2+1)*g;const base=6*g;const height=4*g;const skew=2*g;pts=[[x0,y0],[x0+base,y0],[x0+base+skew,y0-height],[x0+skew,y0-height]];}
     if(type==='rh'){
       const g = state.gridPx;
       const off = state.gridOffset || 0;
@@ -1670,7 +1654,7 @@ document.body.classList.toggle('swap-sidebars');
       pts = [top, right, bottom, left];
     }
 
-    const sh={id:uid(), type, points:pts, fill:ui.color.value, stroke:ui.color.value, userColored: false};
+    const sh={id:uid(), type, points:pts, fill:ui.color.value, stroke:ui.color.value, userColored: false}; __assignLabels(sh);
     state.shapes.push(sh);
 		selectShape(sh);       
 		pushHistory();
@@ -1790,8 +1774,7 @@ document.body.classList.toggle('swap-sidebars');
         }
       }
     }
-    renderNotes();
-    updateBadges();
+    renderNotes(); __renderLabels(); updateBadges();
     updateNoteHeaderPanel();
     setCanvasInteractivity();
     redrawCanvas();
@@ -2468,17 +2451,7 @@ document.body.classList.toggle('swap-sidebars');
       let res=null;
       if(viA!==-1 && viB!==-1 && viA!==viB) res=splitByVertexIndices(sh.points, viA, viB);
       if(!res) res=splitPolygonByLine(sh.points, a, b);
-      if(res && res.length===2){
-        const base={...sh};
-        state.shapes.splice(t,1);
-        const s1Pts=res[0], s2Pts=res[1];
-        const s1Type=autoType(s1Pts);
-        const s2Type=autoType(s2Pts);
-        state.shapes.splice(t,0,
-          {...base,id:uid(),type:s1Type,points:s1Pts},
-          {...base,id:uid(),type:s2Type,points:s2Pts}
-        );
-      }
+      if(res && res.length===2){const base={...sh};state.shapes.splice(t,1);const s1Pts=res[0], s2Pts=res[1];const s1Type=autoType(s1Pts);const s2Type=autoType(s2Pts);const basePts=base.points.slice(); const baseMeta=(base.vmeta||[]).slice();const s1={...base,id:uid(),type:s1Type,points:s1Pts}; s1.vmeta=__mapLabelsFromBase(s1Pts, basePts, baseMeta);const s2={...base,id:uid(),type:s2Type,points:s2Pts}; s2.vmeta=__mapLabelsFromBase(s2Pts, basePts, baseMeta);state.shapes.splice(t,0,s1,s2);}
     }
     if(state.splitPreview) state.splitPreview.remove();
 	updateSplitPin(null);
@@ -3220,6 +3193,78 @@ document.addEventListener('keydown', (e)=>{
   if (e.key.toLowerCase() === 'm') setTool('edit');   // 移動
 });
 	  
+
+/* === Vertex Labels Helpers (CW from top-left; outside placement) === */
+function __assignLabels(sh){
+  const n = (sh.points||[]).length;
+  sh.vmeta = new Array(n).fill(null);
+  if(n===0) return;
+  // centroid
+  let cx=0, cy=0;
+  for(const [x,y] of sh.points){ cx+=x; cy+=y; }
+  cx/=n; cy/=n;
+  // CW order by angle around centroid
+  const idxs = [...sh.points.keys()];
+  idxs.sort((i,j)=>{
+    const ai = Math.atan2(sh.points[i][1]-cy, sh.points[i][0]-cx);
+    const aj = Math.atan2(sh.points[j][1]-cy, sh.points[j][0]-cx);
+    return aj - ai; // CW
+  });
+  // top-left vertex index
+  let tl = 0, bestY = Infinity, bestX = Infinity;
+  for(let i=0;i<n;i++){
+    const [x,y]=sh.points[i];
+    if(y < bestY - 1e-6 || (Math.abs(y - bestY) <= 1e-6 && x < bestX)){ bestY=y; bestX=x; tl=i; }
+  }
+  // rotate order to start at top-left
+  const startPos = idxs.indexOf(tl);
+  const order = startPos>=0 ? idxs.slice(startPos).concat(idxs.slice(0,startPos)) : idxs;
+  const letters=['A','B','C','D'];
+  for(let k=0;k<Math.min(4, order.length);k++){ sh.vmeta[order[k]] = letters[k]; }
+}
+function __ensureLabelsLayer(){
+  if(!document.getElementById('labelsLayer')){
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('id','labelsLayer'); board.appendChild(g);
+  }
+}
+function __renderLabels(){
+  __ensureLabelsLayer();
+  const layer=document.getElementById('labelsLayer'); if(!layer) return;
+  layer.innerHTML='';
+  const font=Math.max(10,Math.round(0.26*state.gridPx));
+  for(const sh of state.shapes){
+    if(!sh?.vmeta || !sh?.points) continue;
+    const n=sh.points.length; if(!n) continue;
+    // centroid
+    let cx=0, cy=0; for(const [x,y] of sh.points){ cx+=x; cy+=y; } cx/=n; cy/=n;
+    for(let i=0;i<n;i++){
+      const label=sh.vmeta[i]; if(!label) continue;
+      const [x,y]=sh.points[i];
+      // vector outward
+      let dx=x-cx, dy=y-cy; const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
+      const pad=Math.max(8, Math.round(0.28*state.gridPx)); // scale with grid
+      const tx=x+dx*pad, ty=y+dy*pad;
+      const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x', String(tx)); t.setAttribute('y', String(ty));
+      t.setAttribute('fill', '#111'); t.setAttribute('font-size', String(font));
+      t.setAttribute('font-family','system-ui,-apple-system,Segoe UI,Roboto,Meiryo,sans-serif');
+      t.textContent=label; layer.appendChild(t);
+    }
+  }
+}
+function __mapLabelsFromBase(newPts, basePts, baseMeta){
+  const vm=new Array(newPts.length).fill(null);
+  for(let i=0;i<newPts.length;i++){
+    const [x,y]=newPts[i];
+    for(let j=0;j<basePts.length;j++){
+      const bp=basePts[j];
+      if(Math.hypot(bp[0]-x,bp[1]-y)<=0.75){ vm[i]=baseMeta[j]||null; break; }
+    }
+  }
+  return vm;
+}
+
 </script>
  </body>
 </html>
