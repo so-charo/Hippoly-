@@ -2053,7 +2053,22 @@ document.body.classList.toggle('swap-sidebars');
 
   drawCanvas.addEventListener('pointermove', (e)=>{
     const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
-    
+    // 連続オブジェクト消去（押しっぱ）中
+    if (state.dragging && state.dragging.mode === 'eraseObject'){
+      e.preventDefault();
+      if (!state._eraseObjRAF){
+        const pos = p;
+        const tol = state.eraserSize || 14;
+        state._eraseObjRAF = requestAnimationFrame(()=>{
+          state._eraseObjRAF = 0;
+          // 触れているときだけ消す
+          const hit = eraseNearestDrawAction(pos, tol);
+          if (hit) redrawCanvas();
+        });
+      }
+      return;
+    }
+
     
   	if (state.tool === 'draw' && state.penStraight && state.__draggingStraight){
   e.preventDefault();
@@ -2149,6 +2164,16 @@ document.body.classList.toggle('swap-sidebars');
   }, {passive:false});
 
  function onPointerUpOrCancel(e){
+  if (state.dragging && state.dragging.mode === 'eraseObject'){
+    // 連続削除の終了。ここで履歴に積む
+    if (!state._opPushed) pushHistory();
+    state._opPushed = false;
+    state.dragging = null;
+    try { drawCanvas.releasePointerCapture(e.pointerId); } catch(_){}
+    redrawCanvas();
+    // 下の共通片付けに落としても良いが、二重で問題は出ない
+  }
+
   // ★ 直線ドラッグ確定（頂点/辺/自由のいずれで開始しても統一処理）
   if (state.tool === 'draw' && state.penStraight && state.__draggingStraight) {
     const p = state.pointerPos || pt(e);
@@ -2386,10 +2411,18 @@ document.body.classList.toggle('swap-sidebars');
       state.actions = [];
       redrawCanvas(); pushHistory(); return;
     }
-    if(m==='object'){
-      eraseNearestDrawAction(p);
-      redrawCanvas(); pushHistory(); return;
+   if(m==='object'){
+      // 連続削除モードに入る
+      state.dragging = { mode:'eraseObject' };
+      try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
+
+      // 押点がしきい値内の時だけ消す
+      eraseNearestDrawAction(p, state.eraserSize || 14);
+      redrawCanvas();
+      return; // 履歴は pointerup で積む
     }
+
+
     if(m==='pixel'){
   		state.dragging = { mode:'erasePixel', eraser:{ pts:[[p.x,p.y]], radius: state.eraserSize } };
   		try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
@@ -2397,15 +2430,30 @@ document.body.classList.toggle('swap-sidebars');
   		return;
 		}
   }
-  function eraseNearestDrawAction(p){
-    let bestd=1e9, idx=-1;
+  function eraseNearestDrawAction(p, tolPx){
+    // tolPx: 当たり許容半径(px)。未指定なら消しゴムサイズ or 16px
+    const baseTol = Math.max((state.eraserSize || 14), 16);
+    const tol = Math.max(4, tolPx || baseTol);
+
+    let bestd = Infinity, idx = -1;
+
     state.actions.forEach((a,i)=>{
-      if(a.type!=='draw') return;
-      const d=polylineDist(a.pts,p);
-      if(d<bestd){ bestd=d; idx=i; }
+      if (a.type !== 'draw') return;
+
+      // 線の太さを当たり判定に加味（太い線ほど当たりやすい）
+      const d = polylineDist(a.pts, p);
+      const width = (a.width != null ? a.width : 2);
+      const effD = d - width * 0.5; // 実質距離（線幅の半分ぶん近く見なす）
+      if (effD < bestd) { bestd = effD; idx = i; }
     });
-    if(idx>=0) state.actions.splice(idx,1);
+
+    if (idx >= 0 && bestd <= tol) {
+      state.actions.splice(idx, 1);
+      return true;  // 消せた
+    }
+    return false;   // 触れてない
   }
+
   function addErasePoint(p){
     if(state.dragging?.mode!=='erasePixel') return;
     state.dragging.eraser.pts.push([p.x,p.y]);
