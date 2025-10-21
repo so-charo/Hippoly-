@@ -2150,8 +2150,10 @@ document.body.classList.toggle('swap-sidebars');
   		const { sh, center, startAngle, initPts } = state.dragging;
   		let ang = Math.atan2(p.y - center.y, p.x - center.x) - startAngle;
   		
-  		const step = (e.shiftKey ? 30 : 15) * Math.PI / 180;
+  		if (e.shiftKey) {
+			const step = 15 * Math.PI / 180;
   		ang = Math.round(ang / step) * step;
+		}
   		sh.points = rotatePointsAround(initPts, center.x, center.y, ang);
   		render();
 		}else if(state.dragging.mode==='split'){
