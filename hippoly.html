@@ -916,7 +916,7 @@ body.header-fixed .board-wrap{ height: auto; }
    </div>
   </main>
   <script>
-   const board=document.getElementById('board');
+   const board=document.getElementById('board');window.board = board;
   const drawCanvas=document.getElementById('drawCanvas');
   const cursorCanvas=document.getElementById('cursorCanvas');
   const eraserSizeSel = document.getElementById('eraserSize');
@@ -965,7 +965,7 @@ body.header-fixed .board-wrap{ height: auto; }
     penStraight: false,      
   	lineAnchor: null,
 	_opPushed: false,
-  };
+  };window.state = state;
   
 	state.snaps = []; 
 
