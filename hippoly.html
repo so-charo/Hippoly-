@@ -943,7 +943,7 @@ main, .board-wrap, .asideB, aside {
    </div>
   </main>
   <script>
-   const board=document.getElementById('board');
+	const board=document.getElementById('board');
   const drawCanvas=document.getElementById('drawCanvas');
   const cursorCanvas=document.getElementById('cursorCanvas');
   const eraserSizeSel = document.getElementById('eraserSize');
@@ -2682,7 +2682,7 @@ document.body.classList.toggle('swap-sidebars');
     if(tool){ setTool(tool); render(); return; }
   });
   ui.gridSize.addEventListener('change', ()=>{
-    const cm=parseInt(ui.gridSize.value,10)||3; state.gridPx=pxPerCm*cm; drawGrid(); render(); redrawCursorOverlay();
+    const cm=parseInt(ui.gridSize.value,10)||2.5; state.gridPx=pxPerCm*cm; drawGrid(); render(); redrawCursorOverlay();
   });
   ui.splitGridSnap.addEventListener('change', ()=>{
 	  state.splitGridSnap = ui.splitGridSnap.checked;
