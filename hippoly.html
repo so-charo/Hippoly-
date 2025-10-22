@@ -885,21 +885,20 @@ body.header-fixed .board-wrap{ height: auto; }
        </div>
       </div>
       <div class="group">
-		  <div class="panel-title" style="display:flex; align-items:center; gap:8px;">
-		    分割
-		    <label class="toggle" style="margin-left:auto; display:inline-flex; align-items:center; gap:4px;">
-		      <input id="splitContinuous" type="checkbox"> 連続カット
-		    </label>
-		  </div>
-	  <div class="split-tools" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-	    <button data-tool="splitLine" title="直線で分割（複数図形にも対応）">
-	      <span class="icon">✂️</span> カット
-	    </button>
-	    <label class="toggle" title="分割線を方眼に吸着させる" style="display:flex; align-items:center; gap:4px;">
-	      <input id="splitGridSnap" type="checkbox"/> 線にそってカット
-	    </label>
-	  </div>
-	</div>
+  <div class="split-tools" style="display:flex; align-items:center; gap:8px; flex-wrap:nowrap;">
+    <button data-tool="splitLine" title="直線で分割（複数図形にも対応）">
+      <span class="icon">✂️</span> カット
+    </button>
+
+    <label class="toggle" title="分割線を方眼に吸着させる" style="display:flex; align-items:center; gap:6px;">
+      <input id="splitGridSnap" type="checkbox"/> 線にそってカット
+    </label>
+
+    <label class="toggle" style="display:flex; align-items:center; gap:6px;">
+      <input id="splitContinuous" type="checkbox"/> 連続カット
+    </label>
+  </div>
+</div>
      </div>
     </div>
    </aside>
