@@ -3437,6 +3437,306 @@ function __mapLabelsFromBase(newPts, basePts, baseMeta){
   }
   return vm;
 }
+/* ================== LASSO MOVE + 再移動  ================== */
+/* 依存: board, handlesLayer, state, pushHistory, drawGrid, render, redrawCanvas, redrawCursorOverlay */
+/* 既存レイヤーに lasso path と選択枠を描画するだけ。HTML改造不要。 */
+
+(function initLassoAndRemover(){
+  // 追加 state
+  state.lassoPath = [];                 // 現在の投げ縄パス [ {x,y}, ... ]
+  state.lassoSel  = null;               // { shapes:[ids], actions:[idxs] }
+  state._reMoveArmed = false;           // 「再移動」ボタン武装状態
+  state._lassoOverlay = { pathEl:null, boxEl:null };
+
+  // 分割タブのあたりに「再移動」ボタンをねじ込む
+  (function injectReMoveButton(){
+    const anchor = document.getElementById('splitGridSnap') || document.getElementById('toolbar');
+    if(!anchor) return;
+    if(document.getElementById('reMoveBtn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'reMoveBtn';
+    btn.textContent = '再移動';
+    btn.title = '最後の投げ縄選択をもう一度移動';
+    btn.style.marginLeft = '6px';
+    btn.addEventListener('click', ()=>{
+      if(!state.lassoSel || (!state.lassoSel.shapes.length && !state.lassoSel.actions.length)){
+        alert('再移動する選択がありません。先に投げ縄で選んでください。');
+        return;
+      }
+      state._reMoveArmed = true;   // 次のクリック開始で移動モードに入る
+      // ちょっとだけ視覚的に選択枠を点灯しとく
+      drawLassoSelectionBox();
+    });
+    // 分割チェックボックスの隣に差す
+    anchor.parentElement?.insertBefore(btn, anchor.nextSibling);
+  })();
+
+  // ツールを追加：lasso
+  const oldSetTool = setTool;
+  setTool = function(name){
+    oldSetTool(name);
+    if(name === 'lasso'){
+      ensureLayers();
+      clearLassoGraphics();
+      state.lassoPath = [];
+      state._reMoveArmed = false;
+      redrawCursorOverlay();
+    }
+  };
+
+  // board でのポインタイベントにフック
+  board.addEventListener('pointerdown', onBoardDownForLasso, {passive:false});
+  board.addEventListener('pointermove', onBoardMoveForLasso, {passive:false});
+  board.addEventListener('pointerup',   onBoardUpForLasso,   {passive:false});
+  board.addEventListener('pointercancel', onBoardUpForLasso, {passive:false});
+
+  // ========== イベント実装 ==========
+  function onBoardDownForLasso(e){
+    const p = pt(e);
+
+    // 「再移動」武装時は、ここからドラッグ開始で lassoMove
+    if(state._reMoveArmed && state.lassoSel){
+      e.preventDefault();
+      state._reMoveArmed = false;
+      // 選択範囲の原本を保持
+      const sel = snapshotSelection();
+      state.dragging = {
+        mode: 'lassoMove',
+        start: p,
+        initSel: sel
+      };
+      return;
+    }
+
+    // 通常の投げ縄
+    if(state.tool !== 'lasso') return;
+    e.preventDefault();
+    state.lassoPath = [p];
+    state.dragging = { mode:'lasso', points:[p] };
+    drawLassoPath();
+  }
+
+  function onBoardMoveForLasso(e){
+    if(!state.dragging) return;
+
+    if(state.dragging.mode === 'lasso'){
+      const p = pt(e);
+      const pts = state.dragging.points;
+      if(pts.length===0 || dist(pts[pts.length-1].x, pts[pts.length-1].y, p.x, p.y) > 2){
+        pts.push(p);
+        state.lassoPath = pts.slice();
+        drawLassoPath();
+      }
+      return;
+    }
+
+    if(state.dragging.mode === 'lassoMove'){
+      const cur = pt(e);
+      const dx = cur.x - state.dragging.start.x;
+      const dy = cur.y - state.dragging.start.y;
+      applySelectionDelta(state.dragging.initSel, dx, dy);
+      render();           // 図形
+      redrawCanvas();     // 手書き
+      drawLassoSelectionBox(); // 枠も追従
+      return;
+    }
+  }
+
+  function onBoardUpForLasso(e){
+    if(!state.dragging) return;
+
+    if(state.dragging.mode === 'lasso'){
+      // パス確定 → 内包判定
+      finishLassoSelect();
+      state.dragging = null;
+      return;
+    }
+
+    if(state.dragging.mode === 'lassoMove'){
+      pushHistory();
+      state.dragging = null;
+      return;
+    }
+  }
+
+  // ========== 描画ユーティリティ ==========
+  function ensureHandles(){ ensureLayers(); return document.getElementById('handlesLayer'); }
+
+  function clearLassoGraphics(){
+    const hl = ensureHandles();
+    if(state._lassoOverlay.pathEl){ state._lassoOverlay.pathEl.remove(); state._lassoOverlay.pathEl=null; }
+    if(state._lassoOverlay.boxEl){ state._lassoOverlay.boxEl.remove(); state._lassoOverlay.boxEl=null; }
+  }
+
+  function drawLassoPath(){
+    const hl = ensureHandles();
+    if(!state._lassoOverlay.pathEl){
+      const p = document.createElementNS(svgNS,'path');
+      p.setAttribute('fill','none');
+      p.setAttribute('stroke','#ef4444');
+      p.setAttribute('stroke-dasharray','6 4');
+      p.setAttribute('stroke-width','2');
+      p.setAttribute('opacity','0.95');
+      hl.appendChild(p);
+      state._lassoOverlay.pathEl = p;
+    }
+    const d = state.lassoPath;
+    const dstr = d.length ? ('M '+d.map(q=>`${q.x} ${q.y}`).join(' L ')) : '';
+    state._lassoOverlay.pathEl.setAttribute('d', dstr);
+  }
+
+  function drawLassoSelectionBox(){
+    const sel = state.lassoSel;
+    if(!sel) return;
+    const bb = selectionBBox(sel);
+    const hl = ensureHandles();
+    if(!state._lassoOverlay.boxEl){
+      const r = document.createElementNS(svgNS,'rect');
+      r.setAttribute('fill','none');
+      r.setAttribute('stroke','#ef4444');
+      r.setAttribute('stroke-dasharray','4 4');
+      r.setAttribute('stroke-width','2');
+      r.setAttribute('opacity','0.9');
+      hl.appendChild(r);
+      state._lassoOverlay.boxEl = r;
+    }
+    state._lassoOverlay.boxEl.setAttribute('x', bb.x);
+    state._lassoOverlay.boxEl.setAttribute('y', bb.y);
+    state._lassoOverlay.boxEl.setAttribute('width', bb.w);
+    state._lassoOverlay.boxEl.setAttribute('height', bb.h);
+  }
+
+  // ========== 形・手書きの選択/移動 ==========
+  function finishLassoSelect(){
+    clearLassoGraphics();
+    const poly = closePoly(state.lassoPath);
+    if(poly.length < 3){
+      state.lassoSel = { shapes:[], actions:[] };
+      redrawCanvas(); render();
+      return;
+    }
+
+    const shapes = [];
+    for(const sh of state.shapes){
+      if(!Array.isArray(sh.points) || sh.points.length===0) continue;
+      if(polygonTouches(poly, sh.points)) shapes.push(sh.id);
+    }
+
+    const actions = [];
+    for(let i=0;i<state.actions.length;i++){
+      const a = state.actions[i];
+      if(a.type!=='draw' || !a.pts || a.pts.length===0) continue;
+      if(polylineTouches(poly, a.pts)) actions.push(i);
+    }
+
+    state.lassoSel = { shapes, actions };
+    drawLassoSelectionBox();
+    // ついでに edit モードへ戻して移動準備（好みで lasso のままでもOK）
+    setTool('edit');
+  }
+
+  function snapshotSelection(){
+    // 移動前の原本を保持して、ドラッグ中はこれに対する差分適用にする
+    const sel = { shapes:[], actions:[], shapeMap:{}, actionMap:{} };
+    if(!state.lassoSel) return sel;
+
+    for(const id of state.lassoSel.shapes){
+      const sh = state.shapes.find(s=>s.id===id);
+      if(!sh) continue;
+      sel.shapes.push(id);
+      sel.shapeMap[id] = JSON.parse(JSON.stringify(sh.points));
+    }
+    for(const idx of state.lassoSel.actions){
+      const a = state.actions[idx];
+      if(!a) continue;
+      sel.actions.push(idx);
+      sel.actionMap[idx] = JSON.parse(JSON.stringify(a.pts));
+    }
+    return sel;
+  }
+
+  function applySelectionDelta(initSel, dx, dy){
+    // 図形
+    for(const id of initSel.shapes){
+      const sh = state.shapes.find(s=>s.id===id);
+      const basePts = initSel.shapeMap[id];
+      if(!sh || !basePts) continue;
+      sh.points = basePts.map(([x,y])=>[x+dx, y+dy]);
+    }
+    // 手書き（actions の pts を移動）
+    for(const idx of initSel.actions){
+      const act = state.actions[idx];
+      const base = initSel.actionMap[idx];
+      if(!act || !base) continue;
+      act.pts = base.map(([x,y])=>[x+dx, y+dy]);
+    }
+  }
+
+  function selectionBBox(sel){
+    let xs=[], ys=[];
+    for(const id of sel.shapes){
+      const sh = state.shapes.find(s=>s.id===id);
+      if(!sh?.points) continue;
+      for(const [x,y] of sh.points){ xs.push(x); ys.push(y); }
+    }
+    for(const idx of sel.actions){
+      const a = state.actions[idx];
+      if(!a?.pts) continue;
+      for(const [x,y] of a.pts){ xs.push(x); ys.push(y); }
+    }
+    if(!xs.length) return {x:0,y:0,w:0,h:0};
+    const minX=Math.min(...xs), maxX=Math.max(...xs);
+    const minY=Math.min(...ys), maxY=Math.max(...ys);
+    return { x:minX, y:minY, w:maxX-minX, h:maxY-minY };
+  }
+
+  // ========== 幾何ユーティリティ ==========
+  function closePoly(arr){
+    if(!arr || arr.length<3) return [];
+    const a = arr.slice();
+    const first=a[0], last=a[a.length-1];
+    if(Math.hypot(first.x-last.x, first.y-last.y) > 1) a.push({x:first.x, y:first.y});
+    return a;
+  }
+  function pointInPolygon(px,py, poly){
+    // 奇数回交差判定
+    let inside=false;
+    for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+      const xi=poly[i].x, yi=poly[i].y;
+      const xj=poly[j].x, yj=poly[j].y;
+      const intersect = ((yi>py)!==(yj>py)) && (px < (xj-xi)*(py-yi)/(yj-yi+1e-12) + xi);
+      if(intersect) inside = !inside;
+    }
+    return inside;
+  }
+  function polygonTouches(poly, pts){
+    // 1) 頂点のどれかが内側 2) 交差（辺と投げ縄が交わる）で true
+    for(const [x,y] of pts){ if(pointInPolygon(x,y,poly)) return true; }
+    // 簡易：辺上の点でもヒットさせたいので、近似交差をチェック
+    for(let i=1;i<poly.length;i++){
+      const A=poly[i-1], B=poly[i];
+      for(let k=0;k<pts.length;k++){
+        const P = {x:pts[k][0], y:pts[k][1]};
+        const Q = {x:pts[(k+1)%pts.length][0], y:pts[(k+1)%pts.length][1]};
+        if(segI([A.x,A.y],[B.x,B.y],[P.x,P.y],[Q.x,Q.y])) return true;
+      }
+    }
+    return false;
+  }
+  function polylineTouches(poly, pts){
+    for(const [x,y] of pts){ if(pointInPolygon(x,y,poly)) return true; }
+    for(let i=1;i<poly.length;i++){
+      const A=poly[i-1], B=poly[i];
+      for(let k=1;k<pts.length;k++){
+        const P = {x:pts[k-1][0], y:pts[k-1][1]};
+        const Q = {x:pts[k][0],   y:pts[k][1]};
+        if(segI([A.x,A.y],[B.x,B.y],[P.x,P.y],[Q.x,Q.y])) return true;
+      }
+    }
+    return false;
+  }
+
+})();
 
 </script>
  </body>
