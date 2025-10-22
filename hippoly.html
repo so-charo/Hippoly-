@@ -637,6 +637,32 @@ body.header-fixed .board-wrap{ height: auto; }
 .inline-controls input[type="checkbox"]{margin:0}
 .vertex-handle{display:none}
 .show-vertices .vertex-handle{display:block}
+	/* === AUTOFIT CSS START === */
+main, .board-wrap, .asideB, aside {
+  /* ヘッダぶんと main の左右padding合計24pxぶんを引く */
+  height: calc(100svh - var(--header-h) - 24px);
+}
+/* === AUTOFIT CSS END === */
+/* === SIDEBAR AUTOSIZE START === */
+@media (max-width: 1024px){
+  :root{
+    --aside-width: 280px;
+    --asideB-width: 200px;
+  }
+}
+@media (max-width: 820px){
+  :root{
+    --aside-width: 0px;     /* 右ツール畳む */
+    --asideB-width: 200px;  /* 左は残す */
+  }
+}
+@media (max-width: 600px){
+  :root{
+    --asideB-width: 0px;    /* 両サイド畳む */
+  }
+}
+/* === SIDEBAR AUTOSIZE END === */
+
 
 
 </style>
@@ -3110,6 +3136,33 @@ function endDrawingIfMatches(e){
     });
   }
 })();
+/* === GRID AUTOFIT START === */
+function autoFitGrid(){
+  const vh = Math.max(320, window.innerHeight || document.documentElement.clientHeight || 0);
+  const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 44;
+  const usable = Math.max(200, vh - headerH - 24); // CSSの -24px と合わせる
+
+  // 縦方向に見せたい目の数
+  const targetLines = window.innerWidth < 800 ? 12 : 10;
+  const pxPerLine = Math.max(24, Math.min(usable / targetLines, 64));
+
+  // 1cm = --grid-cm px。1.5/2/2.5/3cmあたりで近いものを採用
+  const cm = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--grid-cm')) || 37.7952755906;
+  const candidates = [1.5, 2.0, 2.5, 3.0];
+  let best = candidates[0], bestDiff = Infinity;
+  for(const c of candidates){
+    const px = cm * c;
+    const d  = Math.abs(px - pxPerLine);
+    if(d < bestDiff){ best = c; bestDiff = d; }
+  }
+  state.gridPx = cm * best;
+  drawGrid(); render(); redrawCursorOverlay();
+}
+
+window.addEventListener('resize', ()=>{ try{ autoFitGrid(); }catch(_){ } }, {passive:true});
+window.addEventListener('orientationchange', ()=>{ try{ autoFitGrid(); }catch(_){ } }, {passive:true});
+document.addEventListener('DOMContentLoaded', ()=>{ try{ autoFitGrid(); }catch(_){ } }, {once:true});
+/* === GRID AUTOFIT END === */
 
 
 // ========== initial draw queue (waits for stable layout) ==========
