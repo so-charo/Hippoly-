@@ -3385,369 +3385,288 @@ function __mapLabelsFromBase(newPts, basePts, baseMeta){
 }
 
 (function(){
-  // defensive guards: expect global `board` and `state`
-  if (!window.board || !window.state) {
-    console.warn('reposition: required globals `board` or `state` not found. Aborting.');
-    return;
-  }
-
-  // insert UI: "再移動" ボタン next to splitContinuous checkbox
-  function insertRepositionButton() {
-    const splitChk = document.getElementById('splitContinuous');
-    if (!splitChk) return;
-    const wrapper = splitChk.closest('.panel-title') || splitChk.parentElement;
-    // create container if needed
-    const btn = document.createElement('button');
-    btn.id = 'repositionBtn';
-    btn.type = 'button';
-    btn.title = '再移動（投げ縄で囲んで選択→移動。ほかの機能選択で解除）';
-    btn.textContent = '再移動';
-    btn.style.marginLeft = '8px';
-    btn.style.padding = '6px 8px';
-    btn.style.borderRadius = '6px';
-    btn.className = '';
-    // try to insert after the split checkbox label area
-    if (wrapper && wrapper.parentElement) {
-      wrapper.parentElement.insertBefore(btn, wrapper.nextSibling);
-    } else {
-      splitChk.parentElement.appendChild(btn);
+  if (!window.board) {
+    const el = document.getElementById('board');
+    if (!el) {
+      console.warn('reposition: #board not found — aborting');
+      return;
     }
-    return btn;
+    window.board = el;
+  }
+  const board = window.board;
+  const state = window.state || {};
+  // avoid changing body classes (prevents layout side-effects)
+  // ensure canvases don't steal pointer events
+  (function ensureCanvases() {
+    const canvases = document.querySelectorAll('canvas');
+    canvases.forEach(c => {
+      // keep inline style minimal and non-invasive
+      c.style.pointerEvents = 'none';
+    });
+  })();
+
+  // create minimal styles inside head (only affects lasso visuals)
+  const styleId = 'hp-reposition-style';
+  if (!document.getElementById(styleId)) {
+    const css = `
+      svg .reposition-lasso { stroke: #9ca3af; stroke-width:2; stroke-dasharray:6 6; fill: rgba(156,163,175,0.06); pointer-events:none; }
+      svg .reposition-selected { filter: drop-shadow(0 6px 10px rgba(37,99,235,0.12)); opacity:0.98; }
+    `;
+    const s = document.createElement('style');
+    s.id = styleId;
+    s.textContent = css;
+    document.head.appendChild(s);
   }
 
-  const repositionBtn = insertRepositionButton();
+  // create or reuse lasso path inside the SVG board
+  let lasso = board.querySelector('.reposition-lasso');
+  if (!lasso) {
+    lasso = document.createElementNS('http://www.w3.org/2000/svg','path');
+    lasso.setAttribute('class','reposition-lasso');
+    lasso.setAttribute('d','');
+    lasso.style.display = 'none';
+    lasso.setAttribute('vector-effect','non-scaling-stroke');
+    board.appendChild(lasso);
+  }
 
-  // CSS helper for cursor and selection visuals
-  const style = document.createElement('style');
-  style.textContent = `
-    body.reposition-active { cursor: crosshair; }
-    /* plus cursor: draw using CSS for board when active */
-    #board.reposition-draw { cursor: crosshair; }
-    .reposition-lasso { stroke: #9ca3af; stroke-width: 2; stroke-dasharray:6 6; fill: rgba(156,163,175,0.06); pointer-events:none; }
-    .reposition-selected { filter: drop-shadow(0 6px 10px rgba(37,99,235,0.12)); opacity:0.98; }
-  `;
-  document.head.appendChild(style);
-
-  // create lasso path in SVG
-  const svgns = 'http://www.w3.org/2000/svg';
-  const lasso = document.createElementNS(svgns, 'path');
-  lasso.setAttribute('class', 'reposition-lasso');
-  lasso.setAttribute('d', '');
-  lasso.style.display = 'none';
-  lasso.setAttribute('vector-effect', 'non-scaling-stroke');
-  board.appendChild(lasso);
-
-  // state for reposition mode
+  // state for tool
   const rp = {
     active: false,
     drawing: false,
     points: [],
-    selection: [], // array of {el, initTransform or left/top}
+    selection: [],
     dragging: false,
-    dragStart: null,
     lastPos: null,
     selectedBBox: null
   };
 
+  // public API to toggle (used by UI button)
+  function enter() {
+    if (rp.active) return;
+    rp.active = true;
+    // small visual hint: change cursor on svg only (no body class)
+    board.style.cursor = 'crosshair';
+    clearSelectionVisual();
+    console.log('reposition: entered');
+  }
+  function exit() {
+    rp.active = false;
+    rp.drawing = false;
+    rp.dragging = false;
+    rp.points = [];
+    lasso.style.display = 'none';
+    lasso.setAttribute('d','');
+    board.style.cursor = '';
+    clearSelectionVisual();
+    console.log('reposition: exited');
+  }
+
+  // expose minimal API
+  window.hippolyReposition = window.hippolyReposition || {};
+  window.hippolyReposition.enter = enter;
+  window.hippolyReposition.exit  = exit;
+  window.hippolyReposition.isActive = () => rp.active;
+
+  // helper: convert client coords to svg coords
   function svgPoint(clientX, clientY) {
     const pt = board.createSVGPoint();
     pt.x = clientX; pt.y = clientY;
     return pt.matrixTransform(board.getScreenCTM().inverse());
   }
-
   function pathDFromPoints(pts) {
     if (!pts.length) return '';
     return 'M ' + pts.map((p,i)=> (i===0? `${p.x},${p.y}` : `${p.x},${p.y}`)).join(' L ') + ' Z';
   }
-
-  // simple ray-casting point-in-poly
   function pointInPolygon(x, y, poly) {
     let inside = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const xi = poly[i].x, yi = poly[i].y;
-      const xj = poly[j].x, yj = poly[j].y;
-      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi + 0.0000001) + xi);
+    for (let i=0,j=poly.length-1;i<poly.length;j=i++) {
+      const xi=poly[i].x, yi=poly[i].y, xj=poly[j].x, yj=poly[j].y;
+      const intersect = ((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi+1e-9) + xi);
       if (intersect) inside = !inside;
     }
     return inside;
   }
 
   function clearSelectionVisual() {
-    rp.selection.forEach(s=> {
-      if (s.el) s.el.classList && s.el.classList.remove('reposition-selected');
-    });
+    rp.selection.forEach(s => s.el && s.el.classList && s.el.classList.remove('reposition-selected'));
     rp.selection = [];
     rp.selectedBBox = null;
   }
 
-  function enterRepositionMode() {
-    if (rp.active) return;
-    rp.active = true;
-    document.body.classList.add('reposition-active');
-    board.classList.add('reposition-draw');
-    if (repositionBtn) repositionBtn.classList.add('active');
-    // keep lasso hidden until user draws
-    lasso.style.display = 'none';
-    clearSelectionVisual();
-  }
-
-  function exitRepositionMode() {
-    if (!rp.active) return;
-    rp.active = false;
-    rp.drawing = false;
-    rp.dragging = false;
-    rp.points = [];
-    document.body.classList.remove('reposition-active');
-    board.classList.remove('reposition-draw');
-    lasso.style.display = 'none';
-    lasso.setAttribute('d','');
-    if (repositionBtn) repositionBtn.classList.remove('active');
-    clearSelectionVisual();
-  }
-
-  // when user clicks the button
-  if (repositionBtn) {
-    repositionBtn.addEventListener('click', (ev) => {
-      ev.preventDefault();
-      if (rp.active) exitRepositionMode();
-      else enterRepositionMode();
-    });
-  }
-
-  // start drawing lasso
-  board.addEventListener('pointerdown', (ev) => {
-    if (!rp.active) return;
-    // only left button
-    if (ev.button !== 0) return;
-    ev.preventDefault();
-    board.setPointerCapture && board.setPointerCapture(ev.pointerId);
-    rp.drawing = true;
-    rp.points = [];
-    const p = svgPoint(ev.clientX, ev.clientY);
-    rp.points.push({x: p.x, y: p.y});
-    lasso.style.display = 'block';
-    lasso.setAttribute('d', pathDFromPoints(rp.points));
-    rp.lastPos = p;
-  });
-
-  board.addEventListener('pointermove', (ev) => {
-    if (!rp.active) return;
-    const p = svgPoint(ev.clientX, ev.clientY);
-    if (rp.drawing) {
-      // push points, but avoid too dense
-      const last = rp.points[rp.points.length - 1];
-      const dx = p.x - last.x, dy = p.y - last.y;
-      if (Math.hypot(dx,dy) > 2) {
-        rp.points.push({x: p.x, y: p.y});
-        lasso.setAttribute('d', pathDFromPoints(rp.points));
-      }
-    } else if (rp.dragging) {
-      // compute delta in svg coords
-      const prev = rp.lastPos;
-      const dx = p.x - prev.x, dy = p.y - prev.y;
-      rp.lastPos = p;
-      // apply transform to each selected
-      rp.selection.forEach(s => {
-        if (!s.el) return;
-        if (s.isSVG) {
-          // preserve previous translate in data
-          s.tx = (s.tx || 0) + dx;
-          s.ty = (s.ty || 0) + dy;
-          s.el.setAttribute('transform', `translate(${s.tx},${s.ty}) ${s.baseTransform}`);
-        } else {
-          // HTML element (e.g., notes)
-          s.left = (s.left || s.el.offsetLeft) + dx;
-          s.top  = (s.top  || s.el.offsetTop) + dy;
-          s.el.style.left = `${s.left}px`;
-          s.el.style.top  = `${s.top}px`;
-        }
-      });
-    } else {
-      // not drawing and not dragging -> update cursor or do nothing
-    }
-  });
-
-  board.addEventListener('pointerup', (ev) => {
-    if (!rp.active) return;
-    if (rp.drawing) {
-      // finish lasso: automatically close to start
-      rp.drawing = false;
-      if (rp.points.length < 3) {
-        // too small -> cancel
-        lasso.style.display = 'none';
-        lasso.setAttribute('d','');
-        rp.points = [];
-        return;
-      }
-      // ensure closed polygon
-      lasso.setAttribute('d', pathDFromPoints(rp.points));
-      // select elements
-      performLassoSelection(rp.points);
-      // after selection, switch to "drag ready" state: next pointerdown inside selection will drag
-      // but we also allow immediate dragging by starting drag here if pointer is inside selection
-      const svgP = svgPoint(ev.clientX, ev.clientY);
-      if (isPointInsideSelection(svgP.x, svgP.y)) {
-        startDragAt(svgP);
-      }
-    } else if (rp.dragging) {
-      // stop dragging, but DO NOT clear selection (keep mode active)
-      rp.dragging = false;
-      rp.lastPos = null;
-      // do not clear lasso or selection
-    }
-    try { board.releasePointerCapture && board.releasePointerCapture(ev.pointerId); } catch (e){}
-  });
-
-  function isPointInsideSelection(x,y) {
-    if (!rp.selection || !rp.selection.length) return false;
-    // use overall bbox of selection
-    if (!rp.selectedBBox) return false;
-    return x >= rp.selectedBBox.x && x <= (rp.selectedBBox.x + rp.selectedBBox.width) &&
-           y >= rp.selectedBBox.y && y <= (rp.selectedBBox.y + rp.selectedBBox.height);
-  }
-
-  function startDragAt(svgP) {
-    // prepare selection's base transforms and initial positions
-    rp.dragging = true;
-    rp.lastPos = svgP;
-    // ensure each selected element has baseTransform and stored tx/ty = 0 initial
-    rp.selection.forEach(s=>{
-      if (!s.el) return;
-      if (s.isSVG) {
-        // read current transform attribute (excluding translate we will add)
-        const cur = s.el.getAttribute('transform') || '';
-        // remove any leading translate(...) using regex, store as baseTransform
-        const match = cur.match(/^\s*translate\([^\)]*\)\s*(.*)$/);
-        if (match) {
-          s.baseTransform = match[1] || '';
-        } else {
-          s.baseTransform = cur || '';
-        }
-        s.tx = 0; s.ty = 0;
-      } else {
-        // HTML element
-        const cs = window.getComputedStyle(s.el);
-        const left = parseFloat(cs.left) || s.el.offsetLeft;
-        const top  = parseFloat(cs.top)  || s.el.offsetTop;
-        s.left = left; s.top = top;
-      }
-    });
-  }
-
-  // choose candidate elements by class or data attribute
   function getMovableCandidates() {
-    // shapes in SVG
+    // svg shapes + elements marked data-movable (might include notes rendered outside svg)
     const shapes = Array.from(board.querySelectorAll('.shape'));
-    // other items that may be movable: those with data-movable or a particular class
-    const movables = Array.from(board.querySelectorAll('[data-movable], .movable'));
-    // combine unique
+    const movables = Array.from(document.querySelectorAll('[data-movable], .movable'));
     const set = new Set();
-    shapes.concat(movables).forEach(el=> set.add(el));
+    shapes.concat(movables).forEach(e => set.add(e));
     return Array.from(set);
   }
 
   function performLassoSelection(polyPoints) {
     clearSelectionVisual();
-    // polyPoints are in SVG coords already
     const candidates = getMovableCandidates();
     const selected = [];
     candidates.forEach(el => {
       try {
-        // get element bbox in SVG coords if SVG, otherwise bounding rect and map to svg coords
         let bbox;
         if (typeof el.getBBox === 'function') {
-          bbox = el.getBBox();
+          const b = el.getBBox();
+          bbox = { x:b.x, y:b.y, width:b.width, height:b.height };
         } else {
           const r = el.getBoundingClientRect();
-          // map screen corners to svg
           const p1 = svgPoint(r.left, r.top);
           const p2 = svgPoint(r.right, r.bottom);
           bbox = { x: Math.min(p1.x,p2.x), y: Math.min(p1.y,p2.y), width: Math.abs(p2.x-p1.x), height: Math.abs(p2.y-p1.y) };
         }
-        // test the bbox center in polygon
         const cx = bbox.x + bbox.width/2;
         const cy = bbox.y + bbox.height/2;
         if (pointInPolygon(cx, cy, polyPoints)) {
-          // mark selected
           const entry = { el: el, isSVG: (typeof el.getBBox === 'function') };
           selected.push(entry);
           el.classList && el.classList.add('reposition-selected');
         }
-      } catch (e) {
-        // ignore any element that fails
-      }
+      } catch(e){}
     });
-
     rp.selection = selected;
-    // compute overall bbox
     if (rp.selection.length) {
-      const boxes = rp.selection.map(s=>{
-        if (s.isSVG) {
-          const b = s.el.getBBox();
-          return { x:b.x,y:b.y,w:b.width,h:b.height };
-        } else {
+      const boxes = rp.selection.map(s => {
+        if (s.isSVG) { const b = s.el.getBBox(); return { x:b.x,y:b.y,w:b.width,h:b.height }; }
+        else {
           const r = s.el.getBoundingClientRect();
-          const p1 = svgPoint(r.left, r.top);
-          const p2 = svgPoint(r.right, r.bottom);
-          return { x: Math.min(p1.x,p2.x), y:Math.min(p1.y,p2.y), w:Math.abs(p2.x-p1.x), h:Math.abs(p2.y-p1.y) };
+          const p1 = svgPoint(r.left,r.top), p2 = svgPoint(r.right,r.bottom);
+          return { x: Math.min(p1.x,p2.x), y: Math.min(p1.y,p2.y), w: Math.abs(p2.x-p1.x), h: Math.abs(p2.y-p1.y) };
         }
       });
-      const xs = boxes.map(b=>b.x);
-      const ys = boxes.map(b=>b.y);
-      const x2 = boxes.map(b=>b.x+b.w);
-      const y2 = boxes.map(b=>b.y+b.h);
-      const minx = Math.min.apply(null, xs);
-      const miny = Math.min.apply(null, ys);
-      const maxx = Math.max.apply(null, x2);
-      const maxy = Math.max.apply(null, y2);
-      rp.selectedBBox = { x: minx, y: miny, width: maxx-minx, height: maxy-miny };
-    } else {
-      rp.selectedBBox = null;
-    }
+      const xs = boxes.map(b=>b.x), ys = boxes.map(b=>b.y), x2 = boxes.map(b=>b.x+b.w), y2 = boxes.map(b=>b.y+b.h);
+      rp.selectedBBox = { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...x2)-Math.min(...xs), height: Math.max(...y2)-Math.min(...ys) };
+    } else rp.selectedBBox = null;
   }
 
-  // clicking on a selected element initiates dragging immediately
-  board.addEventListener('pointerdown', (ev) => {
-    if (!rp.active) return;
-    // if not drawing and pointer is down inside selection area -> start drag
-    if (!rp.drawing) {
-      const p = svgPoint(ev.clientX, ev.clientY);
-      if (isPointInsideSelection(p.x, p.y) && rp.selection.length) {
-        ev.preventDefault();
-        startDragAt(p);
+  // when dragging, apply translate to svg or reposition absolute for DOM elements
+  function startDrag(svgP) {
+    rp.dragging = true;
+    rp.lastPos = svgP;
+    rp.selection.forEach(s => {
+      if (s.isSVG) {
+        const cur = s.el.getAttribute('transform') || '';
+        // remove leading translate(...) from cur to keep it as baseTransform
+        const m = cur.match(/^\s*translate\([^\)]*\)\s*(.*)$/);
+        s.baseTransform = m ? (m[1] || '') : cur;
+        s.tx = 0; s.ty = 0;
+      } else {
+        const cs = window.getComputedStyle(s.el);
+        s.left = parseFloat(cs.left) || s.el.offsetLeft;
+        s.top  = parseFloat(cs.top)  || s.el.offsetTop;
       }
+    });
+  }
+
+  // events on SVG board
+  board.addEventListener('pointerdown', function(ev){
+    if (!rp.active) return;
+    if (ev.button !== 0) return;
+    ev.preventDefault();
+    const p = svgPoint(ev.clientX, ev.clientY);
+    // start drawing lasso if shift is held OR if click is outside an existing selection
+    if (!rp.selection.length || !rp.selectedBBox || ! (p.x >= rp.selectedBBox.x && p.x <= rp.selectedBBox.x + rp.selectedBBox.width && p.y >= rp.selectedBBox.y && p.y <= rp.selectedBBox.y + rp.selectedBBox.height) ) {
+      rp.drawing = true;
+      rp.points = [{x:p.x,y:p.y}];
+      lasso.setAttribute('d', pathDFromPoints(rp.points));
+      lasso.style.display = 'block';
+      board.setPointerCapture && board.setPointerCapture(ev.pointerId);
+    } else {
+      // clicked inside selection -> start dragging
+      startDrag(p);
+      board.setPointerCapture && board.setPointerCapture(ev.pointerId);
     }
+  }, { passive:false });
+
+  board.addEventListener('pointermove', function(ev){
+    if (!rp.active) return;
+    const p = svgPoint(ev.clientX, ev.clientY);
+    if (rp.drawing) {
+      const last = rp.points[rp.points.length-1];
+      const dx = p.x-last.x, dy = p.y-last.y;
+      if (Math.hypot(dx,dy) > 2) {
+        rp.points.push({x:p.x,y:p.y});
+        lasso.setAttribute('d', pathDFromPoints(rp.points));
+      }
+    } else if (rp.dragging) {
+      const prev = rp.lastPos;
+      const dx = p.x - prev.x, dy = p.y - prev.y;
+      rp.lastPos = p;
+      rp.selection.forEach(s => {
+        if (!s.el) return;
+        if (s.isSVG) {
+          s.tx = (s.tx||0) + dx;
+          s.ty = (s.ty||0) + dy;
+          s.el.setAttribute('transform', `translate(${s.tx},${s.ty}) ${s.baseTransform}`);
+        } else {
+          s.left = (s.left || s.el.offsetLeft) + dx;
+          s.top  = (s.top || s.el.offsetTop)  + dy;
+          s.el.style.left = `${s.left}px`;
+          s.el.style.top  = `${s.top}px`;
+        }
+      });
+    }
+  }, { passive:false });
+
+  board.addEventListener('pointerup', function(ev){
+    if (!rp.active) return;
+    const p = svgPoint(ev.clientX, ev.clientY);
+    if (rp.drawing) {
+      rp.drawing = false;
+      if (rp.points.length < 3) {
+        lasso.style.display = 'none';
+        lasso.setAttribute('d','');
+        rp.points = [];
+        board.releasePointerCapture && board.releasePointerCapture(ev.pointerId);
+        return;
+      }
+      // finalize lasso (closed)
+      lasso.setAttribute('d', pathDFromPoints(rp.points));
+      performLassoSelection(rp.points);
+      // leave lasso visible (so user sees selection)
+      // if pointer ended inside selection, start drag automatically
+      if (rp.selectedBBox && p.x >= rp.selectedBBox.x && p.x <= rp.selectedBBox.x + rp.selectedBBox.width && p.y >= rp.selectedBBox.y && p.y <= rp.selectedBBox.y + rp.selectedBBox.height) {
+        startDrag(p);
+      } else {
+        // keep lasso visible but not drawing
+      }
+    } else if (rp.dragging) {
+      rp.dragging = false;
+      rp.lastPos = null;
+    }
+    board.releasePointerCapture && board.releasePointerCapture(ev.pointerId);
+  }, { passive:false });
+
+  // cancel on escape
+  window.addEventListener('keydown', function(ev){
+    if (ev.key === 'Escape' && rp.active) exit();
   });
 
-  // Cancel reposition mode when user switches tools or clicks other major UI
-  function onUiActionCancelReposition(ev) {
-    // when clicking on any control that has data-tool, data-add, or is a major control
+  // When clicking other UI (toolbar buttons), auto-exit reposition
+  document.addEventListener('click', function(ev){
+    if (!rp.active) return;
     const t = ev.target;
     if (!t) return;
-    if (t.closest && (t.closest('[data-tool]') || t.closest('[data-add]') || t.closest('.toolbar') || t.id === 'swapSidebars' || t.id === 'themeToggle' || t.id === 'shot' || t.id === 'undo' || t.id === 'redo' || t.id === 'reset')) {
-      exitRepositionMode();
+    // if click hits a control in toolbar or header, exit
+    if (t.closest('.toolbar') || t.closest('.header-actions') || t.closest('#headerMenu') || t.closest('.asideB') || t.closest('.aside')) {
+      exit();
     }
+  }, true);
+
+  // Try to attach UI button behavior if present (if you inserted manual button)
+  const btn = document.getElementById('repositionBtn');
+  if (btn) {
+    btn.addEventListener('click', function(){
+      if (!rp.active) enter(); else exit();
+      // update visual active state
+      btn.classList.toggle('active', rp.active);
+    });
   }
-  document.addEventListener('click', onUiActionCancelReposition, true);
-
-  // also exit on escape
-  document.addEventListener('keydown', (ev)=>{
-    if (!rp.active) return;
-    if (ev.key === 'Escape') exitRepositionMode();
-  });
-
-  // Public API hook (optional) to toggle programmatically
-  window.hippolyReposition = {
-    enter: enterRepositionMode,
-    exit: exitRepositionMode,
-    isActive: () => rp.active,
-    lastSelection: () => rp.selection.map(s=>s.el)
-  };
-
-  // If the page defines a cleanup function when tools change, we might integrate; we already listen on clicks.
-  console.log('hippoly-reposition: initialized');
+  console.log('hippoly-reposition: ready');
 })();
-
 </script>
  </body>
 </html>
