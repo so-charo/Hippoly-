@@ -3667,6 +3667,50 @@ function __mapLabelsFromBase(newPts, basePts, baseMeta){
   }
   console.log('hippoly-reposition: ready');
 })();
+	  // 挿入場所：hippoly.html の main script 内（state を window に公開した直後）が安全
+(function(){
+  function insertBtn(){
+    if (document.getElementById('repositionBtn')) return;
+    const splitChk = document.getElementById('splitContinuous');
+    const btn = document.createElement('button');
+    btn.id = 'repositionBtn';
+    btn.type = 'button';
+    btn.textContent = '再移動';
+    btn.title = '再移動（投げ縄で範囲選択→移動）';
+    btn.className = ''; // 必要なら 'active' を付ける
+    // 見た目微調整（既存 CSS に合わせる）
+    btn.style.marginLeft = '8px';
+    btn.style.padding = '6px 8px';
+    btn.style.borderRadius = '6px';
+    // クリックで既存の reposition API を呼ぶ
+    btn.addEventListener('click', function(){
+      if (window.hippolyReposition && window.hippolyReposition.isActive && !window.hippolyReposition.isActive()){
+        window.hippolyReposition.enter && window.hippolyReposition.enter();
+        btn.classList.add('active');
+      } else {
+        window.hippolyReposition && window.hippolyReposition.exit && window.hippolyReposition.exit();
+        btn.classList.remove('active');
+      }
+    });
+    // 優先挿入場所：split-tools 内。無ければ toolbar の末尾へ
+    if (splitChk) {
+      const parent = splitChk.closest('.split-tools') || splitChk.parentElement;
+      if (parent) parent.appendChild(btn);
+      else document.getElementById('toolbar').appendChild(btn);
+    } else {
+      const toolbar = document.getElementById('toolbar') || document.querySelector('.toolbar');
+      if (toolbar) toolbar.appendChild(btn);
+      else document.body.appendChild(btn);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', insertBtn, { once:true });
+  } else {
+    insertBtn();
+  }
+})();
+	  
 </script>
  </body>
 </html>
