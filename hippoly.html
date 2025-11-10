@@ -634,6 +634,10 @@ body.header-fixed .board-wrap{ height: auto; }
 .toolbar > div:first-child > .group{
   flex-basis: 100%;
 }
+
+/* ---- ペン太さ & 消しゴムサイズのドロップダウンを完全非表示 ---- */
+#penThickness,#eraserSize {display: none !important;}
+
 .inline-controls{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap}
 .inline-controls .toggle,.inline-controls .color-pick{display:inline-flex;align-items:center;gap:4px}
 .inline-controls input[type="checkbox"]{margin:0}
@@ -1388,13 +1392,13 @@ const ERASER_STEPS = [10, 18, 28];
 // ボタン表示テキスト
 function penLabelFrom(value){
   const v = Number(value||0);
-  return (Math.abs(v - PEN_THIN) < 0.01) ? '✒︎ 細' : '✒︎ 太';
+  return (Math.abs(v - PEN_THIN) < 0.01) ? '細' : '太';
 }
 function eraserLabelFrom(value){
   const v = Number(value||0);
-  if (v <= ERASER_STEPS[0]+0.01) return '消 小';
-  if (v <= ERASER_STEPS[1]+0.01) return '消 中';
-  return '消 大';
+  if (v <= ERASER_STEPS[0]+0.01) return '小';
+  if (v <= ERASER_STEPS[1]+0.01) return '中';
+  return '大';
 }
   const ui={
     selType:document.getElementById('selType'), w:document.getElementById('w'), h:document.getElementById('h'), vh:document.getElementById('vh'),
@@ -2809,9 +2813,10 @@ injectToggleButtons();
   	if (btn) btn.textContent = eraserLabelFrom(state.eraserSize);
 	});
 	function updateEraserSizeVisibility(){
-  	const sizeSel = document.getElementById('eraserSize');
-  	if(!sizeSel) return;
-  	sizeSel.style.display = (ui.eraserMode.value === 'pixel') ? '' : 'none';
+  // ドロップダウンは運用上、常に隠す
+  const sizeSel = document.getElementById('eraserSize');
+  if (!sizeSel) return;
+  sizeSel.style.display = 'none';
 	}
   function rotateSel(deg){ if(!state.sel) return; const c=centroid(state.sel.points); const r=deg*Math.PI/180;
     state.sel.points=state.sel.points.map(([x,y])=>{const dx=x-c.x, dy=y-c.y; return [c.x+dx*Math.cos(r)-dy*Math.sin(r), c.y+dx*Math.sin(r)+dy*Math.cos(r)];});
