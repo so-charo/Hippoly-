@@ -924,6 +924,7 @@ body.header-fixed .board-wrap{ height: auto; }
   const drawCanvas=document.getElementById('drawCanvas');
   const cursorCanvas=document.getElementById('cursorCanvas');
   const eraserSizeSel = document.getElementById('eraserSize');
+  drawCanvas.style.touchAction = 'none'; // マルチタッチ／ピンチ無効化
 
   
   const svgNS='http://www.w3.org/2000/svg';
@@ -2011,100 +2012,109 @@ document.body.classList.toggle('swap-sidebars');
 
   
   drawCanvas.addEventListener('pointerdown', (e)=>{
-  	const p0 = pt(e);
-  	state.pointerPos = p0;
-	if(state.drawingPointerId!==null && state.drawingPointerId!==e.pointerId) return;
-	state.drawingPointerId = e.pointerId; 
-  	redrawCursorOverlay();
+  const p0 = pt(e);
+  state.pointerPos = p0;
 
-  	if (state.tool === 'draw'){
-  e.preventDefault();
-
-  if (state.penStraight) {
-    if (!state._opPushed) { pushHistory(); state._opPushed = true; }
-
-    state.lineAnchor = null;
-    const snap = snapStartPoint(p0);
-    state.__lineMode  = snap.mode;            // 'vertex' | 'edge' | 'free'
-    state.__lineStart = snap.start;           // {x,y}
-    state.__lineEdge  = snap.edge || null;    // 辺開始なら {a,b}
-    state.__draggingStraight = true;
-
-    try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
-    return;
+  // ★ 一本縛り：既に他の指/ペンが描画中なら無視
+  if (state.tool === 'draw') {
+    if (state.drawingPointerId !== null && state.drawingPointerId !== e.pointerId) {
+      return; // 2本目以降は反応しない
+    }
+    // ここで「この指」をロック
+    state.drawingPointerId = e.pointerId;
   }
+  redrawCursorOverlay();
 
-  if (state.drawingPointerId !== null && state.drawingPointerId !== e.pointerId) return;
-  if (!state._opPushed) { pushHistory(); state._opPushed = true; }
+  if (state.tool === 'draw'){
+    e.preventDefault();
 
-  state.drawingPointerId = e.pointerId;
-  state.dragging = {
-    mode:'draw',
-    stroke:{ id: uid(), color: state.penColor, width: state.penThickness, pts: [[p0.x, p0.y]] }
-  };
-  try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
-  redrawCanvas();
-  return;
-}
+    if (state.penStraight) {
+      if (!state._opPushed) { pushHistory(); state._opPushed = true; }
 
-  	if (state.tool === 'erase'){
-    	e.preventDefault();
-    	handleEraserDown(e, p0);
-    	return;
-  	}
-	}, {passive:false});
+      state.lineAnchor = null;
+      const snap = snapStartPoint(p0);
+      state.__lineMode  = snap.mode;
+      state.__lineStart = snap.start;
+      state.__lineEdge  = snap.edge || null;
+      state.__draggingStraight = true;
 
-  drawCanvas.addEventListener('pointermove', (e)=>{
-    const p=pt(e); state.pointerPos = p; redrawCursorOverlay();
-    // 連続オブジェクト消去（押しっぱ）中
-    if (state.dragging && state.dragging.mode === 'eraseObject'){
-      e.preventDefault();
-      if (!state._eraseObjRAF){
-        const pos = p;
-        const tol = state.eraserSize || 14;
-        state._eraseObjRAF = requestAnimationFrame(()=>{
-          state._eraseObjRAF = 0;
-          // 触れているときだけ消す
-          const hit = eraseNearestDrawAction(pos, tol);
-          if (hit) redrawCanvas();
-        });
-      }
+      try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
       return;
     }
 
-    
-  	if (state.tool === 'draw' && state.penStraight && state.__draggingStraight){
-  e.preventDefault();
+    if (!state._opPushed) { pushHistory(); state._opPushed = true; }
 
-  let a = state.__lineStart;
-  let b = p;
-  if (state.__lineMode === 'edge' && state.__lineEdge){
-    b = constrainOnEdge(p, state.__lineEdge);
+    state.dragging = {
+      mode:'draw',
+      stroke:{ id: uid(), color: state.penColor, width: state.penThickness, pts: [[p0.x, p0.y]] }
+    };
+    try{ drawCanvas.setPointerCapture(e.pointerId); state.pointerCaptured=true; }catch(_){}
+    redrawCanvas();
+    return;
   }
 
-  // 一時プレビュー線
-  state._previewStroke = {
-    color: state.penColor,
-    width: state.penThickness,
-    pts: [[a.x, a.y],[b.x, b.y]]
-  };
+  if (state.tool === 'erase'){
+    e.preventDefault();
+    handleEraserDown(e, p0);
+    return;
+  }
+}, {passive:false});
 
-  redrawCanvas();
-  return;
-}
-
-
-    if(!state.dragging) { return; }
-    if(state.dragging.mode==='draw'){
-      e.preventDefault();
-      addStrokePoint(p);
-      redrawCanvas();
-    }else if(state.dragging.mode==='erasePixel'){
-      e.preventDefault();
-      addErasePoint(p);
-      redrawCanvas();
+  drawCanvas.addEventListener('pointermove', (e)=>{
+  // ★ 一本縛り：描画/直線/消し中は「ロックした pointerId」以外は無視
+  if ((state.tool === 'draw' || state.tool === 'erase')) {
+    const isDrawing =
+      (state.dragging && (state.dragging.mode === 'draw' ||
+                          state.dragging.mode === 'erasePixel' ||
+                          state.dragging.mode === 'eraseObject')) ||
+      state.__draggingStraight;
+    if (isDrawing && state.drawingPointerId !== null && e.pointerId !== state.drawingPointerId) {
+      return;
     }
-  }, {passive:false});
+  }
+
+  const p=pt(e);
+  state.pointerPos = p;
+  redrawCursorOverlay();
+
+  // 連続オブジェクト消去（押しっぱ）中
+  if (state.dragging && state.dragging.mode === 'eraseObject'){
+    e.preventDefault();
+    if (!state._eraseObjRAF){
+      const pos = p;
+      const tol = state.eraserSize || 14;
+      state._eraseObjRAF = requestAnimationFrame(()=>{
+        state._eraseObjRAF = 0;
+        const hit = eraseNearestDrawAction(pos, tol);
+        if (hit) redrawCanvas();
+      });
+    }
+    return;
+  }
+
+  if (state.tool === 'draw' && state.penStraight && state.__draggingStraight){
+    e.preventDefault();
+    let a = state.__lineStart;
+    let b = p;
+    if (state.__lineMode === 'edge' && state.__lineEdge){
+      b = constrainOnEdge(p, state.__lineEdge);
+    }
+    state._previewStroke = { color: state.penColor, width: state.penThickness, pts: [[a.x, a.y],[b.x, b.y]] };
+    redrawCanvas();
+    return;
+  }
+
+  if(!state.dragging) { return; }
+  if(state.dragging.mode==='draw'){
+    e.preventDefault();
+    addStrokePoint(p);
+    redrawCanvas();
+  }else if(state.dragging.mode==='erasePixel'){
+    e.preventDefault();
+    addErasePoint(p);
+    redrawCanvas();
+  }
+}, {passive:false});
 
   drawCanvas.addEventListener('pointerup', onPointerUpOrCancel, {passive:false});
   drawCanvas.addEventListener('pointercancel', onPointerUpOrCancel, {passive:false});
