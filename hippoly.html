@@ -1332,13 +1332,7 @@ body.header-fixed .board-wrap{ height: auto; }
   	}, {passive:true});
 	})();
   
-
-  // Pointer系で統一（iPad/PC/ペン全部OK）
-  uiB.shot.addEventListener('pointerdown', onPressStart, {passive:true});
-  uiB.shot.addEventListener('pointerup', onPressEnd, {passive:true});
-  uiB.shot.addEventListener('pointercancel', onPressEnd, {passive:true});
-  uiB.shot.addEventListener('pointerleave', onPressEnd, {passive:true});
-})();
+  uiB.shot.addEventListener('click', async ()=>{
   	const url = await captureViewportPNG();
   	addSnap(url);
 	});
@@ -3207,74 +3201,7 @@ injectToggleButtons();
     	uiB.saveAll.disabled = false;
   	}
 	}
-// ======= カメラ起動（非表示 file input 方式） =======
-let __cameraInput = null;
-
-function ensureCameraInput(){
-  if (__cameraInput) return __cameraInput;
-  const inp = document.createElement('input');
-  inp.type = 'file';
-  inp.accept = 'image/*';
-  inp.capture = 'environment'; // 背面カメラ優先（端末次第）
-  inp.style.display = 'none';
-  inp.addEventListener('change', ()=>{
-    const f = inp.files && inp.files[0];
-    if (!f) return;
-    const r = new FileReader();
-    r.onload = ()=>{
-      try { addSnap(String(r.result || '')); } catch(_){}
-    };
-    r.readAsDataURL(f);
-  });
-  document.body.appendChild(inp);
-  __cameraInput = inp;
-  return inp;
-}
-
-function openCameraViaFileInput(){
-  const inp = ensureCameraInput();
-  try { inp.value = ''; } catch(_){}
-  // 一部環境でユーザ操作由来判定が厳しいため、長押し→この click はOK
-  inp.click();
-}
-
-// ====== 📷ボタン 長押しでカメラ起動 ======
-(function bindShotLongPress(){
-  const btn = uiB.shot;
-  if (!btn) return;
-
-  let timer = 0;
-
-  function startPress(e){
-    if (btn.disabled) return;
-    clearTimeout(timer);
-    state.__shotLongPress = false;
-
-    // 約1.2秒でカメラ起動
-    timer = setTimeout(()=>{
-      state.__shotLongPress = true;
-      openCameraViaFileInput();   // ← カメラを起動
-    }, 1200);
-  }
-
-  function cancelPress(e){
-    clearTimeout(timer);
-    if (state.__shotLongPress) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }
-
-  // Pointer系（iPad/PC/ペン対応）
-  btn.addEventListener('pointerdown',  startPress,  {passive:false});
-  btn.addEventListener('pointerup',    cancelPress, {passive:false});
-  btn.addEventListener('pointercancel',cancelPress, {passive:false});
-  btn.addEventListener('pointerleave', cancelPress, {passive:false});
-  // 念のため旧iOS向けに touch も
-  btn.addEventListener('touchstart', startPress,  {passive:false});
-  btn.addEventListener('touchend',   cancelPress, {passive:false});
-})();
-
+  
 function canStartDrawing(e){
   if(state.drawingPointerId!=null) return false;
   state.drawingPointerId = e.pointerId;
