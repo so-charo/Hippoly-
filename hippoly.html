@@ -1333,6 +1333,45 @@ body.header-fixed .board-wrap{ height: auto; }
 	})();
   
   uiB.shot.addEventListener('click', async ()=>{
+    // ======= 📷 長押しでカメラ起動（2秒） =======
+(function attachLongPressToShot(){
+  if (!uiB?.shot) return;
+
+  let lpTimer = null;
+  let longPressed = false;
+
+  // クリック抑止：長押しが発火した直後のクリックを無視
+  uiB.shot.addEventListener('click', (e)=>{
+    if (longPressed) {
+      e.stopImmediatePropagation?.();
+      e.preventDefault();
+      // 抑止は一回だけ
+      longPressed = false;
+      return;
+    }
+  }, true); // ← 捕捉段階で先に拾って抑止
+
+  function onPressStart(e){
+    // マルチタッチや副ボタンは無視
+    if (e.button != null && e.button !== 0) return;
+    clearTimeout(lpTimer);
+    longPressed = false;
+    lpTimer = setTimeout(()=> {
+      longPressed = true;
+      openCameraViaFileInput(); // ← カメラ起動
+    }, 2000); // 2秒
+  }
+
+  function onPressEnd(){
+    clearTimeout(lpTimer);
+  }
+
+  // Pointer系で統一（iPad/PC/ペン全部OK）
+  uiB.shot.addEventListener('pointerdown', onPressStart, {passive:true});
+  uiB.shot.addEventListener('pointerup', onPressEnd, {passive:true});
+  uiB.shot.addEventListener('pointercancel', onPressEnd, {passive:true});
+  uiB.shot.addEventListener('pointerleave', onPressEnd, {passive:true});
+})();
   	const url = await captureViewportPNG();
   	addSnap(url);
 	});
@@ -3201,6 +3240,37 @@ injectToggleButtons();
     	uiB.saveAll.disabled = false;
   	}
 	}
+  // ======= カメラ起動（非表示の file input 方式） =======
+let __cameraInput = null;
+
+function ensureCameraInput(){
+  if (__cameraInput) return __cameraInput;
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.capture = 'environment'; // 背面カメラ優先（端末次第）
+  inp.style.display = 'none';
+  inp.addEventListener('change', ()=>{
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = ()=>{
+      // 読み込んだ写真をそのままスナップ一覧に追加
+      try { addSnap(String(r.result || '')); } catch(_){}
+    };
+    r.readAsDataURL(f);
+  });
+  document.body.appendChild(inp);
+  __cameraInput = inp;
+  return inp;
+}
+
+function openCameraViaFileInput(){
+  const inp = ensureCameraInput();
+  try { inp.value = ''; } catch(_){}
+  // 一部環境でユーザ操作由来判定が厳しいため、長押し→この click はOK
+  inp.click();
+}
   
 function canStartDrawing(e){
   if(state.drawingPointerId!=null) return false;
