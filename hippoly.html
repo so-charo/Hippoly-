@@ -1332,17 +1332,6 @@ body.header-fixed .board-wrap{ height: auto; }
   	}, {passive:true});
 	})();
   
-  uiB.shot.addEventListener('click', async (e)=>{
-  // 長押しでカメラを起動した直後は、スクショを抑止
-  if (state.__shotLongPress) {
-    state.__shotLongPress = false;
-    e.preventDefault();
-    e.stopPropagation();
-    return;
-  }
-  const url = await captureViewportPNG();
-  addSnap(url);
-});
   function onPressStart(e){
     // マルチタッチや副ボタンは無視
     if (e.button != null && e.button !== 0) return;
@@ -3232,7 +3221,7 @@ injectToggleButtons();
     	uiB.saveAll.disabled = false;
   	}
 	}
-  // ======= カメラ起動（非表示の file input 方式） =======
+// ======= カメラ起動（非表示 file input 方式） =======
 let __cameraInput = null;
 
 function ensureCameraInput(){
@@ -3247,7 +3236,6 @@ function ensureCameraInput(){
     if (!f) return;
     const r = new FileReader();
     r.onload = ()=>{
-      // 読み込んだ写真をそのままスナップ一覧に追加
       try { addSnap(String(r.result || '')); } catch(_){}
     };
     r.readAsDataURL(f);
@@ -3256,6 +3244,14 @@ function ensureCameraInput(){
   __cameraInput = inp;
   return inp;
 }
+
+function openCameraViaFileInput(){
+  const inp = ensureCameraInput();
+  try { inp.value = ''; } catch(_){}
+  // 一部環境でユーザ操作由来判定が厳しいため、長押し→この click はOK
+  inp.click();
+}
+
 // ====== 📷ボタン 長押しでカメラ起動 ======
 (function bindShotLongPress(){
   const btn = uiB.shot;
@@ -3268,40 +3264,30 @@ function ensureCameraInput(){
     clearTimeout(timer);
     state.__shotLongPress = false;
 
-    // iOSの長押し感覚より少し短め。2秒は長すぎて取りこぼしやすい
+    // 約1.2秒でカメラ起動
     timer = setTimeout(()=>{
-      state.__shotLongPress = true;     // ← click抑止フラグON
-      openCameraViaFileInput();         // ← カメラ起動
+      state.__shotLongPress = true;
+      openCameraViaFileInput();   // ← カメラを起動
     }, 1200);
   }
 
   function cancelPress(e){
     clearTimeout(timer);
-    // 長押しでカメラを開いた直後の「指離し」で click が走るのを止める
     if (state.__shotLongPress) {
       e.preventDefault();
       e.stopPropagation();
     }
   }
 
-  // Pointer系（最新ブラウザ）
+  // Pointer系（iPad/PC/ペン対応）
   btn.addEventListener('pointerdown',  startPress,  {passive:false});
   btn.addEventListener('pointerup',    cancelPress, {passive:false});
   btn.addEventListener('pointercancel',cancelPress, {passive:false});
   btn.addEventListener('pointerleave', cancelPress, {passive:false});
-
   // 念のため旧iOS向けに touch も
   btn.addEventListener('touchstart', startPress,  {passive:false});
   btn.addEventListener('touchend',   cancelPress, {passive:false});
 })();
-
-function openCameraViaFileInput(){
-  const inp = ensureCameraInput();
-  try { inp.value = ''; } catch(_){}
-  // 一部環境でユーザ操作由来判定が厳しいため、長押し→この click はOK
-  inp.click();
-}
-
 
 function canStartDrawing(e){
   if(state.drawingPointerId!=null) return false;
