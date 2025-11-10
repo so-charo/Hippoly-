@@ -4,18 +4,15 @@
   <meta charset="utf-8">
   <title>Redirecting…</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <!-- JSで即リダイレクト。履歴に残さないよう replace を使う -->
-  <script>
-    location.replace("./hippoly.html");
-  </script>
-  <!-- JS無効時の保険 -->
-  <noscript>
-    <meta http-equiv="refresh" content="0; url=./hippoly.html">
-  </noscript>
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <!-- PWA / iOS 用の設定だけ -->
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="manifest" href="./manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <script>location.replace("./hippoly.html");</script>
+  <noscript><meta http-equiv="refresh" content="0;url=./hippoly.html"></noscript>
 </head>
 <body>
   <p>Redirecting to <a href="./hippoly.html">hippoly.html</a>…</p>
