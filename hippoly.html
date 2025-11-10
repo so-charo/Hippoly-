@@ -652,7 +652,7 @@ body.header-fixed .board-wrap{ height: auto; }
 	        方眼：
 	        <select id="gridSize" title="1/2cm 方眼">
 	          <option value="1">細</option>
-	          <option value="3" selected>広</option>
+	          <option value="2.5" selected>広</option>
 	        </select>
 	      </label>
 	
@@ -822,13 +822,13 @@ body.header-fixed .board-wrap{ height: auto; }
         </select>
         <select id="eraserSize" title="消しゴムのサイズ選択">
          <option value="8">
-          細
+          小
          </option>
          <option selected="" value="14">
           中
          </option>
          <option value="24">
-          太
+          大
          </option>
         </select>
        </div>
@@ -1378,6 +1378,24 @@ document.body.classList.toggle('swap-sidebars');
 	uiB.lb.addEventListener('click', (e)=>{ if(e.target===uiB.lb) closeLightbox(); }); 
    
 	let suppressPenAutoSelect = false; 
+  // ==== Pen/Eraser quick toggle constants ====
+const PEN_THIN  = 1.5;   // 既定の細
+const PEN_THICK = 4.0;   // 好みで調整：太
+
+// 消しゴムの段階（px）: 小/中/大
+const ERASER_STEPS = [10, 18, 28];
+
+// ボタン表示テキスト
+function penLabelFrom(value){
+  const v = Number(value||0);
+  return (Math.abs(v - PEN_THIN) < 0.01) ? '✒︎ 細' : '✒︎ 太';
+}
+function eraserLabelFrom(value){
+  const v = Number(value||0);
+  if (v <= ERASER_STEPS[0]+0.01) return '消 小';
+  if (v <= ERASER_STEPS[1]+0.01) return '消 中';
+  return '消 大';
+}
   const ui={
     selType:document.getElementById('selType'), w:document.getElementById('w'), h:document.getElementById('h'), vh:document.getElementById('vh'),
     wLabel:document.getElementById('wLabel'), hLabel:document.getElementById('hLabel'),
@@ -1402,7 +1420,7 @@ document.body.classList.toggle('swap-sidebars');
   };
   
 
-  
+
   function ensureLayout(){
     const header = document.querySelector('header');
     const wrap = document.querySelector('.board-wrap');
@@ -1422,6 +1440,68 @@ document.body.classList.toggle('swap-sidebars');
     	redrawCursorOverlay();
   	});
 	}
+  
+  // ==== Inject quick toggle buttons next to selects ====
+function injectToggleButtons(){
+  const penSel   = document.getElementById('penThickness');
+  const erSel    = document.getElementById('eraserSize');
+
+  // ペン太さトグル
+  if (penSel && !document.getElementById('btnPenToggle')){
+    const btn = document.createElement('button');
+    btn.id = 'btnPenToggle';
+    btn.type = 'button';
+    btn.title = 'ペン太さを切替（細⇆太）';
+    btn.textContent = penLabelFrom(penSel.value || state.penThickness || PEN_THIN);
+    btn.style.marginLeft = '6px';
+
+    btn.addEventListener('click', ()=>{
+      const cur = Number(state.penThickness || penSel.value || PEN_THIN);
+      const next = (Math.abs(cur - PEN_THIN) < 0.01) ? PEN_THICK : PEN_THIN;
+      state.penThickness = next;
+      penSel.value = String(next);
+      setTool('draw');
+      render();
+      btn.textContent = penLabelFrom(next);
+    });
+
+    penSel.insertAdjacentElement('afterend', btn);
+  }
+
+  // 消しゴムサイズトグル
+  if (erSel && !document.getElementById('btnEraserCycle')){
+    const btn = document.createElement('button');
+    btn.id = 'btnEraserCycle';
+    btn.type = 'button';
+    btn.title = 'ピクセル消しゴムの大きさを切替（小→中→大→…）';
+    btn.textContent = eraserLabelFrom(erSel.value || state.eraserSize || ERASER_STEPS[0]);
+    btn.style.marginLeft = '6px';
+
+    btn.addEventListener('click', ()=>{
+      // 現在値がステップにいない場合は、最も近い段に吸着
+      const cur = Number(state.eraserSize || erSel.value || ERASER_STEPS[0]);
+      let idx = ERASER_STEPS.findIndex(s => Math.abs(s - cur) < 0.01);
+      if (idx < 0){
+        let best=0, d=1e9;
+        ERASER_STEPS.forEach((s,i)=>{ const dd=Math.abs(s-cur); if(dd<d){ d=dd; best=i; } });
+        idx = best;
+      }
+      const next = ERASER_STEPS[(idx + 1) % ERASER_STEPS.length];
+
+      state.eraserSize = next;
+      erSel.value = String(next);
+      setTool('erase');
+      redrawCursorOverlay();
+      btn.textContent = eraserLabelFrom(next);
+    });
+
+    erSel.insertAdjacentElement('afterend', btn);
+  }
+}
+
+// 初期化の終盤で一度だけ注入
+injectToggleButtons();
+  
   function setSvgSizeByClient(){
   const r = board.getBoundingClientRect();
   const w = Math.max(1, Math.floor(r.width));
@@ -2709,6 +2789,8 @@ document.body.classList.toggle('swap-sidebars');
   	if (!state.penStraight) state.__dragStart = null; 
   	setTool('draw');   
   	redrawCursorOverlay();
+  	const btn = document.getElementById('btnPenToggle');
+  	if (btn) btn.textContent = penLabelFrom(state.penThickness);
 	});
 
 	
@@ -2723,6 +2805,8 @@ document.body.classList.toggle('swap-sidebars');
   	state.eraserSize = parseInt(eraserSizeSel.value,10) || 14;
   	setTool('erase');              
   	redrawCursorOverlay();
+  	const btn = document.getElementById('btnEraserCycle');
+  	if (btn) btn.textContent = eraserLabelFrom(state.eraserSize);
 	});
 	function updateEraserSizeVisibility(){
   	const sizeSel = document.getElementById('eraserSize');
