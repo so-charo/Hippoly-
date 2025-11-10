@@ -652,9 +652,9 @@ body.header-fixed .board-wrap{ height: auto; }
 	    <div class="title">🦛Hippoly!</div>
 	
 	    <div class="header-center">
-	      <label title="方眼のサイズを切り替え（1/2cm）">
+	      <label title="方眼のサイズを切り替え">
 	        方眼：
-	        <select id="gridSize" title="1/2cm 方眼">
+	        <select id="gridSize" title="方眼">
 	          <option value="1">細</option>
 	          <option value="2.5" selected>広</option>
 	        </select>
@@ -2753,7 +2753,7 @@ injectToggleButtons();
     if(tool){ setTool(tool); render(); return; }
   });
   ui.gridSize.addEventListener('change', ()=>{
-    const cm=parseInt(ui.gridSize.value,10)||3; state.gridPx=pxPerCm*cm; drawGrid(); render(); redrawCursorOverlay();
+    const cm=parseInt(ui.gridSize.value,10)||2.5; state.gridPx=pxPerCm*cm; drawGrid(); render(); redrawCursorOverlay();
   });
   ui.splitGridSnap.addEventListener('change', ()=>{
 	  state.splitGridSnap = ui.splitGridSnap.checked;
