@@ -1332,20 +1332,6 @@ body.header-fixed .board-wrap{ height: auto; }
   	}, {passive:true});
 	})();
   
-  function onPressStart(e){
-    // マルチタッチや副ボタンは無視
-    if (e.button != null && e.button !== 0) return;
-    clearTimeout(lpTimer);
-    longPressed = false;
-    lpTimer = setTimeout(()=> {
-      longPressed = true;
-      openCameraViaFileInput(); // ← カメラ起動
-    }, 2000); // 2秒
-  }
-
-  function onPressEnd(){
-    clearTimeout(lpTimer);
-  }
 
   // Pointer系で統一（iPad/PC/ペン全部OK）
   uiB.shot.addEventListener('pointerdown', onPressStart, {passive:true});
