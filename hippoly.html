@@ -3081,6 +3081,14 @@ injectToggleButtons();
     }catch(_){}
 
     ensureLayout();
+    ui.gridSize?.dispatchEvent(new Event('change'));
+    // === 起動時のグリッドをセレクト値で確定 ===
+	try {
+  	const initCm = parseInt(ui.gridSize?.value, 10) || 2.5;
+  	state.gridPx = pxPerCm * initCm;
+	} catch(_) {
+  	state.gridPx = pxPerCm * 2.5;
+	}
     const tick=()=>{
       const r=board.getBoundingClientRect();
       if(r.width<2 || r.height<2){ requestAnimationFrame(tick); return; }
