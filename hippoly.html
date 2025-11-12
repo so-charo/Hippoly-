@@ -142,7 +142,6 @@
   	border-radius:8px 0 0 8px;
 	}
 
-	
 	#thumbList {
   	display: flex;
   	flex-direction: column;
@@ -646,13 +645,29 @@ body.header-fixed .board-wrap{ height: auto; }
 .inline-controls input[type="checkbox"]{margin:0}
 .vertex-handle{display:none}
 .show-vertices .vertex-handle{display:block}
-	  
+
+.title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.title-icon {
+  height: 1em;   /* タイトル文字と同じ高さに調整 */
+  width: auto;
+  vertical-align: middle;
+}
+
 </style>
  </head>
  <body>
   <header>
 	  <div class="row">
-	    <div class="title">🦛Hippoly!</div>
+	    <div class="title-with-icon">
+      <img src="./favicon-192.png" alt="Hippoly icon" class="title-icon">
+      <span class="title-text">Hippoly!</span>
+    </div>
+  </div>
 	
 	    <div class="header-center">
 	      <label title="方眼のサイズを切り替え">
