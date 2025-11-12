@@ -2763,7 +2763,7 @@ injectToggleButtons();
 	  if (state.splitGridSnap) setTool('splitLine');
   });
 
-  ui.vertexEdit.addEventListener('change', ()=>{ state.vertexEdit=ui.vertexEdit.checked; render(); });
+  ui.vertexEdit.addEventListener('change', ()=>{state.vertexEdit = ui.vertexEdit.checked;render();document.body.classList.toggle('show-vertices', ui.vertexEdit.checked);});
   ui.splitContinuous?.addEventListener('change', ()=>{state.splitContinuous = !!ui.splitContinuous.checked;});
   ui.color.addEventListener('input', ()=>{ if(state.sel){ state.sel.fill=ui.color.value; state.sel.stroke=ui.color.value; state.sel.userColored = true; pushHistory(); render(); } });
   ui.lockSize.addEventListener('change', ()=> state.lockSize=ui.lockSize.checked );
