@@ -142,6 +142,7 @@
   	border-radius:8px 0 0 8px;
 	}
 
+	
 	#thumbList {
   	display: flex;
   	flex-direction: column;
@@ -645,38 +646,13 @@ body.header-fixed .board-wrap{ height: auto; }
 .inline-controls input[type="checkbox"]{margin:0}
 .vertex-handle{display:none}
 .show-vertices .vertex-handle{display:block}
-
-.title-with-icon {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.title-icon {
-  height: 1em;   /* タイトル文字と同じ高さに調整 */
-  width: auto;
-  vertical-align: middle;
-}
-header .row {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 6px !important;
-  flex-wrap: nowrap !important;  /* ← 折り返しを禁止 */
-  overflow-x: auto !important;   /* はみ出すときは横スクロール */
-}
-
-
+	  
 </style>
  </head>
  <body>
   <header>
 	  <div class="row">
-	    <div class="title-with-icon">
-      <img src="./favicon-192.png" alt="Hippoly icon" class="title-icon">
-      <span class="title-text">Hippoly!</span>
-    </div>
-  </div>
+	    <div class="title">🦛Hippoly!</div>
 	
 	    <div class="header-center">
 	      <label title="方眼のサイズを切り替え">
@@ -2787,7 +2763,7 @@ injectToggleButtons();
 	  if (state.splitGridSnap) setTool('splitLine');
   });
 
-  ui.vertexEdit.addEventListener('change', ()=>{state.vertexEdit = ui.vertexEdit.checked;render();document.body.classList.toggle('show-vertices', ui.vertexEdit.checked);});
+  ui.vertexEdit.addEventListener('change', ()=>{ state.vertexEdit=ui.vertexEdit.checked; render(); });
   ui.splitContinuous?.addEventListener('change', ()=>{state.splitContinuous = !!ui.splitContinuous.checked;});
   ui.color.addEventListener('input', ()=>{ if(state.sel){ state.sel.fill=ui.color.value; state.sel.stroke=ui.color.value; state.sel.userColored = true; pushHistory(); render(); } });
   ui.lockSize.addEventListener('change', ()=> state.lockSize=ui.lockSize.checked );
