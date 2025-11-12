@@ -658,9 +658,14 @@ body.header-fixed .board-wrap{ height: auto; }
   vertical-align: middle;
 }
 header .row {
-  flex-wrap: nowrap;     /* 折り返し禁止 */
-  overflow-x: auto;      /* はみ出したら横スクロール可 */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+  flex-wrap: nowrap !important;  /* ← 折り返しを禁止 */
+  overflow-x: auto !important;   /* はみ出すときは横スクロール */
 }
+
 
 </style>
  </head>
