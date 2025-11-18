@@ -856,6 +856,9 @@ body.header-fixed .board-wrap{ height: auto; }
        <button data-add="trap" title="台形4パターン">
         ⏃ 台形
        </button>
+		<label style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;">
+ 		 <input type="checkbox" id="trapOnly0">
+		</label>	
        <button data-add="rh" title="ひし形">
         ◇ ひし形
        </button>
@@ -1732,64 +1735,65 @@ injectToggleButtons();
   		];
 		}
    if(type==='trap'){
-	  const v = Math.floor(Math.random()*4); // 0..3 の4通り
-	  if(v===0){
-	    // ① 追加した台形（上底3, 下底9, 高さ4）位置: 右3, 下1
-	    const topL  = 3*g, baseL = 9*g, h = 4*g;
-	    const topY = cy + 1*g;
-	    const bottomY = topY + h;
-	    const x0 = cx-1*g;                 // 下底左端Bのx
-	    const B = [x0,            bottomY];
-	    const C = [x0 + baseL,    bottomY];
-	    const A = [x0 + 2*g,      topY];     // AはBより右に2
-	    const D = [A[0] + topL,   topY];     // DはCより左に4（9-4=5、A=2→D=5で成立）
-	    pts = [A, D, C, B];                  // 時計回り
-	}else if(v===1){
-	  // ② 新しい台形：上底7、下底4、高さ3
-	  // 条件: 頂点Aが左上、ADとBCは平行（水平）、CDは垂直
-	  const topL  = 7 * g;      // 上底
-	  const baseL = 4 * g;      // 下底
-	  const h     = 3 * g;      // 高さ
-	
-	  const topY = cy;          // 上辺Y
-	  const bottomY = cy + h;   // 下辺Y
-	
-	  // 右側（DとC）のxを基準に揃える。CDが垂直になるよう C.x = D.x とする
-	  const rightX = cx + 4 * g+2*g; // 位置は任意の基準。必要ならここで全体を動かす
-	
-	  // 頂点定義（時計回り: A→D→C→B）
-	  const D = [rightX,          topY];        // 右上
-	  const C = [rightX,          bottomY];     // 右下（Dと同じxで垂直）
-	  const A = [rightX - topL,   topY];        // 左上（A）
-	  const B = [rightX - baseL,  bottomY];     // 左下
-	
-	  pts = [A, D, C, B];
-	}else if(v===2){
-	    // ③ 上底が長い台形：上底8、下底5、高さ5（中心合わせ）
-	    const topL  = 7*g, baseL = 5*g, h = 5*g;
-	    const topY = cy;
-	    const bottomY = cy + h;
-	    const x0 = cx+1*g;                       // 下底左端B
-	    const B = [x0,           bottomY];
-	    const C = [x0 + baseL,   bottomY];
-	    const topLeft = x0 + baseL/2 - topL/2; // 上下の中心合わせ
-	    const A = [topLeft,       topY];
-	    const D = [topLeft + topL, topY];
-	    pts = [A, D, C, B];                  // 時計回り
-	  }else{
-	    // ④ 下底が長い台形（等脚）：上底5、下底8、高さ5（③の上下反転に相当）
-	    const topL  = 4*g, baseL = 8*g, h = 5*g;
-	    const topY = cy;
-	    const bottomY = cy + h;
-	    const x0 = cx;                       // 下底左端B
-	    const B = [x0,           bottomY];
-	    const C = [x0 + baseL,   bottomY];
-	    const topLeft = x0 + baseL/2 - topL/2; // 等脚なので上底は下底の中心に揃える
-	    const A = [topLeft,       topY];
-	    const D = [topLeft + topL, topY];
-	    pts = [A, D, C, B];                  // 時計回り
-	  }
-	}
+
+  // ← チェックボックス参照
+  const only0 = document.getElementById("trapOnly0")?.checked;
+
+  // v を決める（チェックONなら強制0）
+  let v = only0 ? 0 : Math.floor(Math.random() * 4);
+
+  if(v===0){
+    // ① 追加した台形（上底3, 下底9, 高さ4）
+    const topL  = 3*g, baseL = 9*g, h = 4*g;
+    const topY = cy + 1*g;
+    const bottomY = topY + h;
+    const x0 = cx-1*g;
+    const B = [x0, bottomY];
+    const C = [x0 + baseL, bottomY];
+    const A = [x0 + 2*g, topY];
+    const D = [A[0] + topL, topY];
+    pts = [A, D, C, B];
+
+  }else if(v===1){
+    // ② 新しい台形（上底7、下底4、高さ3）
+    const topL  = 7*g, baseL = 4*g, h = 3*g;
+    const topY = cy;
+    const bottomY = cy + h;
+    const rightX = cx + 4*g + 2*g;
+    const D = [rightX, topY];
+    const C = [rightX, bottomY];
+    const A = [rightX - topL, topY];
+    const B = [rightX - baseL, bottomY];
+    pts = [A, D, C, B];
+
+  }else if(v===2){
+    // ③ 上底が長い台形
+    const topL  = 7*g, baseL = 5*g, h = 5*g;
+    const topY = cy;
+    const bottomY = cy + h;
+    const x0 = cx+1*g;
+    const B = [x0, bottomY];
+    const C = [x0 + baseL, bottomY];
+    const topLeft = x0 + baseL/2 - topL/2;
+    const A = [topLeft, topY];
+    const D = [topLeft + topL, topY];
+    pts = [A, D, C, B];
+
+  }else{
+    // ④ 下底が長い台形（等脚）
+    const topL  = 4*g, baseL = 8*g, h = 5*g;
+    const topY = cy;
+    const bottomY = cy + h;
+    const x0 = cx;
+    const B = [x0, bottomY];
+    const C = [x0 + baseL, bottomY];
+    const topLeft = x0 + baseL/2 - topL/2;
+    const A = [topLeft, topY];
+    const D = [topLeft + topL, topY];
+    pts = [A, D, C, B];
+  }
+}
+
 
     if (type === 'para') {const g=state.gridPx;const off=state.gridOffset||0;const x0=off+(2-3+2)*g;const y0=off+(2+1+3)*g;const base=2*g;const height=4*g;const skew=3*g;pts=[[x0,y0],[x0+base,y0],[x0+base+skew,y0-height],[x0+skew,y0-height]];}
     if(type==='rh'){
