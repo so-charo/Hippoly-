@@ -3048,6 +3048,12 @@ injectToggleButtons();
 
   
   function boot(){
+
+	  // 起動時に trapOnly0 を ON
+document.addEventListener("DOMContentLoaded", ()=>{
+  const cb = document.getElementById("trapOnly0");
+  if (cb) cb.checked = true;
+});
     
 		document.body.classList.add('asideB-collapsed');
     
@@ -3500,6 +3506,21 @@ function __mapLabelsFromBase(newPts, basePts, baseMeta){
   }
   return vm;
 }
+
+document.getElementById("reset")?.addEventListener("click", (e)=>{
+  e.preventDefault(); // 標準の動作を止める
+
+  const ok = confirm("画像を保存しましたか？\n消えちゃうよ！！！！");
+
+  if (ok) {
+    // 本当にリセット
+    location.reload();
+  } else {
+    // 何もしない
+    return;
+  }
+});
+
 </script>
  </body>
 </html>
