@@ -862,6 +862,22 @@ body.header-fixed .board-wrap{ height: auto; }
        <button data-add="rh" title="ひし形">
         ◇ ひし形
        </button>
+		  <div style="margin-top:6px; display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+    <button data-add="polyN" id="btnPolyN" title="N角形（5〜65537）">
+      ⬡ N角形
+    </button>
+    <label style="font-size:12px; display:flex; align-items:center; gap:2px;">
+      <input id="polyNInput" type="number"
+             min="5" max="65537" value="5"
+             style="width:5em; padding:2px 4px; font-size:12px;">
+      角
+    </label>
+
+    <!-- 円ボタン -->
+    <button data-add="circle" id="btnCircle" title="円">
+      ○ 円
+    </button>
+  </div>
        <button id="deleteShape" title="図形削除">
         ✖ 削除
        </button>
@@ -1818,6 +1834,176 @@ injectToggleButtons();
 		setTool('edit');       
 		render();
   }
+function addShape(type){
+  const g   = state.gridPx;
+  const off = state.gridOffset || 0;
+  const cx  = off + g * 2;
+  const cy  = off + g * 2;
+  let pts = [];
+
+  if (type === 'rect'){
+    const g = state.gridPx;
+    const off = state.gridOffset || 0;
+    const w = 7 * g;
+    const h = 5 * g;
+    const x0 = (cx - w/2) + 4.5*g;
+    const y0 = (cy - h/2) + 1.5*g;
+    pts = [
+      [x0,      y0],
+      [x0 + w,  y0],
+      [x0 + w,  y0 + h],
+      [x0,      y0 + h]
+    ];
+  }
+
+  if (type === 'tri') {
+    const grid   = state.gridPx;
+    const base   = 5 * grid;
+    const height = 6 * grid;
+    const dx     = 6 * grid;
+
+    const cx2 = cx + (2+2) * grid;
+    const cy2 = cy + (1+1) * grid;
+
+    const x0 = cx2 - base / 2;
+    const y0 = cy2 + height / 2;
+
+    pts = [
+      [x0,              y0],
+      [x0 + base,       y0],
+      [x0 + base/2 + dx, y0 - height]
+    ];
+  }
+
+  if(type==='trap'){
+    const v = Math.floor(Math.random()*4); // 0..3 の4通り
+    if(v===0){
+      const topL  = 3*g, baseL = 9*g, h = 4*g;
+      const topY = cy + 1*g;
+      const bottomY = topY + h;
+      const x0 = cx-1*g;
+      const B = [x0,            bottomY];
+      const C = [x0 + baseL,    bottomY];
+      const A = [x0 + 2*g,      topY];
+      const D = [A[0] + topL,   topY];
+      pts = [A, D, C, B];
+    }else if(v===1){
+      const topL  = 7 * g;
+      const baseL = 4 * g;
+      const h     = 3 * g;
+      const topY = cy;
+      const bottomY = cy + h;
+      const rightX = cx + 4 * g + 2*g;
+      const D = [rightX,          topY];
+      const C = [rightX,          bottomY];
+      const A = [rightX - topL,   topY];
+      const B = [rightX - baseL,  bottomY];
+      pts = [A, D, C, B];
+    }else if(v===2){
+      const topL  = 7*g, baseL = 5*g, h = 5*g;
+      const topY = cy;
+      const bottomY = cy + h;
+      const x0 = cx+1*g;
+      const B = [x0,           bottomY];
+      const C = [x0 + baseL,   bottomY];
+      const topLeft = x0 + baseL/2 - topL/2;
+      const A = [topLeft,       topY];
+      const D = [topLeft + topL, topY];
+      pts = [A, D, C, B];
+    }else{
+      const topL  = 4*g, baseL = 8*g, h = 5*g;
+      const topY = cy;
+      const bottomY = cy + h;
+      const x0 = cx;
+      const B = [x0,           bottomY];
+      const C = [x0 + baseL,   bottomY];
+      const topLeft = x0 + baseL/2 - topL/2;
+      const A = [topLeft,       topY];
+      const D = [topLeft + topL, topY];
+      pts = [A, D, C, B];
+    }
+  }
+
+  if (type === 'para') {
+    const g=state.gridPx;
+    const off=state.gridOffset||0;
+    const x0=off+(2-3+2)*g;
+    const y0=off+(2+1+3)*g;
+    const base=2*g;
+    const height=4*g;
+    const skew=3*g;
+    pts=[[x0,y0],[x0+base,y0],[x0+base+skew,y0-height],[x0+skew,y0-height]];
+  }
+
+  if(type==='rh'){
+    const g = state.gridPx;
+    const off = state.gridOffset || 0;
+    const cmPerGrid = g / pxPerCm;
+    const short = Math.abs(cmPerGrid - 1) < 1e-3 ? 4 * pxPerCm : 4 * g;
+    const long  = Math.abs(cmPerGrid - 1) < 1e-3 ? 8 * pxPerCm : 8 * g;
+    const cxg = off + (3+3) * g;
+    const cyg = off+4*g;
+    const top    = [cxg,            cyg - short/2];
+    const right  = [cxg + long/2,   cyg];
+    const bottom = [cxg,            cyg + short/2];
+    const left   = [cxg - long/2,   cyg];
+    pts = [top, right, bottom, left];
+  }
+
+  // ★ N角形（正多角形）
+  if (type === 'polyN'){
+    const input = document.getElementById('polyNInput');
+    let n = parseInt(input && input.value, 10);
+    if (!Number.isFinite(n)) n = 5;
+    n = Math.max(5, Math.min(n, 65537));
+
+    // 実際に描くのは安全のため最大 1024 頂点に制限
+    const nDraw = Math.min(n, 1024);
+
+    const r  = 3 * g;
+    const cxN = cx + 6*g;   // ちょっと右にずらす
+    const cyN = cy + 2*g;
+
+    pts = [];
+    for (let k=0; k<nDraw; k++){
+      const ang = -Math.PI/2 + 2*Math.PI*k/nDraw;
+      const x = cxN + r * Math.cos(ang);
+      const y = cyN + r * Math.sin(ang);
+      pts.push([x,y]);
+    }
+  }
+
+  // ★ 円（多角形近似）
+  if (type === 'circle'){
+    const r  = 3 * g;
+    const nDraw = 96;        // 十分な頂点数で「ほぼ円」
+    const cxC = cx + 6*g;
+    const cyC = cy + 6*g;
+
+    pts = [];
+    for (let k=0; k<nDraw; k++){
+      const ang = 2*Math.PI*k/nDraw;
+      const x = cxC + r * Math.cos(ang);
+      const y = cyC + r * Math.sin(ang);
+      pts.push([x,y]);
+    }
+  }
+
+  const sh = {
+    id: uid(),
+    type,                 // ← circle / polyN もここに入る
+    points: pts,
+    fill: ui.color.value,
+    stroke: ui.color.value,
+    userColored: false
+  };
+  __assignLabels(sh);
+  state.shapes.push(sh);
+  selectShape(sh);
+  pushHistory();
+  setTool('edit');
+  render();
+}
 
   
   function addNote(x,y){
@@ -2611,16 +2797,21 @@ injectToggleButtons();
   }
 
   function labelByType(t){
-    if(t==='tri') return '三角形';
-    if(t==='square') return '正方形';
-    if(t==='rect') return '長方形';
-    if(t==='rh') return 'ひし形';
-    if(t==='para') return '平行四辺形';
-    if(t==='trap') return '台形';
-    if(t==='quad') return '四角形';
-    if(t.startsWith('poly')){ const n=+t.slice(4); return `多角形（${n}角形）`; }
-    return '図形';
+  if(t==='tri') return '三角形';
+  if(t==='square') return '正方形';
+  if(t==='rect') return '長方形';
+  if(t==='rh') return 'ひし形';
+  if(t==='para') return '平行四辺形';
+  if(t==='trap') return '台形';
+  if(t==='circle') return '円';              // ★ ここ追加
+  if(t==='quad') return '四角形';
+  if(t.startsWith('poly')){
+    const n = +t.slice(4);
+    return `多角形（${n}角形）`;
   }
+  return '図形';
+}
+
 
   
   function lineIntersectsPolygon(a,b, poly){
@@ -2679,25 +2870,43 @@ injectToggleButtons();
   
   function pxToCm(px){ return px/pxPerCm; }
   function fmtLen(px){ return pxToCm(px).toFixed(2); }
-  function updateBadges(){
-    const sh=state.sel;
-    if(!sh){
-      ui.selType.textContent='—';
-      ui.w.textContent='—'; ui.h.textContent='—'; ui.vh.textContent='—';
-      ui.wLabel.textContent='幅'; ui.hLabel.textContent='高さ';
-      return;
-    }
-    const t = autoType(sh.points);
-    ui.selType.textContent = labelByType(t);
-    const bb=bbox(sh.points);
-    ui.w.textContent=fmtLen(bb.w); ui.h.textContent=fmtLen(bb.h);
-    document.getElementById('u1').textContent='cm'; document.getElementById('u2').textContent='cm';
-    ui.vh.textContent=`${sh.points.length}`;
-
-    if(t==='tri' || t==='para'){ ui.wLabel.textContent='底辺'; ui.hLabel.textContent='高さ'; }
-    else if(t==='rect' || t==='square'){ ui.wLabel.textContent='横'; ui.hLabel.textContent='たて'; }
-    else { ui.wLabel.textContent='幅'; ui.hLabel.textContent='高さ'; }
+function updateBadges(){
+  const sh = state.sel;
+  if(!sh){
+    ui.selType.textContent='—';
+    ui.w.textContent='—';
+    ui.h.textContent='—';
+    ui.vh.textContent='—';
+    ui.wLabel.textContent='幅';
+    ui.hLabel.textContent='高さ';
+    return;
   }
+
+  // ★ 円だけは type を優先
+  let t = (sh.type === 'circle') ? 'circle' : autoType(sh.points);
+  ui.selType.textContent = labelByType(t);
+
+  const bb = bbox(sh.points);
+  ui.w.textContent = fmtLen(bb.w);
+  ui.h.textContent = fmtLen(bb.h);
+  document.getElementById('u1').textContent='cm';
+  document.getElementById('u2').textContent='cm';
+  ui.vh.textContent = `${sh.points.length}`;
+
+  if(t==='tri' || t==='para'){
+    ui.wLabel.textContent='底辺';
+    ui.hLabel.textContent='高さ';
+  }else if(t==='rect' || t==='square'){
+    ui.wLabel.textContent='横';
+    ui.hLabel.textContent='たて';
+  }else if(t==='circle'){
+    ui.wLabel.textContent='直径っぽい幅';
+    ui.hLabel.textContent='直径っぽい高さ';
+  }else{
+    ui.wLabel.textContent='幅';
+    ui.hLabel.textContent='高さ';
+  }
+}
 
   function updateNoteHeaderPanel(){
     const nid = state.selNoteId;
